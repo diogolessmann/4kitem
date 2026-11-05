@@ -594,16 +594,16 @@
           <span class="pedido-emoji">{{ t.get('emoji','🎵') }}</span>
           <div class="pedido-info">
             {% if loop.first %}<span class="selo-prox">▶ Próximo</span>{% endif %}
-            <div class="pedido-nome">{{ p.nome_cliente }}{% if p.tipo in ('flash', 'vip', 'pular_espera') and p.pago_em %}<span class="selo-pago">⚡ PAGO</span>{% endif %}</div>
+            <div class="pedido-nome">{{ p.nome_cliente }}{% if p.tipo in ('flash', 'vip', 'pular_espera') and p.pago_em %}<span class="selo-pago">⚡ PAGO</span>{% elif p.karaoke_pago and p.pago_em %}<span class="selo-pago">🎤 PAGO</span>{% endif %}</div>
             <div class="pedido-tipo">{% if p.titulo_pedido %}🎵 {{ p.titulo_pedido[:40] }}{% else %}{{ t.get('nome', p.tipo) }}{% endif %}{% if p.mensagem %} · "{{ p.mensagem[:30] }}"{% endif %}</div>{% if karaoke_on and p.karaoke %}
             {% if p.karaoke_nome_oculto %}<div class="pedido-tipo">🙈 Na TV: Convidado</div>{% else %}<button type="button" class="btn-k-esconder" style="margin-top:6px" onclick="karaokeEsconder({{ p.id|int }}, this)">🙈 Esconder</button>{% endif %}{% endif %}
           </div>
-          {% if (p.valor or 0) > 0 %}<span class="pedido-valor">R$ {{ '%.2f'|format(p.valor_cobrado or p.valor or 0)|replace('.',',') }}</span>{% else %}<span class="pedido-gratis">grátis</span>{% endif %}
+          {% if (p.valor or 0) > 0 or p.karaoke_pago %}<span class="pedido-valor">R$ {{ '%.2f'|format(p.valor_cobrado or p.valor or 0)|replace('.',',') }}</span>{% else %}<span class="pedido-gratis">grátis</span>{% endif %}
           <button type="button" class="pedido-dispensar" aria-expanded="false" aria-label="Tirar da fila" title="Tirar da fila" onclick="abrirTirar({{ p.id }})">🗑️</button>
         </div>
         <div class="tirar-box" id="tirar-{{ p.id }}" hidden>
           {# 16/10/26 (C1-05): pedido JÁ PAGO avisa. 25/10/26: PIX na conta do PubShow (pix_volta) vai pro "PIX a devolver"; split/chave do bar como antes #}
-          {% if p.pix_volta %}<div class="aviso-pago">⚠️ Esse cliente pagou R$ {{ _pago_cli }} no PIX. Se tirar, a música não toca e o PIX volta pro cliente. Não sai do seu bolso.</div>{% elif p.pago_em %}<div class="aviso-pago">⚠️ Esse cliente PAGOU R$ {{ _pago_cli }} no PIX. Se tirar, a TV não mostra e o dinheiro NÃO volta sozinho: devolva na mão.</div>{% endif %}
+          {% if p.karaoke_pago and p.pago_em %}<div class="aviso-pago">⚠️ Essa pessoa pagou R$ 3. Se tirar, ela não canta e o PIX volta pra ela. Não sai do teu bolso.</div>{% elif p.pix_volta %}<div class="aviso-pago">⚠️ Esse cliente pagou R$ {{ _pago_cli }} no PIX. Se tirar, a música não toca e o PIX volta pro cliente. Não sai do seu bolso.</div>{% elif p.pago_em %}<div class="aviso-pago">⚠️ Esse cliente PAGOU R$ {{ _pago_cli }} no PIX. Se tirar, a TV não mostra e o dinheiro NÃO volta sozinho: devolva na mão.</div>{% endif %}
           <div class="botoes">
             <form method="POST" action="/pubshow/painel/pedido/{{ p.id }}/dispensar"><button type="submit" class="btn-tirar">🗑️ Tirar da fila</button></form>
             <button type="button" class="btn-voltar" onclick="abrirTirar(null)">Voltar</button>
@@ -694,23 +694,53 @@
     .btn-k-esconder{display:inline-flex;align-items:center;min-height:32px;padding:4px 9px;border-radius:9px;border:1px solid var(--border2);background:transparent;color:var(--text2);font:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
     .k-zerar-btn{border:1.5px solid #ef4444!important;color:#fca5a5!important;background:transparent!important}
     .k-palco{margin:0 0 12px;padding:10px 12px;border-radius:12px;background:var(--surface2);display:flex;align-items:center;gap:10px;justify-content:space-between;font-size:15px}
-    .k-palco b{font-weight:900}
+    .k-palco b{font-weight:900}{% if karaoke_pix %}
+    /* 🎤 03/11/26 (V2a): a cobrança */
+    .k-falha{margin-top:12px;padding:12px 14px;border-radius:12px;background:rgba(239,68,68,.14);border:1.5px solid #ef4444;font-size:15px;font-weight:800;line-height:1.45;color:#fecaca}
+    .k-falha .btn-sm{margin-top:10px;display:block}
+    .k-placar{margin:0 0 12px;font-size:15px;font-weight:800;line-height:1.45;color:var(--green)}
+    .k-cobrar{margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+    .k-palco{flex-wrap:wrap}
+    .k-palco .k-acoes{display:flex;gap:6px;flex-wrap:wrap}{% endif %}
   </style>
   <div class="card" id="sec-karaoke">
     <div class="linha-chave" style="padding:0">
       <div>
         <div class="rot">🎤 Modo karaokê <span class="salvo" aria-live="polite"></span></div>
         <div class="sub">Ligado: só música com letra, cada um põe o nome e canta na ordem.</div>
-        <div class="sub">Por enquanto é grátis pro cliente.</div>
+        <div class="sub"{% if karaoke_pix %} id="k-cobra-txt"{% endif %}>{% if karaoke_pix %}{{ karaoke_cobra_txt }}{% else %}Por enquanto é grátis pro cliente.{% endif %}</div>
       </div>
       <label class="sw"><input type="checkbox" id="karaoke-sw" aria-label="Ligar o modo karaokê"{% if karaoke_on %} checked{% endif %} onchange="trocarKaraoke(this)"><span class="sw-t"></span></label>
+    </div>{% if karaoke_cobrar_ok %}
+    <div class="linha-chave k-cobrar" id="k-cobrar-linha" style="padding-bottom:0">
+      <div>
+        <div class="rot">💰 Cobrar R$ 3 pela vez no palco <span class="salvo" aria-live="polite"></span></div>
+        <div class="sub">Desligado: quem pedir agora canta de graça. Quem já pagou segue na fila e canta.</div>
+      </div>
+      <label class="sw"><input type="checkbox" id="k-cobrar-sw" aria-label="Cobrar R$ 3 pela vez no palco"{% if karaoke_cobrar_on %} checked{% endif %} onchange="karaokeCobrar(this.checked, this)"><span class="sw-t"></span></label>
     </div>
+    <div class="k-falha" id="k-falha" role="alert"{% if not karaoke_falha %} hidden{% endif %}>
+      ⚠️ O PIX não está abrindo agora. Quem pede vê o aviso e não entra na fila.
+      <button type="button" class="btn-sm" onclick="karaokeCobrar(false, this)">Desligar a cobrança hoje</button>
+    </div>
+    <div class="sub" style="margin-top:10px">Fechando? Desliga o karaokê: quem pagou e não cantou recebe de volta.</div>{% endif %}{% if karaoke_pix %}
+    <div class="k-aceite" id="karaoke-desligar" hidden>
+      <div style="font-weight:800" id="karaoke-desligar-txt"></div>
+      <div class="botoes">
+        <button type="button" class="btn-sm k-sim" onclick="karaokeDesligarConfirma(this)">Desligar</button>
+        <button type="button" class="btn-sm" onclick="document.getElementById('karaoke-desligar').hidden = true">Voltar</button>
+      </div>
+    </div>{% endif %}
     <div class="k-aceite" id="karaoke-aceite" hidden>
       <div style="font-weight:800">Antes de ligar:</div>
-      <ul style="margin:6px 0 0 18px;padding:0">
+      <ul style="margin:6px 0 0 18px;padding:0">{% if karaoke_na_lista %}
+        <li>o bar paga o ECAD;</li>
+        <li>não anuncia prêmio (bebida, rodada) e não cobra entrada, couvert nem consumação por causa do karaokê;</li>
+        <li>cada vez no palco custa R$ 3 pro cliente e R$ 1,50 fica pro bar;</li>
+        <li>quem não cantar recebe de volta.</li>{% else %}
         <li>o bar paga o ECAD, inclusive do karaokê;</li>
         <li>não anuncia prêmio pelo ranking (bebida, rodada) e não cobra entrada, couvert nem consumação por causa do karaokê. Com prêmio, vira promoção, que precisa de autorização do governo.</li>
-      </ul>
+      {% endif %}</ul>
       <div class="botoes">
         <button type="button" class="btn-sm k-sim" id="karaoke-confirmo" onclick="karaokeConfirmar(true, this)">Confirmo e ligo</button>
         <button type="button" class="btn-sm" onclick="karaokeConfirmar(false, this)">Agora não</button>
@@ -720,14 +750,22 @@
     <div class="k-aviso" id="karaoke-recarregar" hidden>Quem já está com a página aberta vê o karaokê quando recarregar.</div>
   </div>
   <div class="card" id="sec-karaoke-rank"{% if not karaoke_on %} hidden{% endif %}>
-    <div class="card-title">🏆 Ranking da noite <span class="salvo" aria-live="polite"></span></div>
-    <div class="k-palco" id="k-palco" hidden><span>🎤 Agora no palco: <b id="k-palco-nome"></b></span><button type="button" class="btn-k-esconder" id="k-palco-esc">🙈 Esconder</button></div>
+    <div class="card-title">{% if karaoke_pix %}<span id="k-rank-tit">{% if karaoke_cobrando %}🎤 Quem cantou hoje{% else %}🏆 Ranking da noite{% endif %}</span>{% else %}🏆 Ranking da noite{% endif %} <span class="salvo" aria-live="polite"></span></div>{% if karaoke_pix %}
+    <div class="k-placar" id="k-placar" hidden></div>{% endif %}
+    <div class="k-palco" id="k-palco" hidden><span>🎤 Agora no palco: <b id="k-palco-nome"></b></span>{% if karaoke_pix %}<span class="k-acoes"><button type="button" class="btn-k-esconder" id="k-naoveio" hidden onclick="karaokeNaoVeioPedir(true)">Não veio</button>{% endif %}<button type="button" class="btn-k-esconder" id="k-palco-esc">🙈 Esconder</button>{% if karaoke_pix %}</span>{% endif %}</div>{% if karaoke_pix %}
+    <div class="k-aceite" id="k-naoveio-conf" style="margin:0 0 12px" hidden>
+      <div id="k-naoveio-txt"></div>
+      <div class="botoes">
+        <button type="button" class="btn-sm k-sim" id="k-naoveio-sim" onclick="karaokeNaoVeio(this)">Não veio</button>
+        <button type="button" class="btn-sm" onclick="karaokeNaoVeioPedir(false)">Voltar</button>
+      </div>
+    </div>{% endif %}
     <table class="k-rank" id="k-rank-tab" hidden>
-      <thead><tr><th>#</th><th>Nome</th><th>Músicas</th><th></th></tr></thead>
+      <thead{% if karaoke_pix %} id="k-rank-head"{% endif %}><tr><th>#</th><th>Nome</th><th>Músicas</th><th></th></tr></thead>
       <tbody id="k-rank"></tbody>
     </table>
     <div class="dica" id="k-rank-vazio" style="margin:0">Ninguém cantou ainda hoje.</div>
-    <div class="k-zerar-box" style="margin-top:20px;padding-top:14px;border-top:1px solid var(--border)">
+    <div class="k-zerar-box"{% if karaoke_pix %} id="k-zerar-box"{% endif %} style="margin-top:20px;padding-top:14px;border-top:1px solid var(--border)">
       <button type="button" class="btn-sm k-zerar-btn" id="k-zerar" onclick="karaokeZerarPedir(true)">Zerar a noite</button>
       <div class="k-aceite" id="k-zerar-conf" hidden>
         <div>Zerar o ranking de hoje? A TV volta pra 'ninguém ainda'.</div>
@@ -1414,11 +1452,11 @@ function _kEsporte() {
 }
 function _kPintar() {
   const sw = document.getElementById('karaoke-sw'); if (sw) sw.checked = _kOn;
-  const rk = document.getElementById('sec-karaoke-rank'); if (rk) rk.hidden = !_kOn;
+  const rk = document.getElementById('sec-karaoke-rank'); if (rk) rk.hidden = !_kOn{% if karaoke_pix %} && !_kCantouHoje{% endif %};
   _kTravaPedir(_kOn);
   _kEsporte();
   clearInterval(_kRankT);
-  if (_kOn) { karaokeRanking(); _kRankT = setInterval(() => { if (!document.hidden) karaokeRanking(); }, 30000); }
+  if (_kOn) { karaokeRanking(); _kRankT = setInterval(() => { if (!document.hidden) karaokeRanking(); }, 30000); }{% if karaoke_pix %} else karaokeRanking();{% endif %}
 }
 function trocarKaraoke(cb) {
   const quer = cb.checked;
@@ -1433,7 +1471,15 @@ function karaokeConfirmar(sim, btn) {
 async function _kSalvar(ligado, aceite, alvo) {
   try {
     const r = await fetch('/pubshow/painel/karaoke', {method: 'POST', headers: _kJ, body: JSON.stringify({ligado, aceite})});
-    const d = await r.json();
+    const d = await r.json();{% if karaoke_pix %}
+    if (d.confirmar) {   // 🎤 03/11/26 (V2a): tem paga na fila: pergunta antes, nada mudou ainda
+      document.getElementById('karaoke-desligar-txt').textContent = Number(d.pagas) === 1
+        ? 'Tem 1 paga na fila. Se desligar, ela não canta e os R$ 3 voltam pra ela.'
+        : `Tem ${Number(d.pagas) || 0} pagas na fila. Se desligar, elas não cantam e os R$ 3 voltam pra cada pessoa.`;
+      document.getElementById('karaoke-desligar').hidden = false;
+      _kPintar();
+      return;
+    }{% endif %}
     if (!d.ok) throw new Error();
     _kOn = !!d.ligado;
     _kPintar();
@@ -1447,12 +1493,83 @@ async function _kSalvar(ligado, aceite, alvo) {
     _salvo(document.getElementById('karaoke-sw'), true);
   } catch (e) { _kPintar(); _salvo(document.getElementById('karaoke-sw'), false); }
 }
-async function karaokeRanking() {
+{% if karaoke_pix %}// ── 🎤 03/11/26 (V2a): o freio da cobrança, o "Não veio" e o placar ───────────────────────────────────────────────
+let _kPalcoPid = 0;
+let _kCantouHoje = false;   // 04/11/26: com o modo desligado, "Quem cantou hoje" fica à vista se tem o que devolver
+async function karaokeDesligarConfirma(btn) {
+  btn.disabled = true;
+  try {
+    const r = await fetch('/pubshow/painel/karaoke', {method: 'POST', headers: _kJ, body: JSON.stringify({ligado: false, confirmar: true})});
+    const d = await r.json();
+    if (!d.ok) throw new Error();
+    document.getElementById('karaoke-desligar').hidden = true;
+    _kOn = !!d.ligado;
+    _kPintar();
+    _salvo(document.getElementById('karaoke-sw'), true);
+  } catch (e) { _salvo(document.getElementById('karaoke-sw'), false); }
+  btn.disabled = false;
+}
+async function karaokeCobrar(sim, alvo) {
+  const sw = document.getElementById('k-cobrar-sw');
+  try {
+    const r = await fetch('/pubshow/painel/karaoke/cobrar', {method: 'POST', headers: _kJ, body: JSON.stringify({cobrar: sim})});
+    const d = await r.json();
+    if (!d.ok) throw new Error();
+    if (sw) sw.checked = !!d.cobrar;
+    _salvo(sw || alvo, true);
+  } catch (e) { if (sw) sw.checked = !sim; _salvo(sw || alvo, false); }
+  karaokeRanking();
+}
+function karaokeNaoVeioPedir(abrir) { document.getElementById('k-naoveio-conf').hidden = !abrir; }
+async function karaokeNaoVeio(btn) {
+  if (!_kPalcoPid) return;
+  btn.disabled = true;
+  try {
+    const r = await fetch(`/pubshow/painel/karaoke/${_kPalcoPid}/nao-veio`, {method: 'POST', headers: _kJ, body: '{}'});
+    const d = await r.json();
+    _salvo(document.getElementById('k-rank'), !!d.ok);
+  } catch (e) { _salvo(document.getElementById('k-rank'), false); }
+  btn.disabled = false;
+  karaokeNaoVeioPedir(false);
+  karaokeRanking();
+}
+// 🎤 04/11/26 (B4): a TV marcou que tocou e a pessoa não cantou. O PIX vai pro "a devolver" e a parte do bar sai
+async function karaokeNaoCantou(pid, btn) {
+  if (!pid || !confirm('Essa pessoa não cantou? Os R$ 3 voltam pra ela e o bar não fica com o R$ 1,50.')) return;
+  btn.disabled = true;
+  try {
+    const r = await fetch(`/pubshow/painel/karaoke/${pid}/nao-cantou`, {method: 'POST', headers: _kJ, body: '{}'});
+    const d = await r.json();
+    _salvo(document.getElementById('k-rank'), !!d.ok);
+  } catch (e) { _salvo(document.getElementById('k-rank'), false); }
+  karaokeRanking();
+}
+function _kPintarPago(d) {
+  _kCantouHoje = !!(d.modo_pago && (d.cantou || []).length);
+  document.getElementById('sec-karaoke-rank').hidden = !_kOn && !_kCantouHoje;
+  const tx = document.getElementById('k-cobra-txt'); if (tx && d.cobra_txt) tx.textContent = d.cobra_txt;
+  const fa = document.getElementById('k-falha'); if (fa) fa.hidden = !d.falha;
+  const pl = document.getElementById('k-placar');
+  if (pl) { pl.textContent = d.placar_txt || ''; pl.hidden = !d.placar_txt; }
+  document.getElementById('k-rank-tit').textContent = d.modo_pago ? '🎤 Quem cantou hoje' : '🏆 Ranking da noite';
+  document.getElementById('k-zerar-box').hidden = !!d.modo_pago;
+  document.getElementById('k-rank-head').innerHTML = d.modo_pago ? '<tr><th>Nome</th><th></th></tr>'
+                                                                 : '<tr><th>#</th><th>Nome</th><th>Músicas</th><th></th></tr>';
+  const pc = d.palco, nv = document.getElementById('k-naoveio');
+  _kPalcoPid = (pc && pc.pago) ? (Number(pc.pid) || 0) : 0;
+  if (nv) nv.hidden = !_kPalcoPid;
+  if (!_kPalcoPid) karaokeNaoVeioPedir(false);
+  else document.getElementById('k-naoveio-txt').textContent = pc.so_devolve
+    ? (pc.faltas ? 'É a 2ª vez. O PIX de R$ 3 volta pra ela.' : 'A fila tá vazia. O PIX de R$ 3 volta pra ela.')
+    : 'Ela vai pro fim da fila, sem pagar de novo.';
+}
+{% endif %}async function karaokeRanking() {
   try {
     const r = await fetch('/pubshow/painel/karaoke/ranking-json', {headers: {'X-Requested-With': 'XMLHttpRequest'}, cache: 'no-store'});
     const d = await r.json();
-    if (!d.ok) return;
-    const linhas = d.noite || [];
+    if (!d.ok) return;{% if karaoke_pix %}
+    if (d.placar) _kPintarPago(d);{% endif %}
+    const linhas = {% if karaoke_pix %}d.modo_pago ? (d.cantou || []) : {% endif %}d.noite || [];
     const pc = d.palco, pbox = document.getElementById('k-palco');
     if (pbox) {
       pbox.hidden = !pc;
@@ -1465,7 +1582,10 @@ async function karaokeRanking() {
     }
     document.getElementById('k-rank-tab').hidden = !linhas.length;
     document.getElementById('k-rank-vazio').hidden = !!linhas.length;
-    document.getElementById('k-rank').innerHTML = linhas.map((l, i) => `<tr>
+    document.getElementById('k-rank').innerHTML = {% if karaoke_pix %}d.modo_pago ? linhas.map(l => `<tr>
+      <td class="k-nome">${_kEsc(l.oculto ? 'Convidado' : l.nome)}</td>
+      <td style="text-align:right">${l.devolver ? `<button type="button" class="btn-k-esconder k-devolver" onclick="karaokeNaoCantou(${Number(l.pid) || 0}, this)">↩️ Não cantou, devolver</button> ` : ''}${l.oculto ? '' : `<button type="button" class="btn-k-esconder" onclick="karaokeEsconder(${Number(l.pid) || 0}, this)">🙈 Esconder</button>`}</td>
+    </tr>`).join('') : {% endif %}linhas.map((l, i) => `<tr>
       <td class="k-n">${i + 1}</td><td class="k-nome">${_kEsc(l.nome)}</td><td class="k-m">${Number(l.musicas) || 0}</td>
       <td style="text-align:right"><button type="button" class="btn-k-esconder" onclick="karaokeEsconder(${Number(l.pid) || 0}, this)">🙈 Esconder</button></td>
     </tr>`).join('');
@@ -1576,7 +1696,7 @@ function pularMusica(btn, pid) {
   }).then(r => r.json()).then(d => {
     if (d && d.confirmar && conf) {
       // 25/10/26 (pacote do dinheiro): música PAGA tocando → confirma antes; não pulou nada ainda
-      document.getElementById('pular-pago-txt').textContent = 'Essa música foi paga (' + d.valor + '). Se pular, o PIX volta pro cliente.';
+      document.getElementById('pular-pago-txt').textContent = {% if karaoke_pix %}d.karaoke ? 'Essa pessoa pagou R$ 3. Se pular, o PIX volta pra ela e o bar não ganha o R$ 1,50.' : {% endif %}'Essa música foi paga (' + d.valor + '). Se pular, o PIX volta pro cliente.';
       document.getElementById('pular-pago-musica').textContent = d.titulo ? '🎵 ' + d.titulo : '';
       document.getElementById('pular-pago-sim').dataset.pid = d.pedido_id;
       conf.hidden = false;
@@ -2027,7 +2147,7 @@ function renderFila(fila) {
     // 16/10/26 (C1-05): pedido JÁ PAGO avisa que o dinheiro não volta sozinho
     const _pagoCli = (p.valor_cobrado || p.valor || 0).toFixed(2).replace('.', ',');
     // 25/10/26: PIX na conta do PubShow (pix_volta) vai pro "PIX a devolver"; split/chave do bar como antes
-    const avisoPago = p.pix_volta
+    const avisoPago = {% if karaoke_pix %}(p.karaoke_pago && p.pago_em) ? '<div class="aviso-pago">⚠️ Essa pessoa pagou R$ 3. Se tirar, ela não canta e o PIX volta pra ela. Não sai do teu bolso.</div>' : {% endif %}p.pix_volta
       ? `<div class="aviso-pago">⚠️ Esse cliente pagou R$ ${_pagoCli} no PIX. Se tirar, a música não toca e o PIX volta pro cliente. Não sai do seu bolso.</div>`
       : (p.pago_em
       ? `<div class="aviso-pago">⚠️ Esse cliente PAGOU R$ ${_pagoCli} no PIX. Se tirar, a TV não mostra e o dinheiro NÃO volta sozinho: devolva na mão.</div>`
@@ -2040,11 +2160,11 @@ function renderFila(fila) {
     const isProximo = idx === 0;
     const proxStyle = isProximo ? ' style="border-left:3px solid #22c55e;padding-left:10px"' : '';
     const proxLabel = isProximo ? '<span class="selo-prox">▶ Próximo</span>' : '';
-    const seloPago = (p.tipo === 'flash' || p.tipo === 'vip' || p.tipo === 'pular_espera') && p.pago_em ? '<span class="selo-pago">⚡ PAGO</span>' : '';
+    const seloPago = (p.tipo === 'flash' || p.tipo === 'vip' || p.tipo === 'pular_espera') && p.pago_em ? '<span class="selo-pago">⚡ PAGO</span>' : {% if karaoke_pix %}(p.karaoke_pago && p.pago_em) ? '<span class="selo-pago">🎤 PAGO</span>' : {% endif %}'';
     const extra = idx >= FILA_VISIVEL;
     const aberto = String(p.id) === String(_tirarAberto);
     // música grátis: "grátis" em cinza (o "R$ 0,00" em verde em quase toda linha só poluía)
-    const valorHtml = (p.valor || 0) > 0 ? `<span class="pedido-valor">R$ ${valor}</span>` : '<span class="pedido-gratis">grátis</span>';
+    const valorHtml = (p.valor || 0) > 0{% if karaoke_pix %} || p.karaoke_pago{% endif %} ? `<span class="pedido-valor">R$ ${valor}</span>` : '<span class="pedido-gratis">grátis</span>';
     return `<div class="pedido-item${extra ? ' fila-extra' : ''}" data-id="${p.id}"${extra && !_filaAberta ? ' hidden' : ''}>
       <div class="pedido-row"${proxStyle}>
         <span class="pedido-emoji">${emoji}</span>

@@ -15,7 +15,10 @@ O que mora aqui:
   - acervo_ids() / acervo_validos(): o acervo karaokê curado (módulo pubshow_karaoke_acervo.py).
 
 Regras que não mudam (ESTADO_MODO_KARAOKE.md): no celular nunca o nome da plataforma de vídeo nem gíria pro WhatsApp; na TV nada por cima do vídeo;
-a cobrança de R$ 2 NÃO existe no V1 (o karaokê é grátis).
+a cobrança NÃO existe no V1 (o karaokê é grátis).
+
+03/11/26 (V2a): a cobrança passou a existir (R$ 3 desde 04/11/26), atrás de 3 chaves: bar em PUBSHOW_KARAOKE_BARES com o modo ligado,
+bar em PUBSHOW_KARAOKE_PIX e uma rota Efí (ponte ou split). Falta uma = grátis, como no V1. Asaas nunca entra aqui.
 """
 import os
 import re
@@ -34,6 +37,26 @@ PALCO_FOLGA_SEG = 30        # com a duração: a duração + 30 s
 FILA_MAX = 10               # nomes da fila que vão no bloco (a TV mostra os primeiros)
 CONVIDADO = 'Convidado'     # nome escondido pelo dono ("🙈 Esconder nome")
 
+# 03/11/26 (V2a): preço fixo, em centavos. Nunca vem do preço do bar, de divisao_app nem de _total_cliente
+# 04/11/26 (Diogo): R$ 3, metade do bar e metade do app
+PIX_TOTAL_CENT = 300        # o que o cliente paga por vez no palco
+PIX_BAR_CENT = 150          # o que fica pro bar (quando canta)
+PIX_APP_CENT = 150          # o que fica pro app
+TETO_CELULAR_PADRAO = 5     # pagas por celular por noite (env PUBSHOW_KARAOKE_TETO_CELULAR); devolvido não conta
+PAGO_MAX_H = 4              # pago na fila há mais que isso: o bar fechou, vira "a devolver" (fila cheia = 100 min)
+
+# 03/11/26 (V2a): karaoke_pulado. 1 e 2 são do V1; os outros só nascem em linha paga. 7 a 9 são os PIX que caem fora de
+# hora (a tabela 2.3 do desenho tem um texto pra cada, e o código é o que o celular lê)
+PULADO_PULAR, PULADO_FALHOU, PULADO_NAO_VEIO, PULADO_DESISTIU, PULADO_FECHOU, PULADO_TIRADO = 1, 2, 3, 4, 5, 6
+PULADO_PIX_A_MAIS, PULADO_PIX_TARDE, PULADO_PIX_DEPOIS = 7, 8, 9
+PULADO_NAO_CANTOU = 10      # 04/11/26 (B4): a TV marcou que tocou, a pessoa não cantou, e o dono devolve em "Quem cantou hoje"
+# Em palavras pro motivo_estorno da cobrança e pra tela do admin
+MOTIVO_PULADO = {PULADO_PULAR: 'karaokê: pulado', PULADO_FALHOU: 'karaokê: não carregou',
+                 PULADO_NAO_VEIO: 'karaokê: não veio', PULADO_DESISTIU: 'karaokê: desistiu',
+                 PULADO_FECHOU: 'karaokê: bar fechou', PULADO_TIRADO: 'karaokê: tirado da fila',
+                 PULADO_PIX_A_MAIS: 'karaokê: PIX a mais', PULADO_PIX_TARDE: 'karaokê: PIX depois da hora',
+                 PULADO_PIX_DEPOIS: 'karaokê: PIX depois de sair', PULADO_NAO_CANTOU: 'karaokê: não cantou'}
+
 # a busca acrescenta " karaoke" quando o termo não tem nenhuma destas palavras
 _TEM_KARAOKE_RE = re.compile(r'\b(karaoke|videoke|playback)\b')
 # só entra card com uma destas no título normalizado (minúsculo, sem acento)
@@ -46,6 +69,58 @@ MSG_JA_NA_FILA = 'Tua música já tá na fila. Cantou, pode pedir outra.'
 MSG_SO_MUSICA = '🎤 Hoje é karaokê: escolhe a música que tu vai cantar.'
 MSG_LOTOU = 'A busca de hoje lotou. Escolhe um dos clássicos:'
 MSG_NADA = 'Não achei essa com letra. Tenta só o nome da música.'
+# 03/11/26 (V2a): só com a cobrança ligada (DESENHO_V2A §4 e TRILHO_PIX item 6)
+MSG_PIX_FALHOU = 'Não consegui gerar o PIX agora. Tenta de novo em instantes.'
+MSG_TETO_CELULAR = 'Hoje tu já cantou {n}. Agora é a vez da galera. Amanhã tem mais!'
+MSG_FILA_CHEIA = 'A fila tá cheia agora. Espera uma música passar e tenta de novo.'
+MSG_TETO_FIM = 'Agora é a vez da galera. Amanhã tem mais!'   # 04/11/26 (M3): no lugar do botão, com o teto batido
+
+# 04/11/26 (B1 e B2): os textos da promessa, num lugar só
+PRECO_TXT = 'R$ 3'
+BAR_TXT = 'R$ 1,50'
+PRAZO_TXT = 'em até 1 dia útil'
+CONTATO_TXT = 'WhatsApp (47) 99776-6831'
+# Quem recebe o PIX: o titular da conta Efí é outro, não o bar. Trocar pelo nome real quando o Diogo confirmar. Nunca inventar
+PIX_QUEM_RECEBE = 'quem opera o sistema do karaokê, não o bar'
+MSG_PRAZO = f'Volta {PRAZO_TXT}. Não caiu? {CONTATO_TXT}.'
+MSG_QUEM_RECEBE = f'Recebe este PIX: {PIX_QUEM_RECEBE}. O nome no teu banco é o dessa conta. Dúvida: {CONTATO_TXT}.'
+MSG_T2_PAGO = f'Só entra na fila depois que o PIX cair. Não cantou? Os {PRECO_TXT} voltam no teu PIX {PRAZO_TXT}.'
+MSG_T3_REGRA = 'Se não vier quando chamar, vai pro fim da fila, sem pagar de novo.'
+MSG_MANDOU_BEM = 'Não cantou? Chama quem tá com o microfone.'
+MSG_VENCEU_PAGOU = f'Pagou e não entrou na fila? {CONTATO_TXT}.'
+MSG_SAIR_TALVEZ = f'Sair da fila? Se o PIX já caiu, os {PRECO_TXT} voltam no teu PIX {PRAZO_TXT}.'
+MSG_SAIR_PAGO = f'Sair da fila? Teus {PRECO_TXT} voltam no teu PIX {PRAZO_TXT}.'
+# O que o karaoke.html lê (no HTML e no JavaScript). Só os textos: nada de valor de conta
+TXT_TELA = {'preco': PRECO_TXT, 'botao': f'Quero minha vez · {PRECO_TXT} no PIX', 't2_pago': MSG_T2_PAGO, 'prazo': MSG_PRAZO,
+            'quem_recebe': MSG_QUEM_RECEBE, 't3_regra': MSG_T3_REGRA, 'mandou_bem': MSG_MANDOU_BEM,
+            'sair_talvez': MSG_SAIR_TALVEZ, 'sair_pago': MSG_SAIR_PAGO, 'de_novo': f'Cantar de novo · {PRECO_TXT}',
+            'teto_fim': MSG_TETO_FIM, 'venceu_pagou': MSG_VENCEU_PAGOU}
+
+# O que o celular mostra quando a linha paga não vai cantar (código de karaoke_pulado → texto). Tabela 2.3 do desenho
+VOLTA_TXT = {PULADO_PULAR: f'Tua vez passou. Teus {PRECO_TXT} voltam no teu PIX.',
+             PULADO_FALHOU: f'Deu problema na TV e tua vez não rolou. Teus {PRECO_TXT} voltam no teu PIX.',
+             PULADO_NAO_VEIO: f'Tua vez passou. Teus {PRECO_TXT} voltam no teu PIX.',
+             PULADO_FECHOU: f'O bar fechou antes da tua vez. Teus {PRECO_TXT} voltam no teu PIX.',
+             PULADO_TIRADO: f'O bar tirou tua vez da fila. Teus {PRECO_TXT} voltam no teu PIX.',
+             PULADO_NAO_CANTOU: f'O bar viu que tua vez não rolou. Teus {PRECO_TXT} voltam no teu PIX.',
+             PULADO_PIX_A_MAIS: 'Tu já tá na fila. Esse PIX a mais volta pra ti.',
+             PULADO_PIX_TARDE: f'Esse PIX chegou depois da hora. Teus {PRECO_TXT} voltam no teu PIX.',
+             PULADO_PIX_DEPOIS: f'Teu PIX caiu depois que tu saiu. Teus {PRECO_TXT} voltam no teu PIX.'}
+MSG_NAO_VEIO_FILA = 'Chamamos e tu não veio. Tua vez foi pro fim da fila, sem pagar de novo.'
+MSG_SAIU_SEM_PIX = 'Pronto, tu saiu. Nada foi cobrado.'
+MSG_SAIU_COM_PIX = f'Pronto, tu saiu. Teus {PRECO_TXT} voltam no teu PIX.'
+MSG_SAIU_TALVEZ = f'Pronto, tu saiu. Se o PIX já caiu, os {PRECO_TXT} voltam no teu PIX.'
+
+
+def texto_volta(codigo, tem_pix):
+    """O texto do celular pra linha paga que não vai cantar. tem_pix: o PIX dela caiu (tem pago_em)."""
+    try:
+        codigo = int(codigo or 0)
+    except (TypeError, ValueError):
+        return ''
+    if codigo == PULADO_DESISTIU:
+        return MSG_SAIU_COM_PIX if tem_pix else MSG_SAIU_SEM_PIX
+    return VOLTA_TXT.get(codigo, '')
 
 
 def msg_nome_repetido(nome):
@@ -127,6 +202,75 @@ def basta():
     return _int_env('PUBSHOW_KARAOKE_BASTA', BASTA_PADRAO)
 
 
+# ── 03/11/26 (V2a): a chave da cobrança ──────────────────────────────────────────────────────────────────────────────
+def pix_bares():
+    """Os bares em que o karaokê PODE cobrar (env PUBSHOW_KARAOKE_PIX, mesmo formato da PUBSHOW_KARAOKE_BARES). Vazia = o
+    karaokê é grátis em todo lugar e nenhum código novo da cobrança roda: é a 1ª coisa que as outras funções leem."""
+    return {s.strip().upper() for s in re.split(r'[\s,;]+', os.environ.get('PUBSHOW_KARAOKE_PIX', '') or '')
+            if s.strip()}
+
+
+def pix_permitido(b):
+    """True se o bar está na lista da PUBSHOW_KARAOKE_PIX. Só isso (não olha o modo, a rota nem o freio do painel)."""
+    if not b:
+        return False
+    lista = pix_bares()
+    if not lista:
+        return False
+    try:
+        keys = b.keys()
+        code = str(b['code'] or '').strip().upper() if 'code' in keys else ''
+        bid = str(b['id']) if 'id' in keys else ''
+    except Exception:
+        return False
+    return bool((code and code in lista) or (bid and bid in lista))
+
+
+def cobrar_aceso(b):
+    """O interruptor "💰 Cobrar R$ 3 pela vez no palco" do painel (coluna karaoke_cobrar, TRILHO_PIX item 5). Padrão aceso: a
+    env já escolheu o bar; o botão é o freio de emergência que não reinicia o sistema. Banco sem a coluna = aceso."""
+    try:
+        if 'karaoke_cobrar' not in b.keys():
+            return True
+        v = b['karaoke_cobrar']
+        return True if v is None else bool(int(v))
+    except (TypeError, ValueError, AttributeError):
+        return True
+
+
+def cobra(b, rota):
+    """Este bar cobra pedido NOVO agora? Só com tudo: env PIX, modo ligado (com a env BARES), rota Efí e freio aceso.
+    A decisão vale na criação do pedido; depois manda a marca da linha (karaoke_pago=1), nunca a env."""
+    if not pix_bares() or not pix_permitido(b) or not ligado(b):
+        return False
+    return rota in ('ponte', 'split') and cobrar_aceso(b)
+
+
+def motivo_gratis(b, rota):
+    """Por que o karaokê deste bar está grátis, na língua do dono. '' = não há o que dizer (cobra, ou a env PIX está
+    vazia e o painel fica com a frase de sempre)."""
+    if not pix_bares():
+        return ''
+    if not pix_permitido(b):
+        return 'Por enquanto é grátis: este bar não está na lista da cobrança.'
+    if rota not in ('ponte', 'split'):
+        return 'Por enquanto é grátis: falta ligar o PIX da Efí neste bar.'
+    if not cobrar_aceso(b):
+        return 'Por enquanto é grátis: tu desligou a cobrança.'
+    return ''
+
+
+def teto_celular():
+    """Quantas músicas pagas um celular canta por noite (env PUBSHOW_KARAOKE_TETO_CELULAR, padrão 5). Limite macio pra
+    segurar o embalo, sem ranking ninguém tem motivo pra burlar. Zero ou lixo na env = o padrão: sem teto não existe."""
+    return _int_env('PUBSHOW_KARAOKE_TETO_CELULAR', TETO_CELULAR_PADRAO) or TETO_CELULAR_PADRAO
+
+
+def reais(cent):
+    """150 → 'R$ 1,50'."""
+    return f'R$ {int(cent) // 100},{int(cent) % 100:02d}'
+
+
 def ligado(b):
     """True se o bar está em modo karaokê: na lista do piloto (permitido) E com o interruptor ligado. Aceita dict ou
     sqlite3.Row; banco sem a coluna = False."""
@@ -194,9 +338,11 @@ def nome_exibido(linha, votacao=False):
 
 
 def conta_no_ranking(linha):
-    """Só música cantada (exibido) de karaokê, sem 'não quero ranking', sem Pular e sem nome escondido."""
+    """Só música cantada (exibido) de karaokê, sem 'não quero ranking', sem Pular e sem nome escondido.
+    03/11/26 (V2a): música PAGA nunca conta. Se contasse, o Rei da Noite seria quem gastou mais (TRILHO_PIX item 7)."""
     try:
         return (int(linha.get('karaoke') or 0) == 1 and (linha.get('status') or '') == 'exibido'
+                and not int(linha.get('karaoke_pago') or 0)
                 and not int(linha.get('karaoke_sem_rank') or 0) and not int(linha.get('karaoke_pulado') or 0)
                 and not int(linha.get('karaoke_nome_oculto') or 0) and bool((linha.get('nome_cliente') or '').strip()))
     except (TypeError, ValueError):
@@ -255,13 +401,17 @@ def acabou(exibido_at, agora_br, dur_seg=None, tem_depois=False, folga=PALCO_FOL
     return agora >= ini + timedelta(seconds=limite)
 
 
-def bloco(palco, fila, rank, votacao=False):
+def bloco(palco, fila, rank, votacao=False, pago=False, sem_rei=False, cantaram=0, voltou=None):
     """O bloco 'karaoke' do /api/status e das telas do celular.
     palco: a linha do pedido que está no palco (ou None); fila: as linhas pendentes de karaokê NA ORDEM REAL da TV;
-    rank: ranking(...). Nunca leva IP, celular nem id de cliente."""
+    rank: ranking(...). Nunca leva IP, celular nem id de cliente.
+    03/11/26 (V2a): pago = pedido novo paga; sem_rei = a noite tem música paga, mesmo com o freio desligando a cobrança
+    (Rei fora e "Hoje já cantaram" no lugar: nunca um ranking que some música paga). cantaram = PESSOAS, não músicas.
+    voltou = ids que o "Não veio" pôs de volta na fila (a TV precisa esquecer que já tocou). Sem pago e sem sem_rei, o
+    dicionário é o de sempre, chave por chave."""
     nomes = [nome_exibido(f, votacao) for f in (fila or [])]
     n = len(nomes)
-    return {
+    b = {
         'ligado': True,
         'palco': ({'id': palco.get('id'), 'nome': nome_exibido(palco, votacao),
                    'titulo': titulo_limpo(palco.get('titulo_pedido') or '', palco.get('youtube_id'), acervo_por_id())}
@@ -270,8 +420,11 @@ def bloco(palco, fila, rank, votacao=False):
         'fila_n': n,
         'espera_min': n * MUSICA_MIN + (2 if (palco or n) else 0),
         'rei': None if votacao else rei(rank),
-        'gratis': True,   # V1: o karaokê é grátis (o R$ 2 fica pro V2a, atrás do advogado)
+        'gratis': True,   # V1: o karaokê é grátis
     }
+    if pago or sem_rei:
+        b.update(rei=None, gratis=not pago, cantaram=int(cantaram or 0), voltou=list(voltou or []))
+    return b
 
 
 # ── Acervo karaokê curado (pubshow_karaoke_acervo.ACERVO) ────────────────────────────────────────────────────────────

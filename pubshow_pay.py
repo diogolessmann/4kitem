@@ -37,6 +37,7 @@ from datetime import datetime, timedelta, timezone, date
 log = logging.getLogger('pubshow_pay')
 
 TIPOS_EQUIPE = ('gorjeta',)            # igual ao pubshow.TIPOS_EQUIPE (dinheiro da equipe)
+TIPO_KARAOKE = 'karaoke'               # 03/11/26 (V2a): R$ 3 pela vez no palco. Paga, nunca devolve sem o clique de uma pessoa
 CONTAS = ('casa', 'gorjeta', 'plataforma')
 BRT = timezone(timedelta(hours=-3))    # Brasil sem horário de verão desde 2019
 _FMT = '%Y-%m-%d %H:%M:%S'
@@ -1005,6 +1006,10 @@ def confirmar(conn, txid, cli=None, on_pago=None, agora=None, consulta=None, fre
                         precisa_estorno, motivo = True, 'pedido_nao_aceitou'
                         conn.execute('''UPDATE pubshow_pay_cobrancas SET estornar=1, motivo_estorno=? WHERE id=?''',
                                      (motivo, row['id']))
+                elif precisa_estorno and on_pago is not None and atual['tipo'] == TIPO_KARAOKE:
+                    # 03/11/26 (V2a): este módulo não conhece a linha do pedido. Sem este aviso ela ficaria sem pago_em
+                    # e fora das telas de devolução, e o cliente pagou. A cobrança já vai devolver: o retorno não importa
+                    on_pago(conn, dict(atual, status='paga', karaoke_tardio=1))
     if novo == 'devolvido_fora':
         log.warning('[PubShow pay] PIX do pedido %s já foi devolvido fora do sistema (app da Efí): não vai pra fila',
                     row['pedido_id'])
@@ -1234,6 +1239,13 @@ def estornar(conn, pedido_id, motivo='', cli=None, agora=None, continuar=False, 
         return {'ok': False, 'erro': 'devolucao_negada', 'status': st}
     if st == 'paga' and _aprov == 'pendente':
         return {'ok': True, 'novo': False, 'status': st, 'aprovacao': 'pendente'}
+    if st == 'paga' and row['tipo'] == TIPO_KARAOKE and not _aprov:
+        # 03/11/26 (V2a): no karaokê nenhuma devolução sai sem uma pessoa. Vale pro confirmar, pro reconciliar e pro resto:
+        # vira "Devoluções esperando seu OK" e só o aprovar_devolucao (o clique no saas-admin) chega na API da Efí.
+        # Cobrança ainda não paga cancela lá em cima: cancelar não é devolver.
+        marcar_devolucao_manual(conn, pedido_id, motivo, agora)
+        conn.commit()
+        return {'ok': True, 'novo': True, 'status': st, 'aprovacao': 'pendente'}
     # 17/10/26 (decisão 3b): teto de devolução de momento JÁ PAGO por dono por dia — só na devolução que o BAR pediu
     # (recusa do gerente/dono: o caminho do "devolvo pro meu bolso"). Devolução automática do sistema (PIX atrasado,
     # pedido cancelado) não espera o suporte (crítico dinheiro M5). Aprovada no saas-admin passa direto.
@@ -1274,6 +1286,16 @@ def estornar(conn, pedido_id, motivo='', cli=None, agora=None, continuar=False, 
                              split=bool(row['split_ok']), idempotente=True, timeout=6)
         return _resultado_dev(conn, row, r, agora)
     return {'ok': False, 'erro': f'status_{st}'}
+
+
+def marcar_devolucao_manual(conn, pedido_id, motivo='', agora=None):
+    """03/11/26 (V2a): põe a cobrança paga do karaokê na fila "Devoluções esperando seu OK". Só SQL, SEM commit (roda na
+    transação de quem chama) e sem rede. Mesmo UPDATE do teto do dono, no estornar. Devolve True se marcou agora; já
+    estava pendente, aprovada, negada ou não está paga = False e nada muda."""
+    return conn.execute('''UPDATE pubshow_pay_cobrancas SET estornar=1, dev_aprovacao='pendente',
+                               motivo_estorno=COALESCE(motivo_estorno, ?), atualizado_em=?
+                            WHERE pedido_id=? AND status='paga' AND dev_aprovacao IS NULL''',
+                         ((motivo or 'estorno')[:120], _fmt(_agora(agora)), int(pedido_id))).rowcount == 1
 
 
 def _devolvido_hoje_cent(conn, business_id, agora):

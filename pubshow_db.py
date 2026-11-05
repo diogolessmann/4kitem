@@ -252,6 +252,13 @@ def init_pubshow_db():
         'ALTER TABLE pubshow_pedidos ADD COLUMN karaoke_sem_rank INTEGER DEFAULT 0',
         'ALTER TABLE pubshow_pedidos ADD COLUMN karaoke_pulado INTEGER DEFAULT 0',
         'ALTER TABLE pubshow_pedidos ADD COLUMN karaoke_nome_oculto INTEGER DEFAULT 0',
+        # 🎤 03/11/26 (V2a, cobrança no karaokê): esta linha é cobrada (a marca manda, nunca a env) e quantos "Não veio" levou
+        'ALTER TABLE pubshow_pedidos ADD COLUMN karaoke_pago INTEGER DEFAULT 0',
+        'ALTER TABLE pubshow_pedidos ADD COLUMN karaoke_faltas INTEGER DEFAULT 0',
+        # 🎤 03/11/26 (TRILHO_PIX, itens 5 e 6): o freio "💰 Cobrar R$ 3 pela vez no palco" do painel (sem deploy e sem reiniciar)
+        # e quando a Efí falhou ao criar o PIX neste bar (o painel avisa em destaque; UTC; limpa no 1º PIX que abrir)
+        'ALTER TABLE pubshow_businesses ADD COLUMN karaoke_cobrar INTEGER DEFAULT 1',
+        'ALTER TABLE pubshow_businesses ADD COLUMN karaoke_pix_falha_em TEXT DEFAULT NULL',
     ]:
         try:
             conn.execute(m); conn.commit()

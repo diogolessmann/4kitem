@@ -600,10 +600,10 @@
     <div class="ft-gratis"><span>⏳ Grátis</span><span id="ft-min-gratis"></span></div>
     <div class="ft-furar" id="ft-furar" style="display:none"><span id="ft-furar-txt"></span><span id="ft-min-furar"></span></div>
   </div>{% if karaoke %}
-  <div id="k-rei" aria-live="polite"><div class="k-rei-rot">👑 REI DA NOITE</div><div class="k-rei-nome" id="k-rei-nome">Ninguém ainda</div><div class="k-rei-n" id="k-rei-n">Abre a noite!</div></div>{% endif %}
+  <div id="k-rei" aria-live="polite"><div class="k-rei-rot"{% if karaoke_pix %} id="k-rei-rot"{% endif %}>{% if karaoke_pix %}🎤 HOJE JÁ CANTARAM{% else %}👑 REI DA NOITE{% endif %}</div><div class="k-rei-nome" id="k-rei-nome">{% if karaoke_pix %}0{% else %}Ninguém ainda{% endif %}</div><div class="k-rei-n" id="k-rei-n">{% if not karaoke_pix %}Abre a noite!{% endif %}</div></div>{% endif %}
   <div id="qr-fixo">
     {% if tv_qr_b64 %}<img src="data:image/png;base64,{{ tv_qr_b64 }}" alt="QR Jukebox" style="width:72px;height:72px;border-radius:8px;background:#fff">{% endif %}
-    <div style="line-height:1.15"><div class="qr-txt1" style="font-size:15px;font-weight:900;color:#fff">{% if karaoke %}🎤 Quer cantar? Aponta a câmera{% else %}📱 Escaneie e peça sua música{% endif %}</div><div id="qr-preco" style="font-size:12px;color:#4ade80;font-weight:700">{% if karaoke %}Grátis hoje{% else %}{{ qr_preco_txt }}{% endif %}</div></div>
+    <div style="line-height:1.15"><div class="qr-txt1" style="font-size:15px;font-weight:900;color:#fff">{% if karaoke %}🎤 Quer cantar? Aponta a câmera{% else %}📱 Escaneie e peça sua música{% endif %}</div><div id="qr-preco" style="font-size:12px;color:#4ade80;font-weight:700">{% if karaoke_pix %}{% elif karaoke %}Grátis hoje{% else %}{{ qr_preco_txt }}{% endif %}</div></div>
   </div>
   <div id="sem-som">🔇 Sem som. Toque na TV</div>
 </aside>
@@ -1644,9 +1644,24 @@ function _karaokeTv(data) {
   }
   const q1 = document.querySelector('#qr-fixo .qr-txt1'), q2 = document.getElementById('qr-preco');
   if (q1 && q1.textContent !== K_QR1) q1.textContent = K_QR1;
-  if (q2 && q2.textContent !== K_QR2) q2.textContent = K_QR2;
-  const rn = document.getElementById('k-rei-nome'), rq = document.getElementById('k-rei-n');
-  if (rn && rq) {
+  {% if karaoke_pix %}// 🎤 03/11/26 (V2a): a TV nunca fala de preço, nem de "pago". "Grátis hoje" só com o dono cobrando nada.
+  // 04/11/26 (M4): e nunca em noite com música paga (o freio desligou): quem pagou e está na fila leria "Grátis hoje"
+  const _kq2 = (k.gratis && k.cantaram === undefined) ? K_QR2 : '';
+  if (q2 && q2.textContent !== _kq2) q2.textContent = _kq2;
+  {% else %}if (q2 && q2.textContent !== K_QR2) q2.textContent = K_QR2;
+  {% endif %}const rn = document.getElementById('k-rei-nome'), rq = document.getElementById('k-rei-n');{% if karaoke_pix %}
+  const _rr = document.getElementById('k-rei-rot');
+  if (_rr) {
+    // noite com música paga: quantas PESSOAS já cantaram (sem nome, sem coroa); noite só de grátis: o Rei de sempre
+    const _hoje = k.cantaram !== undefined, _rot = _hoje ? '🎤 HOJE JÁ CANTARAM' : '👑 REI DA NOITE';
+    if (_rr.textContent !== _rot) _rr.textContent = _rot;
+    if (_hoje && rn && rq) {
+      const _nn = String(Number(k.cantaram) || 0);
+      if (rn.textContent !== _nn) rn.textContent = _nn;
+      if (rq.textContent !== '') rq.textContent = '';
+    }
+  }{% endif %}
+  if (rn && rq{% if karaoke_pix %} && k.cantaram === undefined{% endif %}) {
     const r = k.rei;
     const nome = (r && r.nome) ? r.nome : 'Ninguém ainda';
     const n = (r && r.nome) ? `${r.n} ${Number(r.n) === 1 ? 'música' : 'músicas'} · Quem desbanca?` : 'Abre a noite!';
@@ -2465,7 +2480,9 @@ async function pollStatus() {
   _pollEmVoo = true;
   try {
     const res  = await _fetchTV(_urlStatus(), {cache: 'no-store'});
-    const data = await res.json();
+    const data = await res.json();{% if karaoke_pix %}
+    // 🎤 03/11/26 (V2a): o "Não veio" pôs de volta na fila o MESMO pedido (uma linha = um PIX): esta TV esquece que já tocou
+    if (data.karaoke && Array.isArray(data.karaoke.voltou)) data.karaoke.voltou.forEach(id => { _consumidos.delete(id); delete _exibidoEm[id]; });{% endif %}
 
     // Pedido que esta TV JÁ tocou/mostrou (resposta atrasada, ou o "exibido" se perdeu): não repete;
     // só manda o "exibido" de novo pra fila andar.

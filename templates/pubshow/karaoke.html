@@ -90,7 +90,17 @@
   .marca.miuda input{width:22px;height:22px}
   .tu{color:var(--lar2);font-weight:900}
   .fechado{text-align:center;padding-top:30px}
-  .fechado .grande{font-size:26px}
+  .fechado .grande{font-size:26px}{% if karaoke_pix %}
+  /* 🎤 03/11/26 (V2a): a cobrança. Só onde a env deixa o bar cobrar */
+  [hidden]{display:none!important}
+  .pix-valor{font-size:34px;font-weight:900;margin:2px 0 12px}
+  .pix-qr{display:block;width:240px;max-width:100%;height:auto;background:#fff;border-radius:14px;padding:10px;margin:0 auto 14px}
+  #tpix .btn{margin-top:10px}
+  #tpix .msg{margin:10px 0 0}
+  #t3-faltou{margin-top:6px}
+  #t4-pulado h1{line-height:1.25}
+  .sair-botoes{display:flex;gap:10px}
+  .sair-botoes .btn{flex:1;min-width:0;padding:0 10px}{% endif %}
 </style>
 </head>
 <body>
@@ -126,14 +136,14 @@
       <p class="msg forte" id="mais-tit">Clássicos do karaokê</p>
       <ul class="lista" id="mais"></ul>
     </div>
-    <p class="linha" id="linha-fila">Hoje é grátis · teu nome no telão</p>
+    <p class="linha" id="linha-fila">{% if karaoke_cobra %}Tua vez no palco: {{ karaoke_preco }}{% else %}Hoje é grátis · teu nome no telão{% endif %}</p>
   </section>
 
   <!-- TELA 2: confirmar (nome na TV) -->
   <section class="tela" id="t2">
     <p class="rot">Tu vai cantar:</p>
     <p class="musica" id="t2-musica"></p>
-    <form method="POST" id="f-pedido" onsubmit="return entrarNaFila()" novalidate>
+    <form method="POST" id="f-pedido"{% if karaoke_pix %} action="/pubshow/jukebox/{{ b.jukebox_token or b.code }}"{% endif %} onsubmit="return entrarNaFila()" novalidate>
       <input type="hidden" name="tipo" value="musica_externa">
       <input type="hidden" name="youtube_id" id="f-vid" value="">
       <input type="hidden" name="titulo_pedido" id="f-tit" value="">
@@ -142,12 +152,37 @@
       <input class="nome" type="text" id="nome" name="nome_cliente" maxlength="14" autocomplete="given-name"
              enterkeyhint="done" placeholder="Primeiro nome ou apelido">
       <p class="erro" id="nome-erro" role="alert" hidden></p>
-      <button type="submit" class="btn cheio" id="btn-entrar" style="margin-top:16px">Entrar na fila</button>
-      <label class="marca miuda"><input type="checkbox" name="sem_rank" value="1" id="sem-rank"> Não aparecer no ranking</label>
-      <p class="pequeno">Teu nome aparece na TV do bar hoje. O ranking zera no fim da noite.</p>
+      {% if karaoke_pix %}<p class="msg forte" id="t2-pos" hidden></p>
+      {% endif %}<button type="submit" class="btn cheio" id="btn-entrar" style="margin-top:16px">{% if karaoke_cobra %}{{ karaoke_txt.botao }}{% else %}Entrar na fila{% endif %}</button>
+      {% if karaoke_pix %}<p class="pequeno" id="t2-peq-pago" style="margin-top:10px;margin-bottom:0"{% if not karaoke_cobra %} hidden{% endif %}>{{ karaoke_txt.t2_pago }}</p>
+      <p class="pequeno" id="t2-recebe" style="margin-top:6px;margin-bottom:0"{% if not karaoke_cobra %} hidden{% endif %}>{{ karaoke_txt.quem_recebe }}</p>
+      {% endif %}<label class="marca miuda"{% if karaoke_pix %} id="lbl-rank"{% if karaoke_cobra %} hidden{% endif %}{% endif %}><input type="checkbox" name="sem_rank" value="1" id="sem-rank"> Não aparecer no ranking</label>
+      <p class="pequeno"{% if karaoke_pix %} id="t2-peq"{% endif %}>Teu nome aparece na TV do bar hoje.{% if not karaoke_cobra %} O ranking zera no fim da noite.{% endif %}</p>
     </form>
     <button type="button" class="voltar" onclick="irPara('t1')">Escolher outra música</button>
-  </section>
+  </section>{% if karaoke_pix %}
+
+  <!-- 🎤 03/11/26 (V2a): TELA DO PIX. Só entra na fila depois que o PIX cair -->
+  <section class="tela" id="tpix">
+    <div id="pix-aberto">
+      <h1 id="pix-tit">Falta pouco. Paga e a vez é tua.</h1>
+      <p class="pix-valor">{{ karaoke_preco }}</p>
+      <p class="pequeno" id="pix-recebe">{{ karaoke_txt.quem_recebe }}</p>
+      {% if pix_pendente and pix_pendente.qr_b64 %}<img class="pix-qr" src="data:image/png;base64,{{ pix_pendente.qr_b64 }}" alt="QR Code do PIX" width="240" height="240">
+      {% endif %}<button type="button" class="btn cheio" id="btn-copiar" onclick="_kCopiar()">Copiar código PIX</button>
+      <p class="msg" id="pix-vale" hidden></p>
+      <p class="msg forte" id="pix-pos" hidden></p>
+      <button type="button" class="btn cheio claro" onclick="_kJaPaguei()">Já paguei</button>
+      <p class="msg" id="pix-ainda" role="status" hidden>Ainda não caiu. Assim que cair tu entra na fila sozinho.</p>
+      <button type="button" class="voltar" onclick="_kSairPergunta(KTXT.sair_talvez)">Desistir e sair da fila</button>
+    </div>
+    <div id="pix-venceu" hidden>
+      <h1>Esse PIX venceu. Se tu não pagou, nada foi cobrado.</h1>
+      <p class="msg">{{ karaoke_txt.venceu_pagou }}</p>
+      <button type="button" class="btn cheio" onclick="_kOutroPix()">Gerar outro PIX</button>
+      <button type="button" class="voltar" onclick="cantarDeNovo()">Escolher outra música</button>
+    </div>
+  </section>{% endif %}
 
   <!-- TELA 3: esperar -->
   <section class="tela" id="t3">
@@ -160,7 +195,10 @@
       <p id="t3-depois"></p>
     </div>
     <p class="rei" id="t3-rei"></p>
-    <p class="fixo">Fica de olho na TV. Teu nome aparece antes da tua vez.</p>
+    <p class="fixo">Fica de olho na TV. Teu nome aparece antes da tua vez.</p>{% if karaoke_pix %}
+    <p class="pequeno" id="t3-regra" hidden>{{ karaoke_txt.t3_regra }}</p>
+    <p class="destaque" id="t3-faltou" hidden></p>
+    <button type="button" class="voltar" id="btn-nao-vou" hidden onclick="_kSairPergunta(KTXT.sair_pago)">Não vou poder cantar</button>{% endif %}
   </section>
 
   <!-- TELA 4: tua vez (laranja) / mandou bem / tua vez passou -->
@@ -173,14 +211,25 @@
     <div id="t4-fim" hidden>
       <h1 id="t4-fim-tit">Mandou bem! Bora mais uma?</h1>
       <p class="sub4" id="t4-rank" hidden></p>
-      <button type="button" class="btn cheio" onclick="cantarDeNovo()">Cantar de novo</button>
+      <button type="button" class="btn cheio"{% if karaoke_pix %} id="btn-de-novo"{% endif %} onclick="cantarDeNovo()">Cantar de novo</button>{% if karaoke_pix %}
+      <p class="sub4" id="t4-nao-cantou" style="font-size:15px;font-weight:700;margin-top:14px" hidden>{{ karaoke_txt.mandou_bem }}</p>{% endif %}
     </div>
     <div id="t4-pulado" hidden>
       <h1 id="t4-pul-tit">Tua vez passou.</h1>
       <p class="sub4" id="t4-pul-sub">Pede de novo quando estiver perto do microfone.</p>
-      <button type="button" class="btn cheio" onclick="cantarDeNovo()">Escolher música</button>
+      <button type="button" class="btn cheio"{% if karaoke_pix %} id="btn-pul"{% endif %} onclick="cantarDeNovo()">Escolher música</button>{% if karaoke_pix %}
+      <p class="pequeno" id="t4-pul-prazo" hidden></p>{% endif %}
     </div>
-  </section>
+  </section>{% if karaoke_pix %}
+
+  <!-- 🎤 03/11/26 (V2a): a confirmação de sair da fila (na tela do PIX e na espera) -->
+  <div class="caixa-fila" id="k-sair" role="alertdialog" aria-labelledby="k-sair-txt" hidden>
+    <p id="k-sair-txt"></p>
+    <div class="sair-botoes">
+      <button type="button" class="btn claro" onclick="_kSair()">Sair</button>
+      <button type="button" class="btn" onclick="_kSairNao()">Continuar</button>
+    </div>
+  </div>{% endif %}
   {% endif %}
 </main>
 
@@ -196,7 +245,12 @@ const FORM_VID = {{ (request.form.get('youtube_id', '') if request.method == 'PO
 const FORM_TIT = {{ (request.form.get('titulo_pedido', '') if request.method == 'POST' else '')|tojson }};
 const FORM_NOME = {{ (request.form.get('nome_cliente', '') if request.method == 'POST' else '')|tojson }};
 const KMAIS = {{ (karaoke_mais or [])|tojson }};   // "As mais cantadas" do acervo (sem gastar busca)
-const T = {   // os textos do PLANO_FINAL §6 (um lugar só)
+{% if karaoke_pix %}const KARA_PIX = {{ (karaoke_cobra or False)|tojson }};   // 🎤 03/11/26 (V2a): o pedido novo paga? (o polling corrige)
+const KTXT = {{ karaoke_txt|tojson }};   // 🎤 04/11/26: os textos da cobrança vêm do pubshow_karaoke.py
+const PIX = {{ ({'id': pix_pendente.pedido_id, 'payload': pix_pendente.payload, 'vale': pix_pendente.get('expira_min', ''),
+                 'vid': pix_pendente.get('kara_vid', ''), 'tit': pix_pendente.get('kara_tit', ''),
+                 'nome': pix_pendente.get('kara_nome', '')} if pix_pendente else none)|tojson }};
+{% endif %}const T = {   // os textos do PLANO_FINAL §6 (um lugar só)
   nomeVazio: 'Põe teu nome ou apelido pra gente chamar na TV.',
   nada: 'Não achei essa com letra. Tenta só o nome da música.',
   lotou: 'A busca de hoje lotou. Escolhe um dos clássicos:',
@@ -320,7 +374,7 @@ function entrarNaFila() {
   }
   if (!$('f-vid').value) { irPara('t1'); return false; }
   $('f-cid').value = CID;
-  const bt = $('btn-entrar'); bt.disabled = true; bt.textContent = 'Entrando…';
+  const bt = $('btn-entrar'); bt.disabled = true; bt.textContent = {% if karaoke_pix %}_kCobraAgora ? 'Abrindo o PIX…' : {% endif %}'Entrando…';
   return true;
 }
 
@@ -336,7 +390,8 @@ function verMinhaVez() {
   }
 }
 function cantarDeNovo() {
-  _apagar('jk_kara');
+  _apagar('jk_kara');{% if karaoke_pix %}
+  _kEsperaPix = 0; _kMsgSaiu = ''; _kPrazoSaiu = ''; _kBase(); $('k-sair').hidden = true;{% endif %}
   _avisouProxima = _avisouVez = false;
   _ultPos = null;
   $('t4-fim').hidden = $('t4-pulado').hidden = true; $('t4-vez').hidden = false;
@@ -367,7 +422,8 @@ function _pintarEspera(st) {
     $('t3-pos').hidden = false; $('t3-min').hidden = true;
     _txt('t3-pos', 'O bar está conferindo teu pedido.');
     $('t3-proxima').hidden = true;
-  }
+  }{% if karaoke_pix %}
+  _kEspera(st);{% endif %}
   _pintarPalco();
 }
 function _pintarPalco() {
@@ -403,7 +459,11 @@ function _pintarPalco() {
       });
     }
   }
-  dp.hidden = !depois.length;
+  dp.hidden = !depois.length;{% if karaoke_pix %}
+  if (k.cantaram !== undefined) {   // 🎤 03/11/26 (V2a): noite com música paga: sem Rei, só quantas PESSOAS já cantaram
+    _txt('t3-rei', k.cantaram ? `🎤 Hoje já cantaram ${k.cantaram}.` : '🎤 Ninguém cantou ainda. Abre a noite!');
+    return;
+  }{% endif %}
   const r = k.rei;
   _txt('t3-rei', (r && r.nome) ? `👑 Rei da noite: ${r.nome}, ${r.n} ${Number(r.n) === 1 ? 'música' : 'músicas'}. Dá pra alcançar.`
                                : '👑 Ninguém cantou ainda. Abre a noite!');
@@ -436,13 +496,142 @@ function _pintarVez(st) {
   _txt('t4-pul-tit', tirado ? 'O bar tirou tua música da fila.'
                    : st.falhou ? 'A música não carregou na TV.' : 'Tua vez passou.');
   _txt('t4-pul-sub', (tirado || st.falhou) ? 'Escolhe outra e entra na fila de novo.'
-                                         : 'Pede de novo quando estiver perto do microfone.');
+                                         : 'Pede de novo quando estiver perto do microfone.');{% if karaoke_pix %}
+  _kVez(st, pulou);{% endif %}
   if (TELA !== 't4') irPara('t4');
   document.body.classList.toggle('laranja', !pulou);
   if (!pulou && !st.acabou && !_avisouVez) { _avisouVez = true; _vibra([300, 150, 300]); }
 }
 
-// ── polling leve: tela 1 a cada 10 s, telas 3 e 4 a cada 5 s; nada com a aba escondida ───────────────────────
+{% if karaoke_pix %}// ── 🎤 03/11/26 (V2a): a cobrança. Este bloco só existe onde a env deixa o bar cobrar ──────────────────────
+// Vende "tua vez no palco". A posição e a espera são as reais, antes do PIX. Quem manda é o servidor: o POST decide se
+// cobra, e o polling só acerta o texto (o dono pode apertar o freio com a tela aberta).
+let _kCobraAgora = KARA_PIX, _kEsperaPix = 0, _kPediuConferir = false, _kSaindo = false, _kMsgSaiu = '', _kPrazoSaiu = '';
+function _kBase() { try { history.replaceState(null, '', '/pubshow/jukebox/' + encodeURIComponent(BAR_TOKEN)); } catch (e) {} }
+function _kAplicar(k) {
+  const cobra = k ? !k.gratis : KARA_PIX;
+  const semRei = k ? k.cantaram !== undefined : KARA_PIX;
+  _kCobraAgora = cobra;
+  if (!$('btn-entrar').disabled) _txt('btn-entrar', cobra ? KTXT.botao : 'Entrar na fila');
+  $('t2-peq-pago').hidden = !cobra;
+  $('t2-recebe').hidden = !cobra;
+  $('lbl-rank').hidden = semRei;
+  if (semRei) $('sem-rank').checked = false;
+  _txt('t2-peq', semRei ? 'Teu nome aparece na TV do bar hoje.' : 'Teu nome aparece na TV do bar hoje. O ranking zera no fim da noite.');
+  if (!k) return;
+  const n = Number(k.fila_n) || 0, min = Number(k.espera_min) || 0;
+  const pos = cobra ? `Entra em ${_ord(n + 1)}` + (min ? ` · uns ${min} min` : '') : '';
+  _txt('t2-pos', pos); $('t2-pos').hidden = !pos;
+  if (cobra) {
+    _txt('linha-fila', n > 0 ? `Tua vez no palco: ${KTXT.preco} · ${n} na fila · uns ${min} min` : `Tua vez no palco: ${KTXT.preco} · Fila vazia. A próxima é tua!`);
+  }
+}
+function _kEspera(st) {
+  $('btn-nao-vou').hidden = !(st.karaoke_pago && st.status === 'pendente');
+  $('t3-regra').hidden = !st.karaoke_pago;
+  _txt('t3-faltou', st.karaoke_faltou || ''); $('t3-faltou').hidden = !st.karaoke_faltou;
+  if (!st.karaoke_pago) return;
+  const nome = _nomeMeu();
+  _txt('t3-oi', nome ? `Pago! Tu tá na fila, ${nome}.` : 'Pago! Tu tá na fila.');
+  if (st.status === 'pendente' && st.posicao && Number(st.posicao) > 1) {
+    const p = Number(st.posicao);
+    _txt('t3-pos', `Tu é o ${_ord(p)}.`);
+    _txt('t3-min', `Uns ${Number(st.tempo_min) || ((p - 1) * 4 + 2)} min.`);
+  }
+}
+function _kVez(st, pulou) {
+  const pago = !!st.karaoke_pago;
+  const teto = pago && !!st.teto_batido;   // 04/11/26 (M3): com o teto batido, nenhum convite pra gastar
+  _txt('btn-de-novo', pago && st.cobrando !== false ? KTXT.de_novo : 'Cantar de novo');
+  _txt('btn-pul', pago ? 'Escolher outra música' : 'Escolher música');
+  $('btn-de-novo').hidden = teto; $('btn-pul').hidden = teto;
+  if (teto) {
+    const nome = _nomeMeu();
+    _txt('t4-fim-tit', nome ? `Mandou bem, ${nome}!` : 'Mandou bem!');
+    _txt('t4-rank', KTXT.teto_fim); $('t4-rank').hidden = false;
+    _txt('t4-pul-sub', KTXT.teto_fim);
+  }
+  $('t4-pul-sub').hidden = pago && !teto;
+  $('t4-nao-cantou').hidden = !pago;
+  // 04/11/26 (B1): prazo e canal em toda tela de devolução. "Se o PIX já caiu" também: o polling não pode tirar o prazo
+  const prazo = (pago && pulou) ? (st.karaoke_prazo || (!st.karaoke_devolve && _kMsgSaiu && _kPrazoSaiu) || '') : '';
+  _txt('t4-pul-prazo', prazo); $('t4-pul-prazo').hidden = !prazo;
+  if (pago && pulou) _txt('t4-pul-tit', (!st.karaoke_devolve && _kMsgSaiu) || st.karaoke_volta || 'Tua vez passou.');
+  // saiu sem PIX: se o PIX cair depois, a tela conta (o robô confere por 30 min)
+  if (pago && pulou && st.status === 'recusado' && !st.karaoke_devolve) { if (!_kEsperaPix) _kEsperaPix = Date.now() + 30 * 60 * 1000; }
+  else _kEsperaPix = 0;
+}
+function _kCopiar() {
+  const ok = () => { _txt('btn-copiar', 'Copiado! Cola no app do teu banco.'); };
+  const manual = () => {
+    const t = document.createElement('textarea');
+    t.value = PIX.payload; t.style.position = 'fixed'; t.style.opacity = '0';
+    document.body.append(t); t.select();
+    try { document.execCommand('copy'); ok(); } catch (e) {}
+    t.remove();
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(PIX.payload).then(ok, manual);
+  else manual();
+}
+function _kJaPaguei() { _kPediuConferir = true; agendar(0); }
+function _kOutroPix() {
+  $('f-vid').value = PIX.vid; $('f-tit').value = PIX.tit; $('nome').value = PIX.nome; $('f-cid').value = CID;
+  _apagar('jk_kara');
+  $('f-pedido').submit();
+}
+function _kSairPergunta(txt) { _txt('k-sair-txt', txt); $('k-sair').hidden = false; $('k-sair').scrollIntoView({block: 'center'}); }
+function _kSairNao() { $('k-sair').hidden = true; }
+async function _kSair() {
+  const m = _meu();
+  if (!m || _kSaindo) return;
+  _kSaindo = true;
+  try {
+    const r = await fetch(`/pubshow/jukebox/${encodeURIComponent(BAR_TOKEN)}/karaoke-desistir/${m.id}`,
+                          {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({c: CID})});
+    let j = {};
+    try { j = await r.json(); } catch (e) { j = {}; }
+    $('k-sair').hidden = true;
+    if (r.status === 409) { irPara('t3'); return; }   // a música começou: é a vez dela
+    if (j.ok) {
+      _kBase();
+      const comPix = !!j.devolve;
+      _kMsgSaiu = comPix ? '' : (j.msg || '');
+      _kPrazoSaiu = j.prazo || '';
+      _pintarVez({status: 'recusado', karaoke_pago: true, karaoke_volta: j.msg || 'Pronto, tu saiu.', karaoke_devolve: comPix, karaoke_prazo: j.prazo || ''});
+      agendar(0);
+    }
+  } catch (e) {
+    /* sem internet: a pessoa aperta de novo */
+  } finally {
+    _kSaindo = false;
+  }
+}
+async function _kTickPix() {
+  const m = _meu();
+  if (!m) { cantarDeNovo(); return; }
+  const r = await fetch(`/pubshow/api/pedido-status/${encodeURIComponent(BAR_TOKEN)}/${m.id}`, {cache: 'no-store'});
+  if (r.status === 404) { cantarDeNovo(); return; }
+  const st = r.ok ? await r.json() : null;
+  if (!st) return;
+  if (st.k) {
+    _ultBloco = st.k;
+    const n = Number(st.k.fila_n) || 0, min = Number(st.k.espera_min) || 0;
+    _txt('pix-pos', `Se pagar agora, entra em ${_ord(n + 1)}` + (min ? ` · uns ${min} min` : ''));
+    $('pix-pos').hidden = false;
+  }
+  if (st.status !== 'aguardando_pix') {
+    _kBase();
+    if (st.status === 'pendente' || st.status === 'aguardando_ok') { irPara('t3'); _pintarEspera(st); }
+    else _pintarVez(st);
+    return;
+  }
+  if (st.pix_min) { _txt('pix-vale', `Vale por ${Number(st.pix_min)} min`); $('pix-vale').hidden = false; }
+  $('pix-aberto').hidden = !!st.pix_venceu;
+  $('pix-venceu').hidden = !st.pix_venceu;
+  if (_kPediuConferir) { $('pix-ainda').hidden = false; }
+}
+
+{% endif %}// ── polling leve: tela 1 a cada 10 s, telas 3 e 4 a cada 5 s; nada com a aba escondida ───────────────────────
 let _timer = null, _emVoo = false;
 function agendar(ms) {
   clearTimeout(_timer);
@@ -457,28 +646,35 @@ async function _palco() {
   } catch (e) { return null; }
 }
 async function tick() {
-  const proximo = (TELA === 't3' || TELA === 't4') ? 5000 : 15000;
+  const proximo = (TELA === 't3' || TELA === 't4'{% if karaoke_pix %} || TELA === 'tpix'{% endif %}) ? 5000 : 15000;
   if (document.hidden || _emVoo || !TELA) { agendar(proximo); return; }
   _emVoo = true;
   _jaJa = false;
   try {
-    if (TELA === 't1') {
+    if (TELA === 't1'{% if karaoke_pix %} || TELA === 't2'{% endif %}) {
       const k = await _palco();
       if (k) {
         _ultBloco = k;
         const n = Number(k.fila_n) || 0;
         _txt('linha-fila', n > 0 ? `Hoje é grátis · ${n} na fila · teu nome no telão`
-                                 : 'Hoje é grátis · Fila vazia. A próxima é tua!');
-      }
+                                 : 'Hoje é grátis · Fila vazia. A próxima é tua!');{% if karaoke_pix %}
+        _kAplicar(k);{% endif %}
+      }{% if karaoke_pix %}
+    } else if (TELA === 'tpix') {
+      await _kTickPix();{% endif %}
     } else if (TELA === 't3' || TELA === 't4') {
       const m = _meu();
       if (!m) { cantarDeNovo(); return; }
-      if ($('t4-fim').hidden === false || $('t4-pulado').hidden === false) return;   // acabou: nada mais a perguntar
+      if ({% if karaoke_pix %}!(_kEsperaPix > Date.now()) && ({% endif %}$('t4-fim').hidden === false || $('t4-pulado').hidden === false{% if karaoke_pix %}){% endif %}) return;   // acabou: nada mais a perguntar
       const r = await fetch(`/pubshow/api/pedido-status/${encodeURIComponent(BAR_TOKEN)}/${m.id}`, {cache: 'no-store'});
       if (r.status === 404) { cantarDeNovo(); return; }
       const st = r.ok ? await r.json() : null;
       if (st) {
-        if (st.karaoke && st.ligado === false) { location.reload(); return; }   // o bar desligou o karaokê
+        {% if karaoke_pix %}if (st.karaoke_pago && st.status === 'aguardando_pix') {   // PIX ainda aberto: a tela dele, com o QR
+          location.replace(`/pubshow/jukebox/${encodeURIComponent(BAR_TOKEN)}/pix/${m.id}?c=${encodeURIComponent(CID)}`);
+          return;
+        }
+        {% endif %}if (st.karaoke && st.ligado === false{% if karaoke_pix %} && !st.karaoke_pago{% endif %}) { location.reload(); return; }   // o bar desligou o karaokê
         if (st.status === 'exibido' || st.status === 'recusado' || st.status === 'dispensado'
             || st.status === 'cancelado' || st.pulado) {
           _pintarVez(st);
@@ -493,15 +689,35 @@ async function tick() {
     /* sem internet: tenta de novo no próximo */
   } finally {
     _emVoo = false;
-    const fim = TELA === 't4' && ($('t4-fim').hidden === false || $('t4-pulado').hidden === false);
-    if (!fim) agendar(_jaJa ? 0 : ((TELA === 't3' || TELA === 't4') ? 5000 : 15000));
+    const fim = TELA === 't4' && ($('t4-fim').hidden === false || $('t4-pulado').hidden === false){% if karaoke_pix %} && !(_kEsperaPix > Date.now()){% endif %};
+    if (!fim) agendar(_jaJa ? 0 : ((TELA === 't3' || TELA === 't4'{% if karaoke_pix %} || TELA === 'tpix'{% endif %}) ? 5000 : 15000));
   }
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden) agendar(0); });
 
 // ── início ─────────────────────────────────────────────────────────────────────────────────────────────────────
 (function inicio() {
-  if (SUCESSO_ID) {
+{% if karaoke_pix %}  _kAplicar(null);
+  if (PIX) {
+    // 🎤 03/11/26 (V2a): o PIX abriu (ou reabriu). A URL passa a ser a dele: recarregar ou voltar do banco reabre o mesmo
+    const antes = _meu();
+    _gravar('jk_kara', JSON.stringify({id: PIX.id, nome: PIX.nome || NOME_ACEITO, t: (antes && antes.id === PIX.id && antes.t) || Date.now(),
+                                       tit: String(PIX.tit || '').slice(0, 80)}));
+    if (PIX.nome || NOME_ACEITO) _gravar('jk_nome', PIX.nome || NOME_ACEITO);
+    try { history.replaceState(null, '', `/pubshow/jukebox/${encodeURIComponent(BAR_TOKEN)}/pix/${PIX.id}?c=${encodeURIComponent(CID)}`); } catch (e) {}
+    if (PIX.vale) { _txt('pix-vale', `Vale por ${Number(PIX.vale)} min`); $('pix-vale').hidden = false; }
+    if (PIX.nome) _txt('pix-tit', `Falta pouco, ${PIX.nome}. Paga e a vez é tua.`);
+    irPara('tpix');
+    return;
+  }
+  if (ERRO && ERRO_TIPO === 'karaoke_pix_falhou' && FORM_VID) {
+    // TRILHO_PIX item 6: a pessoa não fica presa: volta pra confirmar, com o aviso, e pode tentar de novo
+    escolher(FORM_VID, FORM_TIT);
+    $('nome').value = (FORM_NOME || '').slice(0, 14);
+    const e = $('nome-erro'); e.textContent = ERRO; e.hidden = false;
+    return;
+  }
+{% endif %}  if (SUCESSO_ID) {
     // o servidor ACEITOU: guarda o pedido e o nome, e a URL deixa de ser a do POST (recarregar não pede de novo)
     _gravar('jk_kara', JSON.stringify({id: SUCESSO_ID, nome: NOME_ACEITO, t: Date.now(), tit: (FORM_TIT || '').slice(0, 80)}));
     if (NOME_ACEITO) _gravar('jk_nome', NOME_ACEITO);

@@ -644,6 +644,12 @@ def somar_pagos(conn, bid=None, de=None, ate=None, conta='casa', por=None):
     if ate is not None:
         where.append("date(pago_em,'-3 hours') <= ?"); params.append(str(ate))
     chave = {'dia': "date(pago_em,'-3 hours')", 'tipo': 'tipo', 'bar': 'business_id'}.get(por)
+    if _K.pix_bares():
+        # 🎤 03/11/26 (V2a): o PIX do karaokê só é do bar (a parte dele, valor>0) quando a TV começa. Antes disso a linha tem
+        # valor=0 e não é "pedido pago" pra contagem; e na conta por tipo sai como karaokê, nunca como música grátis
+        where.append('NOT (COALESCE(karaoke_pago,0)=1 AND COALESCE(valor,0)=0)')
+        if por == 'tipo':
+            chave = "CASE WHEN COALESCE(karaoke_pago,0)=1 THEN 'karaoke' ELSE tipo END"
     sql_w = ' AND '.join(where)
     if chave:
         rows = conn.execute(
@@ -830,6 +836,8 @@ def _pubshow_on_pago(conn, cob):
     """pubshow_pay: o PIX Efí caiu. Roda DENTRO da transação da confirmação (não dá commit).
     True = o pedido aceitou (vai pra fila ou pro OK do gerente, com pago_em); False = o pedido já não espera
     PIX (recusado, apagado, estornado) e o módulo devolve o PIX sozinho. Mesma regra do webhook do Asaas."""
+    if cob.get('tipo') == 'karaoke':   # 🎤 03/11/26 (V2a): cobrança do karaokê tem regra própria (e nenhuma mensalidade)
+        return _karaoke_on_pago(conn, cob)
     novo = _status_apos_pix(conn, cob['pedido_id'])
     n = conn.execute("UPDATE pubshow_pedidos SET status=?, pago_em=COALESCE(pago_em, datetime('now')) "
                      "WHERE id=? AND business_id=? AND status='aguardando_pix' AND estornado_em IS NULL",
@@ -2322,6 +2330,10 @@ def _status_apos_pix(conn, pedido_id):
         return 'pendente'
     if row['tipo'] == 'donate_sistema':
         return 'sistema'   # 27/10/26 (D6): fora de STATUS_PAGOS = fora de soma, repasse, fila e TV; só o admin vê
+    if _K.pix_bares() and row['tipo'] == 'musica_externa':
+        _kst = _karaoke_status_pago(conn, pedido_id, row['business_id'])   # 🎤 03/11/26 (V2a): None = não é linha paga
+        if _kst:
+            return _kst
     b = conn.execute('SELECT moderar_ok FROM pubshow_businesses WHERE id=?', (row['business_id'],)).fetchone()
     return 'aguardando_ok' if (b and _precisa_ok(b, row['tipo'])) else 'pendente'
 
@@ -2815,6 +2827,8 @@ def _efi_consultar_e_confirmar(pedido_id, txid):
                 "WHERE id=? AND status='aguardando_pix' AND efi_txid=?",
                 (_novo, pedido_id, txid)
             ).rowcount
+            if n and _K.pix_bares():
+                _karaoke_pos_pix(conn, pedido_id, _novo)   # 🎤 03/11/26 (V2a): só mexe em linha paga
             conn.commit()
             if not n:
                 # crítico dinheiro A2 (17/10/26): pago num pedido que já não espera PIX (recusado pelo bar) → grava
@@ -2822,6 +2836,10 @@ def _efi_consultar_e_confirmar(pedido_id, txid):
                 if conn.execute("UPDATE pubshow_pedidos SET pago_em=datetime('now') WHERE id=? AND efi_txid=? "
                                 "AND status='recusado' AND pago_em IS NULL AND estornado_em IS NULL",
                                 (pedido_id, txid)).rowcount:
+                    if _K.pix_bares():
+                        # 🎤 03/11/26 (V2a): desistiu e o PIX caiu depois: o celular conta isso com as palavras certas
+                        conn.execute('UPDATE pubshow_pedidos SET karaoke_pulado=? WHERE id=? AND karaoke_pago=1',
+                                     (_K.PULADO_PIX_DEPOIS, pedido_id))
                     conn.commit()
                     log.warning('[PUBSHOW] Efí (ponte): PIX do pedido #%s (%s) caiu depois de recusado — '
                                 'DEVOLVER pela conta Efí (ver "PIX a devolver" no admin)', pedido_id, txid)
@@ -2888,7 +2906,12 @@ def _efi_conferir_contas_pendentes(forcar=False):
 def _efi_robo_passada():
     """Uma volta do robô: confere os pedidos Efí aguardando_pix dos últimos 30 min (cobrança expira em 15). Retorna quantos confirmou.
     Roda até no botão de emergência (PUBSHOW_GATEWAY=asaas): ele só para as cobranças NOVAS; o PIX que já saiu confirma.
-    17/10/26 (caminho único): também confere de novo, a cada 10 min, a conta Efí salva que a Efí ainda não aceitou."""
+    17/10/26 (caminho único): também confere de novo, a cada 10 min, a conta Efí salva que a Efí ainda não aceitou.
+    🎤 03/11/26 (V2a): a cada 10 min varre o pago do karaokê que não vai mais cantar (antes da guarda: não depende da Efí)."""
+    try:
+        _karaoke_varrer()
+    except Exception as ex:
+        log.warning('[PUBSHOW] robô Efí: varredor do karaokê falhou: %s', ex)
     if not _efi_cli_ok():
         return 0
     try:
@@ -2921,14 +2944,20 @@ _ROBO_EFI_INICIADO = False
 def iniciar_robo_efi(intervalo_seg=20, delay_inicial_seg=30):
     """Thread daemon que confere na Efí, a cada 20 s, os PIX dos pedidos aguardando_pix
     (pagou e fechou a tela? confirma igual). Mesmo padrão do faxineiro: idempotente,
-    uma vez por processo. Só sobe se PUBSHOW_EFI_BARES não estiver vazio."""
+    uma vez por processo. Só sobe se PUBSHOW_EFI_BARES não estiver vazio.
+    🎤 03/11/26 (TRILHO_PIX): sobe também com PUBSHOW_KARAOKE_PIX preenchida. O Garage fica fora da EFI_BARES, e sem o robô
+    quem paga e fecha a tela nunca entraria na fila."""
     global _ROBO_EFI_INICIADO
     if _ROBO_EFI_INICIADO:
         return
-    if not _efi_bares():
+    if not _efi_bares() and not _K.pix_bares():
         log.info('[PUBSHOW] Robô Efí desligado (PUBSHOW_EFI_BARES vazio)')
         return
     _ROBO_EFI_INICIADO = True
+    _sem_modo = _K.pix_bares() - _K.bares()
+    if _sem_modo:
+        log.warning('[PUBSHOW] karaokê: %s na PUBSHOW_KARAOKE_PIX e fora da PUBSHOW_KARAOKE_BARES: fica sem o modo, sem cobrar',
+                    sorted(_sem_modo))
 
     def _loop():
         _time.sleep(delay_inicial_seg)
@@ -3768,7 +3797,9 @@ def tv(code):
                            fundo_clipes=fundo_clipes,   # 20/10/26: esporte no fundo + clipe na janela (None = desligado)
                            # 🎤 29/10/26: modo karaokê (a coluna diz quem canta, o QR fica sempre). Desligado = o HTML de
                            # sempre, byte a byte (cada pedaço do karaokê no tv.html está dentro de {% if karaoke %})
-                           karaoke=_K.ligado(b))
+                           karaoke=_K.ligado(b),
+                           # 🎤 03/11/26 (V2a): a env deixa este bar cobrar. A TV nunca mostra valor nem "pago"
+                           karaoke_pix=(_K.ligado(b) and _K.pix_permitido(b)))
 
 
 def _qr_preco_tv(b):
@@ -3907,6 +3938,10 @@ def _pix_pendente_de_pedido(b, row, precos_bar):
     else:
         valor = item = float(row.get('valor') or 0)
         taxa = 0.0
+    if row.get('karaoke_pago'):
+        # 🎤 03/11/26 (V2a): validade também na ponte; música e nome pro "Gerar outro PIX" depois de recarregar
+        efi_tela = dict(efi_tela, **_karaoke_pix_validade(row), kara_vid=row.get('youtube_id') or '',
+                        kara_tit=row.get('titulo_pedido') or '', kara_nome=row.get('nome_cliente') or '')
     t = precos_bar.get(row.get('tipo')) or TIPOS_PEDIDO.get(row.get('tipo')) or {}
     payload = row.get('pix_payload') or ''
     return {**efi_tela,
@@ -3977,6 +4012,9 @@ def jukebox(token, pix_id=None):
     tipos_bar              = _tipos_disponiveis(b)
     precos_bar, hh_desconto = _precos_do_bar(b)
     _kara                  = _K.ligado(b)   # 🎤 29/10/26: modo karaokê (desligado = o jukebox de sempre)
+    # 🎤 03/11/26 (V2a): 'ponte' ou 'split' se ESTE pedido novo paga; None = grátis. Com a env PIX vazia nem pergunta
+    _kara_rota             = _karaoke_cobranca(b) if _kara else None
+    _kara_pix              = bool(_kara_rota)
 
     # banner do happy hour = maior desconto real dos cards visíveis, não o % do painel (piso R$ 5, 15/10/26)
     hh_desconto = _hh_maior_desconto(precos_bar, tipos_bar)
@@ -4028,6 +4066,12 @@ def jukebox(token, pix_id=None):
             elif _kara and _karaoke_nome_repetido(b, nome_cliente, ip_cliente):
                 # 🎤 dois "João" na fila: a TV diria "Próximo: João" e subiriam os dois
                 erro, erro_tipo = _K.msg_nome_repetido(nome_cliente), 'karaoke_nome'
+            elif _kara_pix and (_kt := _karaoke_trava_pix(b, ip_cliente, _cid)):
+                # 🎤 03/11/26 (V2a): as travas ANTES do QR (o _teto_pedidos com PIX não olha fila nem o "1 por vez")
+                if _kt.get('reabrir'):
+                    pix_pendente = _pix_pendente_de_pedido(b, _kt['reabrir'], precos_bar)   # 1 PIX aberto: o mesmo
+                else:
+                    erro, erro_tipo, _kara_meu = _kt['erro'], _kt['erro_tipo'], _kt.get('meu')
             elif tipo not in tipos_bar or tipo not in precos_bar:
                 erro = 'Tipo de pedido inválido.'
             elif not nome_cliente:
@@ -4110,13 +4154,19 @@ def jukebox(token, pix_id=None):
                 usar_pix = _gateway or (bool(b['requer_pix']) and bool(b['pix_key']))
                 if preco <= 0:
                     usar_pix = False   # pedido GRÁTIS: entra direto na fila, sem cobrança
+                if _kara_pix:
+                    # 🎤 03/11/26 (V2a): preço fixo, sempre na Efí. O bar pode estar no Asaas pro resto (o Garage): daqui
+                    # pra baixo este pedido é da rota do karaokê, e o _ponte/_efi desta requisição nunca chama o Asaas
+                    preco, usar_pix, _gateway = _K.PIX_TOTAL_CENT / 100, True, True
+                    _efi, _ponte = _kara_rota == 'split', _kara_rota == 'ponte'
                 tipo_nome  = precos_bar[tipo]['nome']
                 tipo_emoji = precos_bar[tipo]['emoji']
 
                 # 16/10/26 (C2): o MESMO pedido com PIX ainda aberto (recarregou a página, voltou do banco,
                 # tocou 2x) reabre o PIX que já existe — antes, depois de 60 s, criava a 2ª cobrança no Asaas
                 # e a tela passava a esperar a 2ª, enquanto o cliente tinha pago a 1ª.
-                if usar_pix:
+                # 🎤 03/11/26 (V2a): no karaokê pago quem reabre é o _karaoke_trava_pix, sem exigir a mesma música.
+                if usar_pix and not _kara_pix:
                     _cx = get_pubshow_db()
                     _ab = _cx.execute(
                         """SELECT * FROM pubshow_pedidos
@@ -4197,6 +4247,13 @@ def jukebox(token, pix_id=None):
                         _bar_parte, _app_parte = 0.0, _valor_cobranca
                     else:
                         _bar_parte, _app_parte = divisao_app(_valor_cobranca)
+                    _valor_linha = _bar_parte   # o que o pedido grava em valor quando a cobrança abre
+                    if _kara_pix:
+                        # 🎤 03/11/26 (V2a): a parte do bar e a do app, de constante (nem APP_PCT nem PUBSHOW_CONV_CENT). A linha
+                        # fica com valor=0 até a TV começar: assim repasse e somas nunca contam quem não cantou
+                        _valor_cobranca = _K.PIX_TOTAL_CENT / 100
+                        _bar_parte, _app_parte = _K.PIX_BAR_CENT / 100, _K.PIX_APP_CENT / 100
+                        _valor_linha = 0.0
 
                     # ── Cria pedido como aguardando_pix (sem asaas_payment_id ainda) ─
                     # via_gateway=1 já no INSERT (15/10/26): na janela até o Asaas responder, o
@@ -4210,11 +4267,15 @@ def jukebox(token, pix_id=None):
                             youtube_id, titulo_pedido, thumb_url, ip_cliente, pix_txid, via_gateway, efi_txid)
                            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
                         (b['id'], tipo, nome_cliente, mensagem, categoria,
-                         'aguardando_pix', _bar_parte,
+                         'aguardando_pix', _valor_linha,
                          youtube_id or None, titulo_pedido or None, thumb_url or None,
                          ip_cliente, txid, 1 if _gateway else 0, '' if _ponte else None)
                     )
                     pedido_id = cur.lastrowid
+                    if _kara_pix:
+                        # 🎤 03/11/26 (V2a): a marca nasce aqui e manda até o fim, mesmo que a env mude depois
+                        conn2.execute('UPDATE pubshow_pedidos SET karaoke=1, karaoke_pago=1, karaoke_nome_oculto=? WHERE id=?',
+                                      (1 if _karaoke_cid_oculto(conn2, b['id'], ip_cliente) else 0, pedido_id))
                     conn2.commit(); conn2.close()
 
                     # ── Tenta Asaas primeiro (confirmação automática) ──────────
@@ -4223,6 +4284,8 @@ def jukebox(token, pix_id=None):
                     descricao_pedido = tipo_nome
                     if titulo_pedido:
                         descricao_pedido += f' — {titulo_pedido[:40]}'
+                    if _kara_pix:
+                        descricao_pedido = 'Karaokê: tua vez no palco'   # 🎤 03/11/26 (V2a): o serviço, sem o nome da música
                     _taxa_tela = _app_parte
                     _efi_ok = False
                     # Ponte Efí (produção 16/10/26): cobra SÓ pela Efí (nada de Asaas, nada de chave do bar se ela falhar)
@@ -4238,10 +4301,12 @@ def jukebox(token, pix_id=None):
                             try:
                                 # VCa-01/02 (16/10/26): a mensalidade nunca sai pelos 2 lados nem de quem cancelou:
                                 # assinatura ativa no Asaas (migração) ou plano_ativo=0 (mês pago, ativo_ate) → 0
-                                _sem_mens = (not b['plano_ativo']) or _tem_assinatura_ativa(b['id'])
+                                # 🎤 03/11/26 (V2a): o karaokê nunca paga mensalidade (a parte do bar é do bar, sempre)
+                                _sem_mens = _kara_pix or (not b['plano_ativo']) or _tem_assinatura_ativa(b['id'])
                                 # 27/10/26 (D9): item = a parte do bar, conv = a parte do app (os 20%)
                                 pay = pubshow_pay.criar_cobranca_momento(_cp, b, pedido_id, int(round(_bar_parte * 100)),
-                                                                         int(round(_app_parte * 100)), tipo,
+                                                                         int(round(_app_parte * 100)),
+                                                                         pubshow_pay.TIPO_KARAOKE if _kara_pix else tipo,
                                                                          _asaas_descricao(descricao_pedido),   # DIN-2: sem emoji de 4 bytes
                                                                          sem_mensalidade=_sem_mens)
                             finally:
@@ -4258,7 +4323,7 @@ def jukebox(token, pix_id=None):
                             conn3 = get_pubshow_db()
                             conn3.execute(
                                 'UPDATE pubshow_pedidos SET pix_txid=?, pix_payload=?, valor=?, valor_cobrado=? WHERE id=?',
-                                (pay['txid'], pix_payload, _bar_parte, _valor_cobranca, pedido_id)
+                                (pay['txid'], pix_payload, _valor_linha, _valor_cobranca, pedido_id)
                             )
                             conn3.commit(); conn3.close()
                         else:
@@ -4270,13 +4335,16 @@ def jukebox(token, pix_id=None):
                             conn3.commit(); conn3.close()
                             erro = (MSG_EFI_SEM_CONTA if pay.get('erro') == 'bar_sem_conta_efi'
                                     else 'Pagamento indisponível agora, tenta de novo em instantes.')
+                            if _kara_pix:   # 🎤 03/11/26 (TRILHO_PIX item 6): nunca vira grátis sozinho, e o dono fica sabendo
+                                erro, erro_tipo = _K.MSG_PIX_FALHOU, 'karaoke_pix_falhou'
+                                _karaoke_pix_falhou(b['id'])
                     elif efi_data:
                         # Ponte Efí gerou a cobrança: guarda o txid (coluna própria), o copia e cola, o valor do
                         # bar = preço do item (mesma regra do Asaas) e o total cobrado; QR feito aqui no servidor.
                         conn3 = get_pubshow_db()
                         conn3.execute(
                             'UPDATE pubshow_pedidos SET efi_txid=?, pix_payload=?, valor=?, valor_cobrado=? WHERE id=?',
-                            (efi_data['txid'], efi_data['copia_cola'], _bar_parte, _valor_cobranca, pedido_id)
+                            (efi_data['txid'], efi_data['copia_cola'], _valor_linha, _valor_cobranca, pedido_id)
                         )
                         conn3.commit(); conn3.close()
                         pix_payload = efi_data['copia_cola']
@@ -4287,6 +4355,9 @@ def jukebox(token, pix_id=None):
                         conn3.execute("DELETE FROM pubshow_pedidos WHERE id=? AND status='aguardando_pix'", (pedido_id,))
                         conn3.commit(); conn3.close()
                         erro = 'Pagamento indisponível agora, tenta de novo em instantes.'
+                        if _kara_pix:   # 🎤 03/11/26 (TRILHO_PIX item 6): nunca vira grátis sozinho, e o dono fica sabendo
+                            erro, erro_tipo = _K.MSG_PIX_FALHOU, 'karaoke_pix_falhou'
+                            _karaoke_pix_falhou(b['id'])
                     elif asaas_data:
                         # Asaas gerou QR — salva payment_id e usa payload do Asaas.
                         # 27/10/26 (D2/C3): valor = a parte do bar (total − app); a tarifa do Asaas sai da parte do app
@@ -4339,7 +4410,9 @@ def jukebox(token, pix_id=None):
                             except: pass
                             try: _enviar_push_pedido(_bid, _emoji, _tnome, _nome, _preco)
                             except: pass
-                        if tipo != 'donate_sistema':   # 27/10/26 (D6): o dono do bar não fica sabendo
+                        # 27/10/26 (D6): o dono do bar não fica sabendo. 🎤 03/11/26 (V2a): nem do QR de cada música do
+                        # karaokê pago (seriam dezenas por noite; o placar do painel mostra o que importa)
+                        if tipo != 'donate_sistema' and not _kara_pix:
                             _threading.Thread(target=_notif_pix, daemon=True).start()
 
                         pix_pendente = {
@@ -4360,6 +4433,14 @@ def jukebox(token, pix_id=None):
                             # Lote C, fatia b (16/10/26): tela da Efí ("vale 15 min", "confirma sozinho em segundos")
                             **(dict(_efi_validade(pay.get('expira_em')), efi=True) if _efi_ok else {}),
                         }
+                        if _kara_pix:
+                            # 🎤 03/11/26 (V2a): a validade (a ponte vale 15 min; o split traz o expira_em) e o aviso
+                            # do painel sai no 1º PIX que abre de novo
+                            if not _efi_ok:
+                                pix_pendente.update(_efi_validade(
+                                    (datetime.utcnow() + timedelta(minutes=15)).strftime('%Y-%m-%d %H:%M:%S')))
+                            pix_pendente.update(kara_vid=youtube_id or '', kara_tit=titulo_pedido or '', kara_nome=nome_cliente)
+                            _karaoke_pix_falhou(b['id'], limpar=True)
                         sucesso = None
                 elif not erro and not usar_pix:
                     # ── Fluxo direto (sem PIX ou PIX não exigido) ─────────────
@@ -4516,7 +4597,11 @@ def jukebox(token, pix_id=None):
                            pedido_id_sucesso=locals().get('pedido_id_sucesso'),
                            karaoke_meu_id=locals().get('_kara_meu'),   # 🎤 só o karaoke.html lê
                            # 🎤 tela 1: "As mais cantadas" (acervo karaokê, sem gastar busca). Sem o modo, nem calcula
-                           karaoke_mais=(_karaoke_mais_cards(b) if _kara and aberto else [])), status_http
+                           karaoke_mais=(_karaoke_mais_cards(b) if _kara and aberto else []),
+                           # 🎤 03/11/26 (V2a): karaoke_pix = a env deixa este bar cobrar (as telas novas só existem com
+                           # ela); karaoke_cobra = o pedido novo paga agora (o polling corrige se o dono apertar o freio)
+                           karaoke_pix=(_kara and _K.pix_permitido(b)), karaoke_cobra=_kara_pix,
+                           karaoke_preco=_K.reais(_K.PIX_TOTAL_CENT), karaoke_txt=_K.TXT_TELA), status_http
 
 
 @pubshow_bp.route('/jukebox/<token>/ja-paguei/<int:pedido_id>', methods=['POST'])
@@ -4925,6 +5010,13 @@ def api_status(code):
     # nas últimas ANIVERSARIO_PINO_H horas (até 3, na ordem em que passaram). TV antiga ignora o campo.
     aniversariantes = _aniversariantes_do_bar(conn, b['id'])
 
+    if _K.pix_bares() and _K.ligado(b):
+        # 🎤 03/11/26 (V2a): pago de ontem não toca na abertura de hoje (freio de 60 s por bar). Antes de montar a fila
+        try:
+            _karaoke_varrer_bar(conn, b['id'])
+        except Exception as ex:
+            log.warning('[PUBSHOW] karaokê: varredor do status do bar %s falhou: %s', b['id'], ex)
+
     # Pedido de música — espera o vídeo atual acabar
     # VIP → toca na frente de tudo; flash → prioridade; restantes → ordem de chegada
     # 22/10/26 (fila no canto da TV, spec do juiz): a MESMA consulta, LIMIT 1 → 30; o 1º é o pedido_musica de sempre e o
@@ -5009,6 +5101,8 @@ def api_status(code):
     if _K.ligado(b):
         # 🎤 29/10/26 (modo karaokê): agora no palco, a fila por NOME e o Rei da noite (cache de 5 s). Sem o modo a chave
         # nem existe (o JSON do Garage fica igual). Nome escondido pelo dono vira "Convidado" também no pedido_musica
+        if _K.pix_permitido(b):
+            result['qr_preco'] = ''   # 🎤 03/11/26 (V2a): a TV não fala de preço (quem dá o "Grátis hoje" é o bloco)
         try:
             if request.args.get('teste') != '1' and 'kp' in request.args:
                 # a TV diz qual pedido está tocando (0 = a rotação): o ⏭️ Pular marca só quem está cantando de verdade
@@ -5027,7 +5121,7 @@ def api_status(code):
         except Exception as ex:
             log.warning('[PUBSHOW] karaokê: bloco do status do bar %s falhou: %s', b['id'], ex)
             result['karaoke'] = {'ligado': True, 'palco': None, 'fila': [], 'fila_n': 0, 'espera_min': 0,
-                                 'rei': None, 'gratis': True}
+                                 'rei': None, 'gratis': not _K.pix_permitido(b)}   # 🎤 V2a: na dúvida a TV não diz "grátis"
     conn.close()
     if _efi_para(b):
         # Lote D A3 (16/10/26): só no modo Efí (no Asaas o JSON fica igual). A TV aberta recarrega pela tv_version
@@ -5056,8 +5150,10 @@ def api_pedido_status(token, pedido_id):
            JOIN pubshow_businesses b ON p.business_id = b.id
            WHERE p.id=? AND (b.jukebox_token=? OR b.code=?)'''
     try:
-        row = conn.execute(_sql_ps.format(kara='p.karaoke, p.karaoke_pulado, p.karaoke_sem_rank,'),
-                           (pedido_id, token, token)).fetchone()
+        # 🎤 03/11/26 (V2a): só com a env PIX a linha traz as marcas da cobrança (vazia = a consulta de sempre)
+        row = conn.execute(_sql_ps.format(kara='p.karaoke, p.karaoke_pulado, p.karaoke_sem_rank,' + (
+            ' p.karaoke_pago, p.karaoke_faltas, p.pago_em, p.valor_cobrado, p.repasse_manual_id, p.via_gateway,'
+            if _K.pix_bares() else '')), (pedido_id, token, token)).fetchone()
     except sqlite3.OperationalError:   # 🎤 banco sem as colunas do karaokê (migração falhou): a consulta de sempre
         row = conn.execute(_sql_ps.format(kara='0 AS karaoke, 0 AS karaoke_pulado, 0 AS karaoke_sem_rank,'),
                            (pedido_id, token, token)).fetchone()
@@ -5223,6 +5319,10 @@ def api_pedido_exibido(pedido_id):
         # 🎤 revisão 29/10 noite (fluxo-2): a TV começou ESTE pedido agora; o relato do kp só chegava no poll seguinte
         # (~2,5 s) e um 2º ⏭️ Pular nessa janela marcava quem já tinha saído do palco. Pedido sem karaokê não passa aqui
         _KARAOKE_TV[b['id']] = (_time.time(), pedido_id)
+        # 🎤 03/11/26 (V2a): a TV começou a vez paga: agora a parte dele é do bar (grátis: nenhuma linha muda). A marca manda:
+        # roda em qualquer estado das envs, senão quem pagou cantaria e o bar não receberia
+        conn.execute('UPDATE pubshow_pedidos SET valor=? WHERE id=? AND karaoke_pago=1',
+                     (_K.PIX_BAR_CENT / 100, pedido_id))
     # Acervo que cresce com o uso (11/09/26): música do YouTube que TOCOU na TV entra no acervo,
     # na categoria do canal que estava no ar. O cardápio vira o que o público daquele bar pede.
     _yid = (pedido['youtube_id'] or '').strip()
@@ -6431,7 +6531,7 @@ def _busca_responder_local(b, cards):
 # Interruptor do bar (coluna modo_karaoke, rota própria /painel/karaoke com o aceite do ECAD + sem prêmio). Ligado: a
 # busca só traz versão com letra, cada um põe o nome e canta na ordem (1 por vez por celular), a TV mostra quem canta,
 # quem vem e o Rei da noite. Desligado (o padrão) = o PubShow de sempre: nenhuma rota de hoje muda de resposta.
-# As contas moram no pubshow_karaoke.py (funções puras); aqui só o banco e as rotas. O R$ 2 por música NÃO existe no V1.
+# As contas moram no pubshow_karaoke.py (funções puras); aqui só o banco e as rotas. A cobrança NÃO existe no V1.
 _KARAOKE_CACHE = {}             # bid -> (hora, bloco): o /api/status chega a cada ~3 s e o servidor tem 1 worker
 _KARAOKE_ORDEM = {}             # bid -> (hora, [linhas na ordem real da TV]): cache de 3 s (pedido-status de 30 celulares)
 _KARAOKE_TV = {}                # bid -> (hora, pedido_id tocando ou 0 = rotação): o que a TV disse no último /api/status
@@ -6488,11 +6588,16 @@ def _karaoke_nome_repetido(b, nome, ip_cliente):
     if not alvo:
         return False
     meu = _K.cid(ip_cliente)
+    # 🎤 03/11/26 (V2a): com a cobrança, quem está pagando o PIX (vivo) também segura o nome
+    _st = "status IN ('pendente','aguardando_ok')"
+    if _K.pix_bares():
+        _st = ("(status IN ('pendente','aguardando_ok') OR (status='aguardando_pix' AND karaoke_pago=1 "
+               "AND created_at >= datetime('now','-15 minutes')))")
     conn = get_pubshow_db()
     try:
         rows = conn.execute(
             f"""SELECT nome_cliente, ip_cliente FROM pubshow_pedidos
-                 WHERE business_id=? AND karaoke=1 AND status IN ('pendente','aguardando_ok')
+                 WHERE business_id=? AND karaoke=1 AND {_st}
                    AND created_at >= {_JANELA_FILA}""", (b['id'],)).fetchall()
     except Exception as ex:
         log.warning('[PUBSHOW] karaokê: conferência do nome repetido falhou: %s', ex)
@@ -6513,11 +6618,16 @@ def _karaoke_pedido_resp(conn, row, pedido_id, status):
     b = conn.execute('SELECT * FROM pubshow_businesses WHERE id=?', (row['business_id'],)).fetchone()
     b = dict(b) if b else None
     out['ligado'] = _K.ligado(b)
+    if 'karaoke_pago' in row.keys() and row['karaoke_pago']:
+        return _karaoke_resp_pago(conn, row, pedido_id, status, out, b)   # 🎤 03/11/26 (V2a): sem ranking e com a tabela 2.3
     if not out['ligado']:
         return out
     if status in ('pendente', 'aguardando_ok'):
         out['k'] = _karaoke_bloco(conn, b)
     elif acabou and not _pul and not int(row['karaoke_sem_rank'] or 0):
+        # 🎤 04/11/26 (B5): mesma regra da TV e do painel. Noite com música paga, ou cobrando: sem Rei, nem no celular
+        if _K.pix_bares() and (_karaoke_cobranca(b) or _karaoke_noite(conn, b['id'])['pagas']):
+            return out
         rank = _karaoke_ranking(conn, b)
         meu = (_K.cid(row['ip_cliente']), _K.nome_curto(row['nome_cliente'] or '').lower())
         pos = next((i + 1 for i, g in enumerate(rank) if (g['cid'], g['nome'].lower()) == meu), None)
@@ -6607,10 +6717,11 @@ def _karaoke_fila(conn, bid):
 
 
 def _karaoke_ranking(conn, b):
-    """O ranking da noite do bar (janela da fila: 12 h; depois do "Zerar a noite")."""
+    """O ranking da noite do bar (janela da fila: 12 h; depois do "Zerar a noite").
+    🎤 03/11/26 (V2a): com a env PIX, a coluna da cobrança vem junto: música paga nunca conta (_K.conta_no_ranking)."""
     rows = conn.execute(
         f"""SELECT id, ip_cliente, nome_cliente, status, exibido_at, karaoke, karaoke_sem_rank, karaoke_pulado,
-                   karaoke_nome_oculto
+                   karaoke_nome_oculto{', karaoke_pago' if _K.pix_bares() else ''}
               FROM pubshow_pedidos
              WHERE business_id=? AND karaoke=1 AND status='exibido' AND created_at >= {_JANELA_FILA}""",
         (b['id'],)).fetchall()
@@ -6619,6 +6730,14 @@ def _karaoke_ranking(conn, b):
 
 
 def _karaoke_bloco_montar(conn, b):
+    if _K.pix_bares():
+        # 🎤 03/11/26 (V2a, TRILHO_PIX item 7): cobrando, ou com música paga nesta noite (o freio pode ter desligado a
+        # cobrança no meio dela), o Rei fica fora e entra "Hoje já cantaram". Noite só de grátis segue como sempre
+        _cob = bool(_karaoke_cobranca(b))
+        _noite = _karaoke_noite(conn, b['id'])
+        if _cob or _noite['pagas']:
+            return _K.bloco(_karaoke_palco(conn, b['id']), _karaoke_fila(conn, b['id']), [], votacao=_dia_da_votacao(),
+                            pago=_cob, sem_rei=True, cantaram=_noite['pessoas'], voltou=_noite['voltou_ids'])
     return _K.bloco(_karaoke_palco(conn, b['id']), _karaoke_fila(conn, b['id']), _karaoke_ranking(conn, b),
                     votacao=_dia_da_votacao())
 
@@ -6634,6 +6753,560 @@ def _karaoke_bloco(conn, b):
         _KARAOKE_CACHE.clear()
     _KARAOKE_CACHE[b['id']] = (agora, bl)
     return bl
+
+
+# ── 🎤 03/11/26 (V2a): cobrança no karaokê ───────────────────────────────────────────────────────────────────────────
+# Chave: _karaoke_cobranca. Preço, textos e contas puras: pubshow_karaoke.py. O pedido segue 'musica_externa', com a marca
+# karaoke_pago=1: valor=0 até a TV começar, valor_cobrado=3,00 desde o QR, valor=1,50 quando canta. Nenhuma devolução sai
+# sem uma pessoa: "PIX a devolver" na ponte, "Devoluções esperando seu OK" no split. O Asaas nunca entra aqui.
+_KARAOKE_FALHA_MIN = 15          # o aviso "a Efí falhou" do painel vale 15 min depois da última falha
+_KARAOKE_VARRE_SEG = 600         # o robô varre a cada 10 min
+_KARAOKE_VARRE_BAR_SEG = 60      # o /api/status varre 1 vez por minuto por bar
+_karaoke_varre_ultima = [float('-inf')]
+_KARAOKE_VARRE_BAR = {}
+
+
+def _karaoke_rota_pix(b):
+    """TRILHO_PIX item 2: por onde sai o PIX do karaokê deste bar. O _rota_efi NÃO muda (o Garage segue no Asaas pro resto).
+    Bar da lista PIX: o trilho que o bar já tem; sem trilho, a ponte, se a conta Efí do PubShow está configurada. Botão de
+    emergência PUBSHOW_GATEWAY=asaas ou Efí sem configuração = None (grátis, o painel diz por quê)."""
+    if not _K.pix_bares() or not _K.pix_permitido(b):
+        return None
+    rota = _rota_efi(b)
+    if rota:
+        return rota
+    if (os.environ.get('PUBSHOW_GATEWAY') or '').strip().lower() == 'asaas':
+        return None
+    return 'ponte' if _efi_cli_ok() else None
+
+
+def _karaoke_cobranca(b):
+    """A chave: 'ponte' ou 'split' se pedido NOVO deste bar paga agora; senão None. Env PIX vazia: nada mais roda."""
+    if not _K.pix_bares():
+        return None
+    rota = _karaoke_rota_pix(b)
+    return rota if _K.cobra(b, rota) else None
+
+
+def _karaoke_pix_falhou(bid, limpar=False):
+    """TRILHO_PIX item 6: grava (ou limpa) quando a Efí falhou ao criar o PIX deste bar. O painel avisa em destaque. Erro
+    aqui nunca atrapalha o cliente."""
+    try:
+        conn = get_pubshow_db()
+        try:
+            if limpar:
+                conn.execute('UPDATE pubshow_businesses SET karaoke_pix_falha_em=NULL WHERE id=? '
+                             'AND karaoke_pix_falha_em IS NOT NULL', (bid,))
+            else:
+                conn.execute("UPDATE pubshow_businesses SET karaoke_pix_falha_em=datetime('now') WHERE id=?", (bid,))
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception as ex:
+        log.warning('[PUBSHOW] karaokê: aviso de falha do PIX do bar %s não gravou: %s', bid, ex)
+
+
+def _karaoke_falha_recente(b):
+    """A Efí falhou nos últimos 15 min? (o aviso do painel)"""
+    try:
+        q = datetime.strptime(str(b.get('karaoke_pix_falha_em') or '')[:19], '%Y-%m-%d %H:%M:%S')
+    except ValueError:
+        return False
+    return (datetime.utcnow() - q).total_seconds() < _KARAOKE_FALHA_MIN * 60
+
+
+def _karaoke_pix_validade(row):
+    """Quanto falta pro PIX desta linha paga vencer: {'expira_min': N, ...}. Ponte: 15 min do QR. Split: a cobrança. Vazio se
+    não deu pra ler. 04/11/26 (B3): a tela usa só os minutos. Relógio de Brasília estaria errado em Manaus."""
+    try:
+        if row.get('efi_txid'):
+            ini = datetime.strptime(str(row.get('created_at') or '')[:19], '%Y-%m-%d %H:%M:%S')
+            return _efi_validade((ini + timedelta(minutes=15)).strftime('%Y-%m-%d %H:%M:%S'))
+        conn = get_pubshow_db()
+        try:
+            c = conn.execute('SELECT expira_em FROM pubshow_pay_cobrancas WHERE pedido_id=?', (row['id'],)).fetchone()
+        finally:
+            conn.close()
+        return _efi_validade(c['expira_em']) if c else {}
+    except Exception:
+        return {}
+
+
+def _karaoke_trava_pix(b, ip_cliente, cid):
+    """Tudo o que barra ANTES do QR. None = pode gerar o PIX. {'reabrir': linha} = já tem PIX vivo: volta pra ele, mesmo
+    que escolheu outra música. {'erro', 'erro_tipo', 'meu'} = barrou, com o texto do celular. Identifica pelo id do
+    celular: trocar o Wi-Fi pelo 4G muda o IP, não o celular."""
+    quem, val = ('ip_cliente LIKE ?', '%#' + cid) if cid else ('ip_cliente=?', ip_cliente)
+    conn = get_pubshow_db()
+    try:
+        na_fila = conn.execute(
+            f"""SELECT id FROM pubshow_pedidos WHERE business_id=? AND {quem} AND karaoke=1
+                 AND status IN ('pendente','aguardando_ok') AND created_at >= {_JANELA_FILA}
+                 ORDER BY id DESC LIMIT 1""", (b['id'], val)).fetchone()
+        if na_fila:
+            return {'erro': _K.MSG_JA_NA_FILA, 'erro_tipo': 'karaoke_na_fila', 'meu': na_fila[0]}
+        for r in conn.execute(
+                f"""SELECT * FROM pubshow_pedidos WHERE business_id=? AND {quem} AND karaoke_pago=1
+                     AND status='aguardando_pix' AND COALESCE(pix_payload,'')<>''
+                     AND created_at >= datetime('now','-30 minutes') ORDER BY id DESC""", (b['id'], val)).fetchall():
+            if (_ponte_pix_vivo(r) if r['efi_txid'] else _efi_pix_vivo(r['id'])):
+                return {'reabrir': r}
+        if _karaoke_pagas_celular(conn, b['id'], ip_cliente) >= _K.teto_celular():
+            return {'erro': _K.MSG_TETO_CELULAR.format(n=_K.teto_celular()), 'erro_tipo': 'karaoke_teto'}
+        fila = conn.execute(f"SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=? AND status='pendente' "
+                            f"AND created_at >= {_JANELA_FILA}", (b['id'],)).fetchone()[0]
+        if fila >= MAX_FILA:
+            return {'erro': _K.MSG_FILA_CHEIA, 'erro_tipo': 'karaoke_fila_cheia'}
+    finally:
+        conn.close()
+    return None
+
+
+def _karaoke_pagas_celular(conn, bid, ip_cliente):
+    """Quantas pagas este celular tem na noite, contando a fila. É a conta do teto de 5. Devolvida não conta."""
+    ip = ip_cliente or ''
+    quem, val = ('ip_cliente LIKE ?', '%#' + _K.cid(ip)) if '#' in ip else ('ip_cliente=?', ip)
+    return conn.execute(
+        f"""SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=? AND {quem} AND karaoke_pago=1
+             AND status IN ('pendente','aguardando_ok','exibido') AND created_at >= {_JANELA_FILA}""",
+        (bid, val)).fetchone()[0]
+
+
+def _karaoke_pago_na_fila(conn, bid, pid):
+    """Outro pedido pago do mesmo celular já está na fila? (o 2º PIX de quem abriu 2 e pagou os 2)"""
+    r = conn.execute('SELECT ip_cliente FROM pubshow_pedidos WHERE id=?', (pid,)).fetchone()
+    c = _K.cid(r['ip_cliente']) if r else ''
+    if not c:
+        return False
+    quem, val = ('ip_cliente LIKE ?', '%#' + c) if '#' in (r['ip_cliente'] or '') else ('ip_cliente=?', r['ip_cliente'])
+    return bool(conn.execute(
+        f"""SELECT 1 FROM pubshow_pedidos WHERE business_id=? AND id<>? AND karaoke_pago=1 AND {quem}
+             AND status IN ('pendente','aguardando_ok') AND created_at >= {_JANELA_FILA} LIMIT 1""",
+        (bid, pid, val)).fetchone())
+
+
+def _karaoke_status_pago(conn, pid, bid):
+    """Para onde vai a linha PAGA quando o PIX cai: 'pendente' (fila) ou 'recusado' (a devolver: modo desligado, ou o mesmo
+    celular já tem outra paga na fila). None = não é linha paga. O freio não entra aqui: PIX que já saiu entra e canta."""
+    p = conn.execute('SELECT karaoke_pago FROM pubshow_pedidos WHERE id=?', (pid,)).fetchone()
+    if not p or not p['karaoke_pago']:
+        return None
+    b = conn.execute('SELECT * FROM pubshow_businesses WHERE id=?', (bid,)).fetchone()
+    if not _K.ligado(dict(b) if b else None) or _karaoke_pago_na_fila(conn, bid, pid):
+        return 'recusado'
+    return 'pendente'
+
+
+def _karaoke_pos_pix(conn, pid, novo):
+    """Logo depois do UPDATE de status da confirmação, na transação de quem chama (ponte e split). Na fila: created_at=agora
+    (quem pagou antes canta antes, mesmo tendo aberto o QR depois). Recusado: o código certo pro celular e valor=0."""
+    r = conn.execute('SELECT business_id, karaoke_pago FROM pubshow_pedidos WHERE id=?', (pid,)).fetchone()
+    if not r or not r['karaoke_pago']:
+        return
+    if novo == 'pendente':
+        conn.execute("UPDATE pubshow_pedidos SET created_at=datetime('now') WHERE id=?", (pid,))
+    elif novo == 'recusado':
+        cod = _K.PULADO_PIX_A_MAIS if _karaoke_pago_na_fila(conn, r['business_id'], pid) else _K.PULADO_FECHOU
+        conn.execute('UPDATE pubshow_pedidos SET valor=0, karaoke_pulado=? WHERE id=?', (cod, pid))
+    _karaoke_cache_limpar(r['business_id'])
+
+
+def _karaoke_on_pago(conn, cob):
+    """Split: o PIX Efí da cobrança do karaokê caiu. Roda dentro da transação do pubshow_pay.confirmar (sem commit).
+    True = entrou na fila. False = o módulo marca a devolução (que espera o OK de uma pessoa). cob['karaoke_tardio'] = o
+    módulo já decidiu devolver (cancelada, ou PIX depois do prazo): aqui só grava o pago_em e o motivo, senão a linha fica
+    fora das telas de devolução."""
+    pid, bid = cob['pedido_id'], cob['business_id']
+    if cob.get('karaoke_tardio'):
+        n = conn.execute("UPDATE pubshow_pedidos SET status='recusado', valor=0, karaoke_pulado=?, "
+                         "pago_em=COALESCE(pago_em, datetime('now')) WHERE id=? AND business_id=? AND status='aguardando_pix'",
+                         (_K.PULADO_PIX_TARDE, pid, bid)).rowcount
+        if not n:   # desistiu antes (já está recusado): o PIX caiu depois
+            conn.execute("UPDATE pubshow_pedidos SET karaoke_pulado=?, pago_em=COALESCE(pago_em, datetime('now')) "
+                         "WHERE id=? AND business_id=? AND status='recusado' AND karaoke_pago=1",
+                         (_K.PULADO_PIX_DEPOIS, pid, bid))
+        return False
+    novo = _status_apos_pix(conn, pid)
+    n = conn.execute("UPDATE pubshow_pedidos SET status=?, pago_em=COALESCE(pago_em, datetime('now')) "
+                     "WHERE id=? AND business_id=? AND status='aguardando_pix' AND estornado_em IS NULL",
+                     (novo, pid, bid)).rowcount
+    if n != 1:
+        return False
+    _karaoke_pos_pix(conn, pid, novo)
+    return novo != 'recusado'
+
+
+def _karaoke_devolver(conn, bid, pid, codigo, de=('pendente',)):
+    """A função única de "pagou e não vai cantar", nos 2 trilhos. Só SQL, na transação de quem chama, sem rede: a linha vira
+    recusado, valor=0, com o código. Só linha paga, e só se ainda não entrou num repasse (o bar já recebeu: fica como
+    está, a mesma regra do _tirar_da_fila). Ponte: para aqui e cai em "PIX a devolver". Split: marca a cobrança
+    "esperando seu OK". True se ESTA chamada devolveu."""
+    n = conn.execute(
+        f"""UPDATE pubshow_pedidos SET status='recusado', valor=0, karaoke_pulado=?
+             WHERE id=? AND business_id=? AND karaoke_pago=1 AND repasse_manual_id IS NULL
+               AND status IN ({','.join('?' * len(de))})""", (int(codigo), pid, bid, *de)).rowcount
+    if n != 1:
+        return False
+    if pubshow_pay is not None and conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' "
+                                                "AND name='pubshow_pay_cobrancas'").fetchone():
+        pubshow_pay.marcar_devolucao_manual(conn, pid, _K.MOTIVO_PULADO.get(int(codigo), 'karaokê'))
+    _karaoke_cache_limpar(bid)
+    return True
+
+
+def _karaoke_varrer_linhas(conn, rows):
+    """Linhas pagas na fila: passou de PAGO_MAX_H ou o bar saiu do modo → recusado, 5 (a devolver). Quem chama dá o commit."""
+    bares, n = {}, 0
+    for r in rows:
+        if r['business_id'] not in bares:
+            _b = conn.execute('SELECT * FROM pubshow_businesses WHERE id=?', (r['business_id'],)).fetchone()
+            bares[r['business_id']] = dict(_b) if _b else None
+        if r['velho'] or not _K.ligado(bares[r['business_id']]):
+            if _karaoke_devolver(conn, r['business_id'], r['id'], _K.PULADO_FECHOU):
+                n += 1
+    return n
+
+
+_SQL_KARAOKE_VARRE = (f"SELECT id, business_id, (created_at < datetime('now', '-{_K.PAGO_MAX_H} hours')) AS velho "
+                      "FROM pubshow_pedidos WHERE karaoke_pago=1 AND status='pendente'")
+
+
+def _karaoke_varrer(forcar=False):
+    """Varredor do robô (no máximo 1 vez a cada 10 min): olha a linha paga em qualquer estado das envs. Assim esvaziar a env
+    não deixa pago de ontem tocar hoje. Devolve quantas viraram "a devolver"."""
+    agora = _time.monotonic()
+    if not forcar and agora - _karaoke_varre_ultima[0] < _KARAOKE_VARRE_SEG:
+        return 0
+    _karaoke_varre_ultima[0] = agora
+    conn = get_pubshow_db()
+    try:
+        rows = conn.execute(_SQL_KARAOKE_VARRE).fetchall()
+        if not rows:
+            return 0
+        n = _karaoke_varrer_linhas(conn, rows)
+        conn.commit()
+    finally:
+        conn.close()
+    if n:
+        log.warning('[PUBSHOW] karaokê: %s pago(s) saíram da fila sem cantar: vão pro "PIX a devolver"', n)
+    return n
+
+
+def _karaoke_varrer_bar(conn, bid):
+    """O mesmo varredor no /api/status deste bar (1 vez por minuto): a TV que abre não toca o pago de ontem."""
+    agora = _time.monotonic()
+    if agora - _KARAOKE_VARRE_BAR.get(bid, float('-inf')) < _KARAOKE_VARRE_BAR_SEG:
+        return 0
+    if len(_KARAOKE_VARRE_BAR) > 500:
+        _KARAOKE_VARRE_BAR.clear()
+    _KARAOKE_VARRE_BAR[bid] = agora
+    rows = conn.execute(_SQL_KARAOKE_VARRE + ' AND business_id=?', (bid,)).fetchall()
+    if not rows:
+        return 0
+    n = _karaoke_varrer_linhas(conn, rows)
+    conn.commit()
+    return n
+
+
+def _karaoke_noite(conn, bid):
+    """O que aconteceu nesta noite (12 h): cantadas (pagas), bar (R$ que fica pro bar), fila (pagas esperando), voltou
+    (pagas que voltam pro cliente), pagas (com PIX: o Rei fica fora), pessoas (quem já cantou, pago ou grátis: nunca
+    músicas, senão a TV contaria quanto alguém gastou) e voltou_ids (o "Não veio": a TV esquece que já tocou)."""
+    r = conn.execute(
+        f"""SELECT COALESCE(SUM(karaoke_pago=1 AND status='exibido'),0) AS cantadas,
+                   COALESCE(SUM(CASE WHEN karaoke_pago=1 AND status='exibido' THEN valor ELSE 0 END),0) AS bar,
+                   COALESCE(SUM(karaoke_pago=1 AND status='pendente'),0) AS fila,
+                   COALESCE(SUM(karaoke_pago=1 AND status='recusado' AND pago_em IS NOT NULL),0) AS voltou,
+                   COALESCE(SUM(karaoke_pago=1 AND pago_em IS NOT NULL),0) AS pagas
+              FROM pubshow_pedidos WHERE business_id=? AND karaoke=1 AND created_at >= {_JANELA_FILA}""", (bid,)).fetchone()
+    pessoas = {_K.cid(x['ip_cliente']) for x in conn.execute(
+        f"""SELECT ip_cliente FROM pubshow_pedidos WHERE business_id=? AND karaoke=1 AND status='exibido'
+             AND COALESCE(karaoke_pulado,0)=0 AND created_at >= {_JANELA_FILA}""", (bid,)).fetchall()}
+    voltou_ids = [x['id'] for x in conn.execute(
+        f"""SELECT id FROM pubshow_pedidos WHERE business_id=? AND karaoke_pago=1 AND status='pendente'
+             AND COALESCE(karaoke_faltas,0)>0 AND created_at >= {_JANELA_FILA}""", (bid,)).fetchall()]
+    return {'cantadas': int(r['cantadas']), 'bar': round(float(r['bar']), 2), 'fila': int(r['fila']),
+            'voltou': int(r['voltou']), 'pagas': int(r['pagas']), 'pessoas': len(pessoas), 'voltou_ids': voltou_ids}
+
+
+def _karaoke_cantadas_n(conn, bid, de, ate):
+    """Quantas das músicas pagas contadas na soma do período são karaokê (não são "momentos"). Com a env PIX vazia: 0, sem
+    consulta nenhuma."""
+    if not _K.pix_bares():
+        return 0
+    return somar_pagos(conn, bid, de, ate, 'casa', por='tipo').get('karaoke', {}).get('n', 0)
+
+
+def _karaoke_texto_cobranca(b, rota):
+    """A frase do cartão do painel: por que está grátis, ou que a cobrança está ligada."""
+    return _K.motivo_gratis(b, rota) or f'Cobrança ligada: {_K.PRECO_TXT} por vez no palco, no PIX. {_K.BAR_TXT} é do bar.'
+
+
+def _karaoke_painel_extra(conn, b, pk):
+    """O que o cartão do karaokê do painel lê a cada 30 s, só em bar da lista PIX. modo_pago = cobrando, ou noite com música
+    paga: sai o ranking e entra "Quem cantou hoje", na ordem em que cantaram, sem hora, sem número de músicas e sem posição.
+    palco = o "Não veio". 04/11/26 (B4): cada vez paga é uma linha, com o "Não cantou, devolver" enquanto não entrou em repasse."""
+    rota = _karaoke_rota_pix(b)
+    cobrando = _K.cobra(b, rota)
+    noite = _karaoke_noite(conn, b['id'])
+    grupos = {}
+    for r in conn.execute(
+            f"""SELECT id, ip_cliente, nome_cliente, exibido_at, karaoke_nome_oculto, karaoke_pago, repasse_manual_id
+                  FROM pubshow_pedidos
+                 WHERE business_id=? AND karaoke=1 AND status='exibido' AND COALESCE(karaoke_pulado,0)=0
+                   AND created_at >= {_JANELA_FILA} ORDER BY exibido_at, id""", (b['id'],)).fetchall():
+        nome = _K.nome_curto(r['nome_cliente'] or '')
+        pago = bool(r['karaoke_pago'])
+        g = grupos.setdefault((_K.cid(r['ip_cliente']), nome.lower(), r['id'] if pago else 0),
+                              {'nome': nome, 'pid': r['id'], 'oculto': False,
+                               'devolver': pago and r['repasse_manual_id'] is None})
+        g['pid'] = r['id']
+        g['oculto'] = g['oculto'] or bool(r['karaoke_nome_oculto'])
+    palco = {}
+    _pl = conn.execute('SELECT karaoke_pago, karaoke_faltas FROM pubshow_pedidos WHERE id=?', (pk['id'],)).fetchone() if pk else None
+    if _pl and _pl['karaoke_pago']:
+        faltas = int(_pl['karaoke_faltas'] or 0)
+        fila_vazia = not conn.execute(f"SELECT 1 FROM pubshow_pedidos WHERE business_id=? AND status='pendente' AND karaoke=1 "
+                                      f"AND created_at >= {_JANELA_FILA} LIMIT 1", (b['id'],)).fetchone()
+        palco = {'pago': True, 'faltas': faltas, 'so_devolve': faltas >= 1 or fila_vazia}
+    return {'modo_pago': bool(cobrando or noite['pagas']), 'cobrando': bool(cobrando),
+            'cobra_txt': _karaoke_texto_cobranca(b, rota), 'falha': bool(cobrando and _karaoke_falha_recente(b)),
+            'placar': {k: noite[k] for k in ('cantadas', 'bar', 'fila', 'voltou')},
+            'placar_txt': (f"Hoje: {noite['cantadas']} {'vez no palco' if noite['cantadas'] == 1 else 'vezes no palco'} · "
+                           f"{_brl(noite['bar'])} pro bar · {noite['fila']} na fila · {noite['voltou']} voltou pro cliente"
+                           if noite['pagas'] or cobrando else ''),
+            'cantou': list(grupos.values()), 'palco': palco}
+
+
+def _karaoke_painel_flags(bd):
+    """O que o painel() passa pro cartão. karaoke_pix = env preenchida e cartão visível (a frase do motivo aparece até pro bar
+    fora da lista); karaoke_cobrar_ok = o interruptor "💰 Cobrar" aparece (bar na lista, com rota Efí)."""
+    if not (_K.pix_bares() and _K.permitido(bd) and 'modo_karaoke' in bd):
+        return {'karaoke_pix': False}
+    rota = _karaoke_rota_pix(bd)
+    cobrando = _K.cobra(bd, rota)
+    return {'karaoke_pix': True, 'karaoke_cobrando': cobrando, 'karaoke_cobrar_on': _K.cobrar_aceso(bd),
+            'karaoke_cobrar_ok': _K.pix_permitido(bd) and rota in ('ponte', 'split'),
+            'karaoke_na_lista': _K.pix_permitido(bd), 'karaoke_cobra_txt': _karaoke_texto_cobranca(bd, rota),
+            'karaoke_falha': bool(cobrando and _karaoke_falha_recente(bd))}
+
+
+def _karaoke_resp_pago(conn, row, pedido_id, status, out, b):
+    """O /api/pedido-status de uma linha PAGA: nunca ranking, e os textos da tabela 2.3 do desenho. Vale em qualquer estado
+    do modo (o dono desligou, o bar fechou): quem pagou sempre fica sabendo o que houve com o PIX dele."""
+    _pul, tem_pix = int(row['karaoke_pulado'] or 0), bool(str(row['pago_em'] or '').strip())
+    out.update(karaoke_pago=True, cobrado=_K.reais(_K.PIX_TOTAL_CENT), cobrando=bool(_karaoke_cobranca(b)))
+    if out['cobrando'] and status in ('exibido', 'recusado'):
+        # 🎤 04/11/26 (M3): com o teto batido a tela não oferece a próxima (a mesma conta da trava antes do QR)
+        out['teto_batido'] = _karaoke_pagas_celular(conn, row['business_id'], row['ip_cliente']) >= _K.teto_celular()
+    if status == 'recusado':
+        out['karaoke_volta'] = _K.texto_volta(_pul, tem_pix) or (
+            _K.VOLTA_TXT[_K.PULADO_TIRADO] if tem_pix else _K.MSG_SAIU_SEM_PIX)
+        out['karaoke_devolve'] = tem_pix
+        if tem_pix:
+            out['karaoke_prazo'] = _K.MSG_PRAZO   # 🎤 04/11/26 (B1): prazo e canal em toda tela de devolução
+    elif status == 'aguardando_pix':
+        val = _karaoke_pix_validade(dict(row, id=pedido_id))
+        out['pix_min'] = val.get('expira_min', 0)   # 04/11/26 (B3): "Vale por 15 min", sem relógio
+        out['pix_venceu'] = val.get('expira_min', 1) == 0
+    elif status in ('pendente', 'aguardando_ok') and int(row['karaoke_faltas'] or 0):
+        out['karaoke_faltou'] = _K.MSG_NAO_VEIO_FILA
+    if out['ligado'] and status in ('pendente', 'aguardando_ok', 'aguardando_pix'):
+        out['k'] = _karaoke_bloco(conn, b)
+    return out
+
+
+@pubshow_bp.route('/jukebox/<token>/karaoke-desistir/<int:pedido_id>', methods=['POST'])
+def jukebox_karaoke_desistir(token, pedido_id):
+    """"Desistir e sair da fila" do karaokê pago. Só o próprio celular (a mesma prova do c da tela do PIX), só linha paga.
+    Com o PIX aberto, confere na Efí ANTES (molde do painel_recusar_pix): se já caiu, sai e a devolução fica pra uma pessoa.
+    Efí fora do ar: a pessoa sai igual, sem ficar presa. Nada se perde: aqui nenhuma devolução é automática, e o PIX que
+    aparecer depois vira "a devolver" (robô da ponte, confirmar do split). Música no palco: 409."""
+    d = request.get_json(silent=True) or request.form
+    _c = str(d.get('c') or '').strip()
+    b = _bar_por_token(token)
+    if not b or not re.fullmatch(r'[A-Za-z0-9_-]{8,40}', _c):
+        return jsonify({'ok': False, 'erro': 'nao_achei'}), 404
+    conn = get_pubshow_db()
+    try:
+        r = conn.execute('SELECT * FROM pubshow_pedidos WHERE id=? AND business_id=? AND karaoke_pago=1',
+                         (pedido_id, b['id'])).fetchone()
+        if not r or not (r['ip_cliente'] or '').endswith('#' + _c):
+            return jsonify({'ok': False, 'erro': 'nao_achei'}), 404
+        status, txid_ponte = r['status'], r['efi_txid']
+    finally:
+        conn.close()
+    if status == 'exibido':
+        return jsonify({'ok': False, 'erro': 'no_palco'}), 409
+    conferiu = False   # a Efí respondeu que o PIX ainda não caiu? Sem resposta, o texto não pode dizer "nada foi cobrado"
+    if status == 'aguardando_pix':
+        # A confirmação roda FORA de qualquer transação: 2 toques ou o robô ao mesmo tempo dão 1 resultado só
+        try:
+            if txid_ponte:
+                with _efi_lock:
+                    _efi_ultima_consulta.pop(pedido_id, None)   # sem o freio de 5 s: a pessoa clicou agora
+                cli = _efi_cli()
+                c = cli.consultar(txid_ponte) if cli is not None else {'erro': 'cliente'}
+                conferiu = isinstance(c, dict) and not c.get('erro')
+                if conferiu and c.get('pago'):
+                    _efi_conferir_pedido(pedido_id, txid_ponte)
+            else:
+                cx = _pp_conn()
+                try:
+                    cobranca = cx.execute('SELECT txid, status FROM pubshow_pay_cobrancas WHERE pedido_id=?',
+                                          (pedido_id,)).fetchone()
+                    if cobranca and cobranca['status'] in ('criando', 'ativa', 'expirada'):
+                        conferiu = bool(pubshow_pay.confirmar(cx, cobranca['txid'], on_pago=_pubshow_on_pago).get('ok'))
+                finally:
+                    cx.close()
+        except Exception as ex:
+            log.warning('[PUBSHOW] karaokê: conferir antes de desistir (pedido #%s) falhou: %s', pedido_id, ex)
+    conn = get_pubshow_db()
+    try:
+        cod = _K.PULADO_DESISTIU
+        if status == 'aguardando_pix' and conn.execute(
+                "UPDATE pubshow_pedidos SET status='recusado', valor=0, karaoke_pulado=? "
+                "WHERE id=? AND business_id=? AND status='aguardando_pix'", (cod, pedido_id, b['id'])).rowcount:
+            conn.commit()
+            try:
+                if txid_ponte:
+                    if _efi_cli() is not None:
+                        _efi_cli().cancelar_cobranca(txid_ponte)
+                else:
+                    # Split: cancela a cobrança. O PIX que cair depois vira "esperando seu OK" (nunca devolve sozinho)
+                    cx = _pp_conn()
+                    try:
+                        pubshow_pay.estornar(cx, pedido_id, motivo=_K.MOTIVO_PULADO[cod], business_id=b['id'])
+                    finally:
+                        cx.close()
+            except Exception as ex:
+                log.warning('[PUBSHOW] karaokê: cancelar o PIX do pedido #%s falhou: %s', pedido_id, ex)
+            _karaoke_cache_limpar(b['id'])
+            return jsonify({'ok': True, 'status': 'recusado', 'devolve': False,
+                            'prazo': '' if conferiu else _K.MSG_PRAZO,
+                            'msg': _K.MSG_SAIU_SEM_PIX if conferiu else _K.MSG_SAIU_TALVEZ})
+        # O PIX caiu no meio (ou já estava na fila): sai da fila e a devolução fica pra uma pessoa
+        if _karaoke_devolver(conn, b['id'], pedido_id, cod, de=('pendente', 'aguardando_ok')):
+            conn.commit()
+            return jsonify({'ok': True, 'status': 'recusado', 'devolve': True, 'prazo': _K.MSG_PRAZO,
+                            'msg': _K.MSG_SAIU_COM_PIX})
+        atual = conn.execute('SELECT status, pago_em, karaoke_pulado FROM pubshow_pedidos WHERE id=?', (pedido_id,)).fetchone()
+        if atual and atual['status'] == 'exibido':
+            return jsonify({'ok': False, 'erro': 'no_palco'}), 409
+        # 2º toque: já saiu. Devolve o mesmo texto de quem saiu
+        _dev = bool(atual and atual['pago_em'])
+        return jsonify({'ok': True, 'status': atual['status'] if atual else 'recusado', 'devolve': _dev,
+                        'prazo': _K.MSG_PRAZO if _dev else '',
+                        'msg': _K.texto_volta(atual['karaoke_pulado'], bool(atual['pago_em'])) if atual else ''})
+    finally:
+        conn.close()
+
+
+@pubshow_bp.route('/painel/karaoke/cobrar', methods=['POST'])
+@pubshow_login_required
+def painel_karaoke_cobrar():
+    """TRILHO_PIX item 5: o freio "💰 Cobrar R$ 3 pela vez no palco". Desligado: pedido novo sai grátis na hora; quem já pagou segue
+    a tabela de estados (canta). Sem deploy e sem reiniciar. Só onde a env PIX permite; fora dela, 403."""
+    b, erro = _karaoke_dono()
+    if erro:
+        return erro
+    if not _K.pix_permitido(b):
+        return jsonify({'ok': False, 'erro': 'karaoke_fora'}), 403
+    d = request.get_json(silent=True) or request.form
+    cobrar = _sim(d.get('cobrar'))
+    conn = get_pubshow_db()
+    try:
+        conn.execute('UPDATE pubshow_businesses SET karaoke_cobrar=?, karaoke_pix_falha_em=NULL WHERE id=?',
+                     (1 if cobrar else 0, b['id']))
+        conn.commit()
+    finally:
+        conn.close()
+    _karaoke_cache_limpar(b['id'])
+    return jsonify({'ok': True, 'cobrar': cobrar})
+
+
+@pubshow_bp.route('/painel/karaoke/<int:pid>/nao-veio', methods=['POST'])
+@pubshow_login_required
+def painel_karaoke_nao_veio(pid):
+    """"Não veio" na vez paga. 1ª vez: o MESMO pedido volta pro fim da fila, sem pagar de novo (uma linha = um PIX). 2ª vez, ou
+    fila vazia: recusado, 3 (a devolver). Pula a TV nos 2 casos. Duplo clique não conta 2 faltas: só age em 'exibido'."""
+    b, erro = _karaoke_dono()
+    if erro:
+        return erro
+    conn = get_pubshow_db()
+    try:
+        r = conn.execute('SELECT status, karaoke_pago, karaoke_faltas, repasse_manual_id FROM pubshow_pedidos '
+                         'WHERE id=? AND business_id=?', (pid, b['id'])).fetchone()
+        if not r or not r['karaoke_pago'] or r['status'] != 'exibido' or r['repasse_manual_id'] is not None:
+            return jsonify({'ok': False, 'erro': 'fora_do_palco'}), 409
+        palco = _karaoke_palco(conn, b['id'])
+        if not palco or palco['id'] != pid:
+            return jsonify({'ok': False, 'erro': 'fora_do_palco'}), 409
+        fila_vazia = not conn.execute("SELECT 1 FROM pubshow_pedidos WHERE business_id=? AND status='pendente' "
+                                      f"AND karaoke=1 AND created_at >= {_JANELA_FILA} LIMIT 1", (b['id'],)).fetchone()
+        if int(r['karaoke_faltas'] or 0) >= 1 or fila_vazia:
+            ok = _karaoke_devolver(conn, b['id'], pid, _K.PULADO_NAO_VEIO, de=('exibido',))
+            res = 'devolve'
+        else:
+            ok = conn.execute(
+                "UPDATE pubshow_pedidos SET status='pendente', valor=0, exibido_at=NULL, created_at=datetime('now'), "
+                "karaoke_faltas=1 WHERE id=? AND business_id=? AND status='exibido' AND COALESCE(karaoke_faltas,0)=0",
+                (pid, b['id'])).rowcount == 1
+            res = 'fila'
+        if not ok:
+            return jsonify({'ok': False, 'erro': 'fora_do_palco'}), 409
+        conn.execute('UPDATE pubshow_businesses SET skip_seq = COALESCE(skip_seq,0) + 1 WHERE id=?', (b['id'],))
+        conn.commit()
+    finally:
+        conn.close()
+    _KARAOKE_TV.pop(b['id'], None)
+    _karaoke_cache_limpar(b['id'])
+    return jsonify({'ok': True, 'resultado': res})
+
+
+@pubshow_bp.route('/painel/karaoke/<int:pid>/nao-cantou', methods=['POST'])
+@pubshow_login_required
+def painel_karaoke_nao_cantou(pid):
+    """🎤 04/11/26 (B4): "↩️ Não cantou, devolver" em "Quem cantou hoje". A TV pode marcar que tocou sem ninguém cantar (a
+    internet caiu e o aviso de falha se perdeu). Vale enquanto a linha não entrou em repasse. Só linha paga, e só SQL: a
+    devolução segue pela tela de sempre. Duplo clique não devolve 2 vezes: só age em 'exibido'."""
+    b, erro = _karaoke_dono()
+    if erro:
+        return erro
+    conn = get_pubshow_db()
+    try:
+        palco = _karaoke_palco(conn, b['id'])
+        if not _karaoke_devolver(conn, b['id'], pid, _K.PULADO_NAO_CANTOU, de=('exibido',)):
+            return jsonify({'ok': False, 'erro': 'nao_da'}), 409
+        no_palco = bool(palco and palco['id'] == pid)
+        if no_palco:   # ainda tocando: a TV pula, como no "Não veio"
+            conn.execute('UPDATE pubshow_businesses SET skip_seq = COALESCE(skip_seq,0) + 1 WHERE id=?', (b['id'],))
+        conn.commit()
+    finally:
+        conn.close()
+    if no_palco:
+        _KARAOKE_TV.pop(b['id'], None)
+    _karaoke_cache_limpar(b['id'])
+    return jsonify({'ok': True})
+
+
+@pubshow_bp.route('/admin/pix-devolvido/<int:pid>', methods=['POST'])
+@_admin_required
+def admin_pix_devolvido(pid):
+    """🎤 "Já devolvi" (só linha paga do karaokê, na ponte): uma pessoa devolveu pelo app da Efí e marca aqui. Grava
+    estornado_em, que tira a linha das 3 listas de "a devolver". Não chama API nenhuma. O split sai pelo botão "↩️ Devolver"
+    do saas-admin, que chama a Efí com o clique."""
+    if not _admin_csrf_ok():
+        return redirect('/pubshow/admin')
+    conn = get_pubshow_db()
+    try:
+        conn.execute("UPDATE pubshow_pedidos SET estornado_em=datetime('now') WHERE id=? AND karaoke_pago=1 "
+                     "AND status='recusado' AND pago_em IS NOT NULL AND estornado_em IS NULL "
+                     "AND TRIM(COALESCE(efi_txid,''))<>''", (pid,))
+        conn.commit()
+    finally:
+        conn.close()
+    return redirect('/pubshow/admin')
 
 
 # ── Acervo karaokê curado (pubshow_karaoke_acervo.py) → acervo vivo (pubshow_busca_videos) ──────────────────────────
@@ -6861,6 +7534,17 @@ def painel_karaoke():
     if ligar and not aceite:
         return jsonify({'ok': False, 'ligado': _K.ligado(b), 'erro': 'aceite',
                         'msg': 'Pra ligar o karaokê, confirma o aviso do ECAD e do prêmio.'}), 400
+    # 🎤 03/11/26 (V2a): desligar com paga na fila pergunta antes: elas não cantam e o PIX volta (linha 20 da tabela)
+    _kpagas = []
+    if not ligar and _K.pix_bares():
+        _cx = get_pubshow_db()
+        try:
+            _kpagas = [r[0] for r in _cx.execute("SELECT id FROM pubshow_pedidos WHERE business_id=? AND karaoke_pago=1 "
+                                                 "AND status='pendente'", (b['id'],)).fetchall()]
+        finally:
+            _cx.close()
+        if _kpagas and not _sim(d.get('confirmar')):
+            return jsonify({'ok': False, 'ligado': _K.ligado(b), 'confirmar': True, 'pagas': len(_kpagas)})
     try:
         bl = _json.loads(b['tipos_bloqueados'] or '[]')
         bl = bl if isinstance(bl, list) else []
@@ -6868,6 +7552,8 @@ def painel_karaoke():
         bl = []
     conn = get_pubshow_db()
     try:
+        for _kp in _kpagas:
+            _karaoke_devolver(conn, b['id'], _kp, _K.PULADO_FECHOU)
         if ligar:
             antes = b.get('karaoke_yt_antes')
             if not _K.ligado(b) or antes is None:   # ligar de novo, já ligado, não apaga como estava antes
@@ -6875,7 +7561,8 @@ def painel_karaoke():
             quando = (datetime.utcnow() - timedelta(hours=3)).strftime('%Y-%m-%d %H:%M')
             conn.execute('UPDATE pubshow_businesses SET modo_karaoke=1, karaoke_aceite_em=?, tipos_bloqueados=?, '
                          'karaoke_yt_antes=? WHERE id=?',
-                         (f"{quando}|{(b['email'] or '').strip()[:120]}|{_KARAOKE_ACEITE_VERSAO}",
+                         # 🎤 03/11/26 (V2a): o bar da cobrança aceita o texto novo (v2)
+                         (f"{quando}|{(b['email'] or '').strip()[:120]}|{'v2' if _K.pix_permitido(b) else _KARAOKE_ACEITE_VERSAO}",
                           _json.dumps([t for t in bl if t != 'musica_externa']), antes, b['id']))
         else:
             if _K.ligado(b) and b.get('karaoke_yt_antes') == 1 and 'musica_externa' not in bl:
@@ -6907,16 +7594,27 @@ def painel_karaoke_ranking():
     if erro:
         return erro
     conn = get_pubshow_db()
+    _kx = None
     try:
         rank = _karaoke_ranking(conn, b)
         pk = _karaoke_palco(conn, b['id']) if _K.ligado(b) else None
+        if _K.pix_permitido(b):
+            _kx = _karaoke_painel_extra(conn, b, pk)   # 🎤 03/11/26 (V2a): placar, "Quem cantou hoje" e o "Não veio"
     finally:
         conn.close()
-    return jsonify({'ok': True, 'ligado': _K.ligado(b), 'zerado_em': b['karaoke_zerado_em'],
-                    'noite': [{'pid': r['pid'], 'nome': r['nome'], 'musicas': r['musicas']} for r in rank],
-                    'rei': _K.rei(rank),
-                    'palco': ({'pid': pk['id'], 'nome': _K.nome_curto(pk['nome_cliente'] or ''),
-                               'oculto': bool(pk['karaoke_nome_oculto'])} if pk else None)})
+    _resp = {'ok': True, 'ligado': _K.ligado(b), 'zerado_em': b['karaoke_zerado_em'],
+             'noite': [{'pid': r['pid'], 'nome': r['nome'], 'musicas': r['musicas']} for r in rank],
+             'rei': _K.rei(rank),
+             'palco': ({'pid': pk['id'], 'nome': _K.nome_curto(pk['nome_cliente'] or ''),
+                        'oculto': bool(pk['karaoke_nome_oculto'])} if pk else None)}
+    if _kx:
+        if _kx['modo_pago']:   # noite com música paga: nunca um ranking que some música paga (TRILHO_PIX item 7)
+            _resp['noite'], _resp['rei'] = [], None
+        if _resp['palco']:
+            _resp['palco'].update(_kx.pop('palco'))
+        _kx.pop('palco', None)
+        _resp.update(_kx)
+    return jsonify(_resp)
 
 
 @pubshow_bp.route('/painel/karaoke/zerar', methods=['POST'])
@@ -6985,6 +7683,9 @@ def api_pedido_falhou(pedido_id):
             "UPDATE pubshow_pedidos SET karaoke_pulado=2 WHERE id=? AND business_id=? AND karaoke=1 "
             "AND status='exibido' AND COALESCE(karaoke_pulado,0)=0 "
             "AND exibido_at >= datetime('now', '-3 hours', '-2 minutes')", (pedido_id, b['id'])).rowcount == 1
+        if ok:
+            # 🎤 03/11/26 (V2a): vez paga que não carregou: o PIX volta (grátis: 1 comando sem efeito). A marca manda
+            _karaoke_devolver(conn, b['id'], pedido_id, _K.PULADO_FALHOU, de=('exibido',))
         conn.commit()
     finally:
         conn.close()
@@ -7247,7 +7948,8 @@ def painel():
     _7d = _hoje - timedelta(days=6)
     _casa = somar_pagos(conn, b['id'], _hoje, _hoje, 'casa')
     total_hoje = _casa['total']
-    momentos_hoje_n = _casa['n']   # 17/10/26 (decisão 1): "N momentos pagos" = só PIX confirmado, sem gorjeta
+    # 17/10/26 (decisão 1): "N momentos pagos" = só PIX confirmado, sem gorjeta. 🎤 03/11/26 (V2a): karaokê não é momento
+    momentos_hoje_n = _casa['n'] - _karaoke_cantadas_n(conn, b['id'], _hoje, _hoje)
     _gorj = somar_pagos(conn, b['id'], _hoje, _hoje, 'gorjeta')
     gorjeta_hoje   = _gorj['total']
     gorjeta_hoje_n = _gorj['n']
@@ -7261,8 +7963,9 @@ def painel():
     ).fetchall()
     fila = _fila_com_trava(conn, b['id'], fila)   # 25/10/26 (trava do ⚡ furar): as músicas na ordem real da TV
     aguardando_pix = conn.execute(
-        '''SELECT * FROM pubshow_pedidos WHERE business_id=? AND status="aguardando_pix" AND tipo<>"donate_sistema"
-           AND created_at >= datetime('now','-30 minutes')
+        # 🎤 03/11/26 (V2a): o QR aberto do karaokê pago não é assunto do dono (seriam dezenas por noite)
+        f'''SELECT * FROM pubshow_pedidos WHERE business_id=? AND status="aguardando_pix" AND tipo<>"donate_sistema"
+           AND created_at >= datetime('now','-30 minutes'){" AND COALESCE(karaoke_pago,0)=0" if _K.pix_bares() else ""}
            ORDER BY created_at DESC LIMIT 20''',
         (b['id'],)
     ).fetchall()
@@ -7433,6 +8136,8 @@ def painel():
                            b=bd, canais=canais_plano,
                            # 🎤 29/10/26: o card do karaokê só pro bar do piloto (PUBSHOW_KARAOKE_BARES); fora = nada
                            karaoke_ok=(_K.permitido(bd) and 'modo_karaoke' in bd), karaoke_on=_K.ligado(bd),
+                           # 🎤 03/11/26 (V2a): com a env PIX vazia, tudo isto é vazio e o cartão é o de sempre
+                           **_karaoke_painel_flags(bd),
                            estilos_bar=ESTILOS_BAR,   # Lote D C (16/10/26): os 5 botões do Estilo do bar
                            no_ar_txt=_no_ar_txt(bd), yt_txt=_yt_txt(bd),   # 20/10/26: 📺 No ar e o Pedir do YouTube
                            pedidos_hoje=_pedidos_com_hora_local([dict(p) for p in pedidos_hoje]),
@@ -7632,7 +8337,8 @@ def _meu_dinheiro(b, mes=None):
     extrato_simples = []
     for pid, ls in por_pedido.items():
         tipo = (cobs.get(pid) or {}).get('tipo') or ''
-        t = TIPOS_PEDIDO.get(tipo, {})
+        # 🎤 03/11/26 (V2a): a cobrança do karaokê não é "Momento"
+        t = {'emoji': '🎤', 'nome': 'Karaokê'} if tipo == 'karaoke' else TIPOS_PEDIDO.get(tipo, {})
         _n = re.sub(r'^[^\w]+|[^\w!?.)]+$', '', t.get('nome') or '').strip()   # "🍻 Brinde Geral! 🍻" → "Brinde Geral!"
         nome = (_n or ('Gorjeta' if ls[0]['conta'] == 'gorjeta' else 'Momento')) + f' #{pid}'
         cred = [l for l in ls if l['tipo'] == 'credito']
@@ -8123,7 +8829,8 @@ def painel_fila_json():
     fila = conn.execute(
         f'''SELECT id, nome_cliente, tipo, mensagem, valor, created_at, youtube_id, titulo_pedido,
                   pago_em, valor_cobrado, {_SQL_PIX_VOLTA} AS pix_volta{
-                  ', karaoke, karaoke_nome_oculto' if _K.ligado(b) else ''}
+                  ', karaoke, karaoke_nome_oculto' if _K.ligado(b) else ''}{
+                  ', karaoke_pago, karaoke_faltas' if _K.pix_bares() else ''}
            FROM pubshow_pedidos WHERE business_id=? AND status="pendente"
            ORDER BY CASE tipo WHEN "vip" THEN 1 WHEN "flash" THEN 2 ELSE 3 END, created_at ASC, id ASC LIMIT 20''',   # crítico leigo A2: a ordem da TV
         # 🎤 29/10/26: só com o modo karaokê a linha leva as 2 colunas (o "🙈 Esconder nome" da fila); desligado = igual
@@ -8131,9 +8838,9 @@ def painel_fila_json():
     ).fetchall()
     fila = _fila_com_trava(conn, b['id'], fila)   # 25/10/26 (trava do ⚡ furar): as músicas na ordem real da TV
     aguardando = conn.execute(
-        '''SELECT id, nome_cliente, tipo, mensagem, valor, created_at, youtube_id, titulo_pedido
+        f'''SELECT id, nome_cliente, tipo, mensagem, valor, created_at, youtube_id, titulo_pedido
            FROM pubshow_pedidos WHERE business_id=? AND status="aguardando_pix" AND tipo<>"donate_sistema"
-           AND created_at >= datetime('now','-30 minutes')
+           AND created_at >= datetime('now','-30 minutes'){" AND COALESCE(karaoke_pago,0)=0" if _K.pix_bares() else ""}
            ORDER BY created_at DESC LIMIT 20''',
         (b['id'],)
     ).fetchall()
@@ -8144,12 +8851,13 @@ def painel_fila_json():
     _casa = somar_pagos(conn, b['id'], _hoje, _hoje, 'casa')
     pedidos_hoje = _casa['total']
     gorjeta_hoje = somar_pagos(conn, b['id'], _hoje, _hoje, 'gorjeta')['total']
+    _kara_n = _karaoke_cantadas_n(conn, b['id'], _hoje, _hoje)   # 🎤 03/11/26 (V2a): karaokê não é momento
     conn.close()
     return jsonify({
         'fila': [dict(r) for r in fila],
         'aguardando_pix': [dict(r) for r in aguardando],
         'total_hoje': float(pedidos_hoje),
-        'momentos_hoje_n': int(_casa['n']),   # 17/10/26 (decisão 1): "N momentos pagos" ao vivo
+        'momentos_hoje_n': int(_casa['n']) - _kara_n,   # 17/10/26 (decisão 1): "N momentos pagos" ao vivo
         'gorjeta_hoje': float(gorjeta_hoje),
         'aguardando_ok': int(aguardando_ok_n),
         'fila_count': len(fila),
@@ -9128,6 +9836,13 @@ def _tirar_da_fila(conn, bid, pid=None, de='pendente', resto='dispensado', motiv
     if pid is not None:
         filtro += ' AND id=?'
         params.append(int(pid))
+    _kvolta = []
+    if _K.pix_bares():
+        # 🎤 03/11/26 (V2a): a linha paga do karaokê, nos 2 trilhos (no split o _SQL_PIX_VOLTA não a vê): recusado com o
+        # código, valor=0 e a devolução esperando uma pessoa. Já em repasse: fica como está (o bar já recebeu)
+        _kcod = _K.PULADO_TIRADO if de == 'pendente' else _K.PULADO_PULAR
+        _kvolta = [r[0] for r in conn.execute(f'SELECT id FROM pubshow_pedidos WHERE {filtro} AND karaoke_pago=1', params).fetchall()
+                   if _karaoke_devolver(conn, bid, r[0], _kcod, de=(de,))]
     cand = [r[0] for r in conn.execute(f'SELECT id FROM pubshow_pedidos WHERE {filtro} AND {_SQL_PIX_VOLTA}', params)]
     volta = [i for i in cand if conn.execute(
         f"UPDATE pubshow_pedidos SET status='recusado' WHERE id=? AND status=? AND {_SQL_PIX_VOLTA}", (i, de)).rowcount]
@@ -9142,7 +9857,7 @@ def _tirar_da_fila(conn, bid, pid=None, de='pendente', resto='dispensado', motiv
                         'chave do bar), já entrou num repasse ou o banco não confirma o pagamento → %s, como antes',
                         bid, fora, motivo, resto)
         conn.execute(f'UPDATE pubshow_pedidos SET status=? WHERE {filtro}', [resto, *params])
-    return volta
+    return volta + _kvolta
 
 
 _PULAR_FOLGA_SEG = 10   # o ⚡ abre com a "Entrada de estrela" (4 s) e o YouTube leva uns segundos pra carregar
@@ -9184,8 +9899,11 @@ def _pago_tocando(conn, bid):
     (youtube_id), ainda 'exibido', pago com _SQL_PIX_VOLTA e se a música dele ainda não acabou (exibido_at + duração
     conhecida + folga; sem duração conhecida, _PULAR_SEM_DUR_SEG). O último é momento (cena), grátis, split,
     chave do bar, ou a música já acabou: None (pula direto, como antes)."""
+    # 🎤 03/11/26 (V2a): a vez paga do karaokê entra na pergunta nos 2 trilhos (no split o _SQL_PIX_VOLTA não a vê)
+    _volta = (f"({_SQL_PIX_VOLTA} OR (karaoke_pago=1 AND repasse_manual_id IS NULL)) AS volta, karaoke_pago"
+              if _K.pix_bares() else f"{_SQL_PIX_VOLTA} AS volta")
     r = conn.execute(
-        f"SELECT id, status, tipo, youtube_id, titulo_pedido, valor, valor_cobrado, exibido_at, {_SQL_PIX_VOLTA} AS volta "
+        f"SELECT id, status, tipo, youtube_id, titulo_pedido, valor, valor_cobrado, exibido_at, {_volta} "
         "FROM pubshow_pedidos WHERE business_id=? AND exibido_at >= datetime('now','-3 hours',?) "
         "ORDER BY exibido_at DESC, id DESC LIMIT 1",
         (bid, f'-{int(_PULAR_TETO_TV_SEG + PAUSA_MUSICA_MIN * 60)} seconds')).fetchone()
@@ -9202,8 +9920,11 @@ def _pago_tocando(conn, bid):
     idade = (datetime.utcnow() - timedelta(hours=3) - ini).total_seconds()
     if idade > janela:
         return None
-    return {'id': r['id'], 'valor': _brl(r['valor_cobrado'] or r['valor'] or 0), 'titulo': (r['titulo_pedido'] or '')[:80],
-            'na_vinheta': r['tipo'] == 'flash' and idade < _PULAR_VINHETA_SEG}
+    _pg = {'id': r['id'], 'valor': _brl(r['valor_cobrado'] or r['valor'] or 0), 'titulo': (r['titulo_pedido'] or '')[:80],
+           'na_vinheta': r['tipo'] == 'flash' and idade < _PULAR_VINHETA_SEG}
+    if 'karaoke_pago' in r.keys() and r['karaoke_pago']:
+        _pg['karaoke'] = True   # 🎤 o painel troca o texto da pergunta
+    return _pg
 
 
 @pubshow_bp.route('/painel/pedido/<int:pid>/dispensar', methods=['POST'])
@@ -9254,7 +9975,7 @@ def painel_pular_musica():
         conn.close()
         if _ajax:
             return jsonify({'ok': False, 'confirmar': True, 'pedido_id': pago['id'], 'valor': pago['valor'],
-                            'titulo': pago['titulo']})
+                            'titulo': pago['titulo'], **({'karaoke': True} if pago.get('karaoke') else {})})
         return redirect('/pubshow/painel')
     if _K.ligado(b):
         # 🎤 29/10/26: no karaokê o Pular também tira a vez do ranking (pago ou grátis): "pulada não conta". Só quem a
@@ -9262,8 +9983,10 @@ def painel_pular_musica():
         try:
             _pk = _karaoke_pulado_alvo(conn, b['id'])
             if _pk:
+                # 🎤 03/11/26 (V2a): na vez paga quem marca é o _karaoke_devolver. Pular depois de a música acabar = cantou
                 conn.execute('UPDATE pubshow_pedidos SET karaoke_pulado=1 WHERE id=? AND business_id=? '
-                             'AND COALESCE(karaoke_pulado,0)=0', (_pk, b['id']))
+                             'AND COALESCE(karaoke_pulado,0)=0' + (' AND COALESCE(karaoke_pago,0)=0' if _K.pix_bares() else ''),
+                             (_pk, b['id']))
         except Exception as ex:
             log.warning('[PUBSHOW] karaokê: Pular não marcou o pedido (bar %s): %s', b['id'], ex)
         _karaoke_cache_limpar(b['id'])
@@ -9761,11 +10484,13 @@ def painel_relatorio():
     # Top tipos pedidos (último mês) — contagem de pedidos; a receita vem da soma única
     # 27/10/26 (D6): as contagens do relatório nunca veem o Donate para o sistema (status 'sistema')
     _rec_tipo = somar_pagos(conn, b['id'], _hoje_d - timedelta(days=29), _hoje_d, 'tudo', por='tipo')
+    # 🎤 03/11/26 (V2a): com a env, o karaokê pago tem linha própria (não é música grátis) e a devolvida não conta
+    _kpx = bool(_K.pix_bares())
     top_tipos = [dict(t, receita=_rec_tipo.get(t['tipo'], {}).get('total', 0.0)) for t in conn.execute(
-        '''SELECT tipo, COUNT(*) n
+        f'''SELECT {"CASE WHEN COALESCE(karaoke_pago,0)=1 THEN 'karaoke' ELSE tipo END AS tipo" if _kpx else "tipo"}, COUNT(*) n
            FROM pubshow_pedidos WHERE business_id=? AND status!="aguardando_pix" AND tipo<>"donate_sistema"
-           AND created_at>=datetime("now", "-30 days")
-           GROUP BY tipo ORDER BY n DESC''', (b['id'],)
+           AND created_at>=datetime("now", "-30 days"){" AND NOT (COALESCE(karaoke_pago,0)=1 AND status='recusado')" if _kpx else ""}
+           GROUP BY {"1" if _kpx else "tipo"} ORDER BY n DESC''', (b['id'],)
     ).fetchall()]
 
     # Músicas mais pedidas (último mês — apenas pagas)
@@ -9819,12 +10544,12 @@ def painel_relatorio():
     total_pedidos_mes = mes_stats['n'] if mes_stats else 0
     ticket_medio = round(_mes['total'] / _mes['n'], 2) if _mes['n'] else 0.0
     # 16/10/26 (C1-12): a conta fecha — momentos pagos, músicas grátis e gorjetas separados
-    momentos_mes = _mes['n']
+    momentos_mes = _mes['n'] - _karaoke_cantadas_n(conn, b['id'], _ini_mes, _hoje_d)   # 🎤 V2a: karaokê não é momento
     gorjetas_mes = somar_pagos(conn, b['id'], _ini_mes, _hoje_d, 'gorjeta')['n']
     _phg = ','.join('?' * len(TIPOS_SEMPRE_GRATIS))
     musicas_mes = conn.execute(
         f'''SELECT COUNT(*) FROM pubshow_pedidos WHERE business_id=? AND tipo IN ({_phg})
-            AND status NOT IN ("aguardando_pix","recusado")
+            AND status NOT IN ("aguardando_pix","recusado"){" AND COALESCE(karaoke_pago,0)=0" if _kpx else ""}
             AND strftime("%Y-%m",datetime(created_at,"-3 hours"))=strftime("%Y-%m",date("now","-3 hours"))''',
         (b['id'], *TIPOS_SEMPRE_GRATIS)).fetchone()[0]
 
@@ -9873,7 +10598,7 @@ def painel_relatorio():
                            por_dia=por_dia,
                            por_hora=por_hora,
                            por_weekday=por_weekday,
-                           tipos=TIPOS_PEDIDO,
+                           tipos=(dict(TIPOS_PEDIDO, karaoke={'emoji': '🎤', 'nome': 'Karaokê'}) if _kpx else TIPOS_PEDIDO),
                            # '%B' saía em inglês no servidor ("October de 2026")
                            mes_atual=f'{_MESES_PT[_hoje.month - 1]} de {_hoje.year}'.capitalize())
 
@@ -10034,8 +10759,9 @@ def admin_dashboard():
     # 16/10/26 (crítico C3): PIX PAGO e recusado pelo gerente = dinheiro do cliente parado na conta do
     # PubShow, fora de toda soma. Lista pra devolver (até ter o estorno automático).
     pix_a_devolver = [dict(r) for r in conn.execute(
-        '''SELECT p.id, p.business_id, b.nome AS bar_nome, p.tipo, p.nome_cliente, p.valor, p.valor_cobrado,
-                  p.pago_em, p.asaas_payment_id, p.efi_txid
+        # 🎤 03/11/26 (V2a): com a env PIX, a linha traz a marca do karaokê (selo, motivo e o "Já devolvi")
+        f'''SELECT p.id, p.business_id, b.nome AS bar_nome, p.tipo, p.nome_cliente, p.valor, p.valor_cobrado,
+                  p.pago_em, p.asaas_payment_id, p.efi_txid{", p.karaoke_pago, p.karaoke_pulado" if _K.pix_bares() else ""}
            FROM pubshow_pedidos p JOIN pubshow_businesses b ON b.id = p.business_id
            WHERE p.status='recusado' AND p.pago_em IS NOT NULL AND p.estornado_em IS NULL
            ORDER BY p.pago_em DESC LIMIT 100''').fetchall()]
@@ -10063,11 +10789,21 @@ def admin_dashboard():
         # já devolvido/devolvendo pela Efí não é "a devolver" (também depois de um rollback pro asaas)
         pix_a_devolver = [p for p in pix_a_devolver if _efi_st.get(p['id']) not in ('devolvendo', 'devolvida')]
         _efi_ped = set(_efi_st)
+        # 🎤 03/11/26 (V2a): linha paga com a devolução NEGADA no saas-admin: o PIX fica como pago, não é "a devolver"
+        if _K.pix_bares() and any(p.get('karaoke_pago') for p in pix_a_devolver):
+            try:
+                _neg = {r[0] for r in conn.execute("SELECT pedido_id FROM pubshow_pay_cobrancas "
+                                                   "WHERE dev_aprovacao LIKE 'negada%'")}
+                pix_a_devolver = [p for p in pix_a_devolver if not (p.get('karaoke_pago') and p['id'] in _neg)]
+            except Exception as ex:
+                log.warning('[PUBSHOW] admin: devoluções negadas não lidas: %s', ex)
     for p in pix_a_devolver:
         p['efi'] = p['id'] in _efi_ped
         # CC3 R3 (16/10/26): o texto do card sai do status REAL da cobrança Efí (não só do gateway)
         if p['efi']:
             p['efi_status'], p['efi_marcado'] = _efi_rows[p['id']][0], bool(_efi_rows[p['id']][1])
+        if p.get('karaoke_pago'):
+            p['karaoke_motivo'] = _K.MOTIVO_PULADO.get(int(p.get('karaoke_pulado') or 0), 'karaokê')
     conn.close()
     # Lote D A3 (16/10/26): pausa de 60 dias (só bar com a Efí ligada) — o admin vê quem está pausado ou perto disso
     # e reativa com 1 botão. No modo Asaas nada disso é lido (o pubshow_pay não é chamado).
@@ -10076,6 +10812,8 @@ def admin_dashboard():
         _b['_pausa'] = _pz if (_pz and (_pz['pausado'] or _pz['aviso'])) else None
     return render_template('pubshow/admin.html',
                            pix_a_devolver=pix_a_devolver,
+                           # 🎤 03/11/26 (V2a): o "Já devolvi" (só existe em linha paga do karaokê)
+                           admin_csrf=(_admin_csrf_token() if any(p.get('karaoke_pago') for p in pix_a_devolver) else ''),
                            efi_robo=_efi_ligado(),   # VCa-05: o robô Efí só roda com PUBSHOW_GATEWAY=efi
                            bars=[dict(b) for b in bars],
                            total_videos=total_videos,
