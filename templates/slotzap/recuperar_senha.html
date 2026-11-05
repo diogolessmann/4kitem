@@ -46,11 +46,7 @@ input:focus{border-color:#6366f1}
   {% if sucesso %}<div class="ok">✅ Senha redefinida! Já pode entrar.</div>{% endif %}
 
   {% if fase == 'redefinir' and not sucesso %}
-    {% if codigo_tela %}
-      <div class="info">Não conseguimos enviar o e-mail. Use este código:<div class="code-tela">{{ codigo_tela }}</div></div>
-    {% else %}
-      <div class="info">📧 Enviamos um código para o seu e-mail. Verifique a caixa de entrada (e o spam).</div>
-    {% endif %}
+    <div class="info">📧 Enviamos um código para o seu e-mail. Verifique a caixa de entrada (e o spam).</div>
     <form method="POST">
       <input type="hidden" name="etapa" value="redefinir">
       <input type="hidden" name="email" value="{{ email_in }}">

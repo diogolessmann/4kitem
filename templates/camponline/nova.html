@@ -45,6 +45,9 @@ input:focus,textarea:focus,select:focus{border-color:#a855f7}
 </nav>
 <div class="container">
   <h1>Novo Campeonato</h1>
+  {% if pausado %}
+  <div class="card"><div class="err" style="margin-bottom:0">A criação de novos campeonatos está pausada no momento. Para organizar um, fale com o suporte no WhatsApp (47) 99776-6831.</div></div>
+  {% else %}
   <div class="sub">Sem mensalidade. A casa fica com {{ (camp_rake*100)|round|int }}% de taxa de serviço; você define a sua fatia.</div>
   <div class="card">
     {% if erro %}<div class="err">{{ erro }}</div>{% endif %}
@@ -127,7 +130,9 @@ input:focus,textarea:focus,select:focus{border-color:#a855f7}
       <button type="submit" class="btn-submit">🚀 Criar campeonato</button>
     </form>
   </div>
+  {% endif %}
 </div>
+{% if not pausado %}
 <script>
 async function uploadImg(input){
   const f=input.files[0]; if(!f) return;
@@ -179,5 +184,6 @@ function modoMudou(){
 }
 modoMudou(); calc();
 </script>
+{% endif %}
 </body>
 </html>

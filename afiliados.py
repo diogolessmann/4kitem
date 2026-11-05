@@ -34,8 +34,9 @@ APPS = {
     'defesapro':   {'nome': 'DefesaPro',             'comissao': 50.00, 'unidade': 'por mês',    'url': '/defesapro',         'desc': 'Gestão de defesas de multas com IA',    'icone': '/static/img/defesapro/logo.png', 'oculto': True},
     # 'vetzap' removido do programa em 13/09/26 (produto fora do ar)
     'pcd':         {'nome': 'PCD Fácil',             'comissao': 10.00, 'unidade': 'por compra', 'url': '/pcd',               'desc': 'Isenção de impostos pra PCD',           'icone': '', 'oculto': True},
-    'radar':       {'nome': 'Radar de Licitações TI','comissao': 15.00, 'unidade': 'por mês',    'url': '/radar/',            'desc': 'Licitações de TI filtradas por IA',     'icone': '/static/img/radar/logo.webp'},
-    'licita_norte':{'nome': 'Radar Licita Norte',   'comissao': 10.00, 'unidade': 'por mês',    'url': '/licita-norte/',     'desc': 'Licitações do Norte de SC',             'icone': '/static/img/licita/logo.webp'},
+    # 05/11/26: Radar TI e Licita Norte saíram do ar em 03/09: 'oculto' tira da vitrine e mantém o histórico de comissão.
+    'radar':       {'nome': 'Radar de Licitações TI','comissao': 15.00, 'unidade': 'por mês',    'url': '/radar/',            'desc': 'Licitações de TI filtradas por IA',     'icone': '/static/img/radar/logo.webp', 'oculto': True},
+    'licita_norte':{'nome': 'Radar Licita Norte',   'comissao': 10.00, 'unidade': 'por mês',    'url': '/licita-norte/',     'desc': 'Licitações do Norte de SC',             'icone': '/static/img/licita/logo.webp', 'oculto': True},
     'mandaja':     {'nome': 'MandaJá',               'comissao': 10.00, 'unidade': 'por mês',    'url': '/mandaja',           'desc': 'Delivery sem comissão com PIX',         'icone': '/static/img/mandaja/logo.png'},
     'mandajr':     {'nome': 'MandaJr',               'comissao': 7.00,  'unidade': 'por mês',    'url': '/mandajr',           'desc': 'Catálogo no WhatsApp simplificado',     'icone': '/static/img/mandajr/mandajr-icon.webp'},
     # 'pubshow' REMOVIDO do programa (jul/2026): o pubshow.py nunca teve a fiacao de

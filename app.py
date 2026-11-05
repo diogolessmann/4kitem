@@ -2,12 +2,14 @@
 app.py — 4KITEM Plataforma de Soluções Digitais
 """
 import csv
+import hmac
 import io
 import json as _json
 import logging
 import os
 import random
 import re as _re
+import secrets
 import threading
 import time
 import traceback
@@ -18,7 +20,7 @@ from datetime import datetime, timedelta, date
 from functools import wraps
 from flask import (Flask, render_template, redirect, jsonify,
                    request, abort, url_for, session, Response, send_from_directory,
-                   make_response)
+                   make_response, flash)
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
@@ -488,6 +490,76 @@ def _enviar_email(para: str, assunto: str, html: str,
         return r.status_code in (200, 201)
     except Exception:
         return False
+
+
+# ── Recuperação de senha: helper único (SEG5-01 + SEG5-02, 05/11/26) ──────────
+# Vale para Amigo Despachante, DefesaPro, AgendaJá, MandaZap, MandaJá, SlotZap/RifaJá/CAMPonline e VetZap.
+# Contador em memória, sem coluna nova: é 1 worker e zerar no deploy é aceito.
+_REC_MSG_SEM_ENVIO = 'Não conseguimos enviar o código. Fale com o suporte no WhatsApp (47) 99776-6831.'
+_REC_MAX_ERROS = 5          # no 5º erro o código da conta é apagado
+_REC_MAX_PEDIDOS_HORA = 5   # código novo zera os erros: sem este teto, pedir código de novo anularia o limite
+_REC_MAX_CONTAS = 2000      # teto da memória: passou disso, sai a conta mais antiga
+_REC_ESTADO = {}            # (tabela, id da conta) -> [erros, [horários dos pedidos]]
+_REC_LOCK = threading.Lock()
+
+
+def _rec_estado(tabela, conta_id):
+    """Chamar com _REC_LOCK na mão."""
+    chave = (tabela, conta_id)
+    if chave not in _REC_ESTADO and len(_REC_ESTADO) >= _REC_MAX_CONTAS:
+        _REC_ESTADO.pop(next(iter(_REC_ESTADO)))
+    return _REC_ESTADO.setdefault(chave, [0, []])
+
+
+def _rec_novo_codigo(tabela, conta_id):
+    """Código de 6 dígitos e erros zerados. None se a conta já pediu demais nesta hora."""
+    agora = time.time()
+    with _REC_LOCK:
+        estado = _rec_estado(tabela, conta_id)
+        estado[1] = [t for t in estado[1] if agora - t < 3600]
+        if len(estado[1]) >= _REC_MAX_PEDIDOS_HORA:
+            return None
+        estado[1].append(agora)
+        estado[0] = 0
+    return str(secrets.randbelow(900000) + 100000)
+
+
+def _rec_confere(conn, tabela, conta, codigo):
+    """'ok', 'invalido' ou 'expirado'. Recusa código vazio, token vazio ou NULL, validade vazia, inválida ou vencida.
+    No 5º erro apaga o token e a validade da conta. `tabela` vem sempre de texto fixo no código, nunca do pedido."""
+    codigo = (codigo or '').strip()
+    if conta is None or not codigo:
+        return 'invalido'
+    token = str(conta['reset_token'] or '').strip()
+    validade = str(conta['reset_expires'] or '').strip()
+    if not token or not validade:
+        return 'invalido'
+    try:
+        if datetime.fromisoformat(validade) < datetime.now():
+            return 'expirado'
+    except (ValueError, TypeError):
+        return 'invalido'
+    if hmac.compare_digest(codigo.encode('utf-8', 'replace'), token.encode('utf-8', 'replace')):
+        with _REC_LOCK:
+            _REC_ESTADO.pop((tabela, conta['id']), None)
+        return 'ok'
+    with _REC_LOCK:
+        estado = _rec_estado(tabela, conta['id'])
+        estado[0] += 1
+        apagar = estado[0] >= _REC_MAX_ERROS
+        if apagar:
+            estado[0] = 0
+    if apagar:
+        conn.execute(f'UPDATE {tabela} SET reset_token=NULL, reset_expires=NULL WHERE id=?', (conta['id'],))
+        conn.commit()
+        return 'expirado'
+    return 'invalido'
+
+
+def _rec_fone_8(telefone):
+    """Os 8 últimos dígitos, para a busca LIKE. Vazio se tiver menos de 8: nunca vira LIKE '%' nem aceita curinga."""
+    digitos = ''.join(c for c in (telefone or '') if c in '0123456789')
+    return digitos[-8:] if len(digitos) >= 8 else ''
 
 
 def _desp_backup_dest() -> str:
@@ -1737,12 +1809,12 @@ def amigo_desp_entrar():
     if request.method == 'POST':
         phone = (request.form.get('phone') or '').strip()
         senha = request.form.get('senha') or ''
-        phone_clean = phone.replace(' ','').replace('-','').replace('(','').replace(')','').replace('+','')
+        phone_clean = _rec_fone_8(phone)
         conn = get_saas_db()
         u = conn.execute(
             "SELECT * FROM despachante_users WHERE REPLACE(REPLACE(REPLACE(REPLACE(phone,' ',''),'-',''),'(',''),')','') LIKE ? AND active=1",
-            (f'%{phone_clean[-8:]}',)
-        ).fetchone()
+            (f'%{phone_clean}',)
+        ).fetchone() if phone_clean else None
         conn.close()
         if not u:
             erro = 'Telefone não encontrado ou conta inativa.'
@@ -1782,21 +1854,22 @@ def amigo_desp_sair():
 @app.route('/amigo-despachante/esqueci-senha', methods=['GET', 'POST'])
 def amigo_desp_esqueci_senha():
     enviado = False
-    codigo_tela = None
     erro = None
     if request.method == 'POST':
         phone_raw = request.form.get('phone', '').strip()
-        phone_clean = phone_raw.replace(' ','').replace('-','').replace('(','').replace(')','').replace('+','')
+        phone_clean = _rec_fone_8(phone_raw)
         conn = get_saas_db()
         u = conn.execute(
             "SELECT * FROM despachante_users WHERE REPLACE(REPLACE(REPLACE(REPLACE(phone,' ',''),'-',''),'(',''),')','') LIKE ?",
-            (f'%{phone_clean[-8:]}',)
-        ).fetchone()
+            (f'%{phone_clean}',)
+        ).fetchone() if phone_clean else None
         if not u:
             erro = 'Número não encontrado.'
             conn.close()
+        elif not (codigo := _rec_novo_codigo('despachante_users', u['id'])):
+            erro = _REC_MSG_SEM_ENVIO
+            conn.close()
         else:
-            codigo = str(random.randint(100000, 999999))
             expires = (datetime.now() + timedelta(hours=2)).isoformat()
             conn.execute('UPDATE despachante_users SET reset_token=?, reset_expires=? WHERE id=?',
                          (codigo, expires, u['id']))
@@ -1815,11 +1888,11 @@ def amigo_desp_esqueci_senha():
                   <p style="color:#666;font-size:13px">Válido por 2 horas.</p>
                 </div>"""
                 ok = _enviar_email(u['email'], 'Código de recuperação — Amigo Despachante', html_email)
-            enviado = True
+            enviado = ok
             if not ok:
-                codigo_tela = codigo
+                erro = _REC_MSG_SEM_ENVIO
     return render_template('amigo_despachante/esqueci_senha.html',
-                           enviado=enviado, codigo_tela=codigo_tela, erro=erro)
+                           enviado=enviado, erro=erro)
 
 
 @app.route('/amigo-despachante/redefinir-senha', methods=['GET', 'POST'])
@@ -1828,7 +1901,7 @@ def amigo_desp_redefinir_senha():
     erro = None
     if request.method == 'POST':
         phone_raw = request.form.get('phone', '').strip()
-        phone_clean = phone_raw.replace(' ','').replace('-','').replace('(','').replace(')','').replace('+','')
+        phone_clean = _rec_fone_8(phone_raw)
         codigo = request.form.get('codigo', '').strip()
         nova = request.form.get('nova_senha', '')
         if len(nova) < 6:
@@ -1837,12 +1910,13 @@ def amigo_desp_redefinir_senha():
             conn = get_saas_db()
             u = conn.execute(
                 "SELECT * FROM despachante_users WHERE REPLACE(REPLACE(REPLACE(REPLACE(phone,' ',''),'-',''),'(',''),')','') LIKE ?",
-                (f'%{phone_clean[-8:]}',)
-            ).fetchone()
-            if not u or u['reset_token'] != codigo:
+                (f'%{phone_clean}',)
+            ).fetchone() if phone_clean else None
+            rec = _rec_confere(conn, 'despachante_users', u, codigo)
+            if rec == 'invalido':
                 erro = 'Código inválido ou número incorreto.'
                 conn.close()
-            elif u['reset_expires'] and datetime.fromisoformat(u['reset_expires']) < datetime.now():
+            elif rec == 'expirado':
                 erro = 'Código expirado. Solicite um novo.'
                 conn.close()
             else:
@@ -2212,7 +2286,6 @@ def defesa_logout():
 @app.route('/defesapro/esqueci-senha', methods=['GET', 'POST'])
 def defesa_esqueci_senha():
     enviado = False
-    codigo_tela = None
     erro = None
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
@@ -2221,8 +2294,10 @@ def defesa_esqueci_senha():
         if not u:
             erro = 'E-mail não encontrado.'
             conn.close()
+        elif not (codigo := _rec_novo_codigo('defesapro_users', u['id'])):
+            erro = _REC_MSG_SEM_ENVIO
+            conn.close()
         else:
-            codigo = str(random.randint(100000, 999999))
             expires = (datetime.now() + timedelta(hours=2)).isoformat()
             conn.execute('UPDATE defesapro_users SET reset_token=?, reset_expires=? WHERE id=?',
                          (codigo, expires, u['id']))
@@ -2239,11 +2314,11 @@ def defesa_esqueci_senha():
               <p style="color:#666;font-size:13px">Válido por 2 horas. Se não solicitou, ignore este e-mail.</p>
             </div>"""
             ok = _enviar_email(email, 'Código de recuperação — DefesaPro', html_email)
-            enviado = True
+            enviado = ok
             if not ok:
-                codigo_tela = codigo
+                erro = _REC_MSG_SEM_ENVIO
     return render_template('defesapro/esqueci_senha.html',
-                           enviado=enviado, codigo_tela=codigo_tela, erro=erro)
+                           enviado=enviado, erro=erro)
 
 
 @app.route('/defesapro/redefinir-senha', methods=['GET', 'POST'])
@@ -2260,10 +2335,11 @@ def defesa_redefinir_senha():
         else:
             conn = get_saas_db()
             u = conn.execute('SELECT * FROM defesapro_users WHERE LOWER(email)=?', (email,)).fetchone()
-            if not u or u['reset_token'] != codigo:
+            rec = _rec_confere(conn, 'defesapro_users', u, codigo)
+            if rec == 'invalido':
                 erro = 'Código inválido ou expirado.'
                 conn.close()
-            elif u['reset_expires'] and datetime.fromisoformat(u['reset_expires']) < datetime.now():
+            elif rec == 'expirado':
                 erro = 'Código expirado. Solicite um novo.'
                 conn.close()
             else:
@@ -4180,7 +4256,6 @@ def agenda_sair():
 @app.route('/agenda/esqueci-senha', methods=['GET', 'POST'])
 def agenda_esqueci_senha():
     enviado = False
-    codigo_tela = None
     erro = None
     if request.method == 'POST':
         phone_raw = request.form.get('phone', '').strip()
@@ -4189,12 +4264,14 @@ def agenda_esqueci_senha():
         biz = conn.execute(
             "SELECT * FROM agenda_businesses WHERE replace(replace(replace(replace(replace(phone,'(',''),')',''),'-',''),' ',''),'+','') = ?",
             (phone_digits,)
-        ).fetchone()
+        ).fetchone() if len(phone_digits) >= 8 else None
         if not biz:
             erro = 'Número não encontrado. Verifique o WhatsApp cadastrado.'
             conn.close()
+        elif not (codigo := _rec_novo_codigo('agenda_businesses', biz['id'])):
+            erro = _REC_MSG_SEM_ENVIO
+            conn.close()
         else:
-            codigo = str(random.randint(100000, 999999))
             expires = (datetime.now() + timedelta(hours=2)).isoformat()
             conn.execute('UPDATE agenda_businesses SET reset_token=?, reset_expires=? WHERE id=?',
                          (codigo, expires, biz['id']))
@@ -4213,11 +4290,11 @@ def agenda_esqueci_senha():
                   <p style="color:#666;font-size:13px">Válido por 2 horas.</p>
                 </div>"""
                 ok = _enviar_email(biz['email'], 'Código de recuperação — AgendaJá', html_email)
-            enviado = True
+            enviado = ok
             if not ok:
-                codigo_tela = codigo
+                erro = _REC_MSG_SEM_ENVIO
     return render_template('agenda/esqueci_senha.html',
-                           enviado=enviado, codigo_tela=codigo_tela, erro=erro)
+                           enviado=enviado, erro=erro)
 
 
 @app.route('/agenda/redefinir-senha', methods=['GET', 'POST'])
@@ -4236,11 +4313,12 @@ def agenda_redefinir_senha():
             biz = conn.execute(
                 "SELECT * FROM agenda_businesses WHERE replace(replace(replace(replace(replace(phone,'(',''),')',''),'-',''),' ',''),'+','') = ?",
                 (phone_digits,)
-            ).fetchone()
-            if not biz or biz['reset_token'] != codigo:
+            ).fetchone() if len(phone_digits) >= 8 else None
+            rec = _rec_confere(conn, 'agenda_businesses', biz, codigo)
+            if rec == 'invalido':
                 erro = 'Código inválido. Verifique o número e o código.'
                 conn.close()
-            elif biz['reset_expires'] and datetime.fromisoformat(biz['reset_expires']) < datetime.now():
+            elif rec == 'expirado':
                 erro = 'Código expirado. Solicite um novo.'
                 conn.close()
             else:
@@ -8348,7 +8426,6 @@ def mandazap_sair():
 @app.route('/mandazap/esqueci-senha', methods=['GET', 'POST'])
 def mandazap_esqueci_senha():
     enviado = False
-    codigo_tela = None
     erro = None
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
@@ -8357,8 +8434,10 @@ def mandazap_esqueci_senha():
         if not u:
             erro = 'E-mail não encontrado.'
             conn.close()
+        elif not (codigo := _rec_novo_codigo('mandazap_users', u['id'])):
+            erro = _REC_MSG_SEM_ENVIO
+            conn.close()
         else:
-            codigo = str(random.randint(100000, 999999))
             expires = (datetime.now() + timedelta(hours=2)).isoformat()
             conn.execute('UPDATE mandazap_users SET reset_token=?, reset_expires=? WHERE id=?',
                          (codigo, expires, u['id']))
@@ -8375,11 +8454,11 @@ def mandazap_esqueci_senha():
               <p style="color:#666;font-size:13px">Válido por 2 horas.</p>
             </div>"""
             ok = _enviar_email(email, 'Código de recuperação — MandaZap', html_email)
-            enviado = True
+            enviado = ok
             if not ok:
-                codigo_tela = codigo
+                erro = _REC_MSG_SEM_ENVIO
     return render_template('mandazap/esqueci_senha.html',
-                           enviado=enviado, codigo_tela=codigo_tela, erro=erro)
+                           enviado=enviado, erro=erro)
 
 
 @app.route('/mandazap/redefinir-senha', methods=['GET', 'POST'])
@@ -8395,10 +8474,11 @@ def mandazap_redefinir_senha():
         else:
             conn = get_saas_db()
             u = conn.execute('SELECT * FROM mandazap_users WHERE email=?', (email,)).fetchone()
-            if not u or u['reset_token'] != codigo:
+            rec = _rec_confere(conn, 'mandazap_users', u, codigo)
+            if rec == 'invalido':
                 erro = 'Código inválido ou e-mail incorreto.'
                 conn.close()
-            elif u['reset_expires'] and datetime.fromisoformat(u['reset_expires']) < datetime.now():
+            elif rec == 'expirado':
                 erro = 'Código expirado. Solicite um novo.'
                 conn.close()
             else:
@@ -14510,7 +14590,6 @@ def mandaja_logout():
 @app.route('/mandaja/esqueci-senha', methods=['GET', 'POST'])
 def mandaja_esqueci_senha():
     enviado = False
-    codigo_tela = None
     erro = None
     if request.method == 'POST':
         ident = request.form.get('email', '').strip().lower()
@@ -14526,9 +14605,11 @@ def mandaja_esqueci_senha():
         if not store:
             erro = 'E-mail ou WhatsApp não encontrado.'
             conn.close()
+        elif not (codigo := _rec_novo_codigo('mandaja_stores', store['id'])):
+            erro = _REC_MSG_SEM_ENVIO
+            conn.close()
         else:
             store = dict(store)
-            codigo = str(random.randint(100000, 999999))
             expires = (datetime.now() + timedelta(hours=2)).isoformat()
             conn.execute('UPDATE mandaja_stores SET reset_token=?, reset_expires=? WHERE id=?',
                          (codigo, expires, store['id']))
@@ -14556,11 +14637,11 @@ def mandaja_esqueci_senha():
                        f"Válido por 2 horas. Se não foi você, ignore.")
                 ok = _agenda_send_whatsapp(store['phone'], msg,
                                            os.environ.get('MANDAJA_EVO_INSTANCE', ''))
-            enviado = True
+            enviado = ok
             if not ok:
-                codigo_tela = codigo   # fallback: mostra na tela
+                erro = _REC_MSG_SEM_ENVIO
     return render_template('mandaja/esqueci_senha.html',
-                           enviado=enviado, codigo_tela=codigo_tela, erro=erro)
+                           enviado=enviado, erro=erro)
 
 
 @app.route('/mandaja/redefinir-senha', methods=['GET', 'POST'])
@@ -14583,10 +14664,11 @@ def mandaja_redefinir_senha():
                     store = conn.execute(
                         "SELECT * FROM mandaja_stores WHERE replace(replace(replace(replace(replace(phone,'(',''),')',''),'-',''),' ',''),'+','') = ?",
                         (d,)).fetchone()
-            if not store or store['reset_token'] != codigo:
+            rec = _rec_confere(conn, 'mandaja_stores', store, codigo)
+            if rec == 'invalido':
                 erro = 'Código inválido ou e-mail/WhatsApp incorreto.'
                 conn.close()
-            elif store['reset_expires'] and datetime.fromisoformat(store['reset_expires']) < datetime.now():
+            elif rec == 'expirado':
                 erro = 'Código expirado. Solicite um novo.'
                 conn.close()
             else:
@@ -15496,6 +15578,9 @@ def mandaja_aguardando():
 try:
     from petmed import petmed_bp
     from petmed_db import init_petmed_db
+    import petmed as _petmed_mod   # o blueprint não pode importar app.py: recebe daqui o helper único da recuperação
+    _petmed_mod._rec_novo_codigo, _petmed_mod._rec_confere = _rec_novo_codigo, _rec_confere
+    _petmed_mod._REC_MSG_SEM_ENVIO = _REC_MSG_SEM_ENVIO
     app.register_blueprint(petmed_bp)
     log.info('[PETmed] Blueprint registrado em /petmed')
 except Exception as _pm_err:
@@ -15733,7 +15818,7 @@ def _sz_login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if not session.get('sz_user_id'):
-            base = '/rifaja' if request.path.startswith('/rifaja') else '/slotzap'
+            base = '/rifaja' if request.path.startswith('/rifaja') else ('/camponline' if request.path.startswith('/camponline') else '/slotzap')
             return redirect(f'{base}/entrar')
         return f(*args, **kwargs)
     return decorated
@@ -15967,7 +16052,6 @@ def slotzap_recuperar_senha():
     fase        = 'pedir'
     erro        = None
     sucesso     = False
-    codigo_tela = None
     email_in    = ''
     if request.method == 'POST':
         etapa    = request.form.get('etapa', 'pedir')
@@ -15978,8 +16062,10 @@ def slotzap_recuperar_senha():
             if not u:
                 erro = 'E-mail não encontrado.'
                 conn.close()
+            elif not (codigo := _rec_novo_codigo('slotzap_users', u['id'])):
+                erro = _REC_MSG_SEM_ENVIO
+                conn.close()
             else:
-                codigo  = str(random.randint(100000, 999999))
                 expires = (datetime.now() + timedelta(hours=2)).isoformat()
                 conn.execute('UPDATE slotzap_users SET reset_token=?, reset_expires=? WHERE id=?',
                              (codigo, expires, u['id']))
@@ -15995,9 +16081,10 @@ def slotzap_recuperar_senha():
                   <p style="color:#666;font-size:13px">Válido por 2 horas.</p>
                 </div>"""
                 ok = _enviar_email(u['email'], 'Código de recuperação — SlotZap', html_email)
-                fase = 'redefinir'
-                if not ok:
-                    codigo_tela = codigo
+                if ok:
+                    fase = 'redefinir'
+                else:
+                    erro = _REC_MSG_SEM_ENVIO
         else:  # redefinir
             codigo = (request.form.get('codigo') or '').strip()
             nova   = request.form.get('nova_senha') or ''
@@ -16007,10 +16094,11 @@ def slotzap_recuperar_senha():
             else:
                 conn = get_saas_db()
                 u = conn.execute('SELECT * FROM slotzap_users WHERE email=?', (email_in,)).fetchone()
-                if not u or (u['reset_token'] or '') != codigo:
+                rec = _rec_confere(conn, 'slotzap_users', u, codigo)
+                if rec == 'invalido':
                     erro = 'Código inválido ou e-mail incorreto.'
                     conn.close()
-                elif u['reset_expires'] and datetime.fromisoformat(u['reset_expires']) < datetime.now():
+                elif rec == 'expirado':
                     erro = 'Código expirado. Solicite um novo.'
                     conn.close()
                 else:
@@ -16021,7 +16109,7 @@ def slotzap_recuperar_senha():
                     fase    = 'pedir'
     return render_template('slotzap/recuperar_senha.html',
                            fase=fase, erro=erro, sucesso=sucesso,
-                           codigo_tela=codigo_tela, email_in=email_in)
+                           email_in=email_in)
 
 
 @app.route('/slotzap/app')
@@ -16154,9 +16242,12 @@ def slotzap_nova(brand='slotzap'):
 @_sz_login_required
 def camponline_nova():
     """Cria um TORNEIO (tipo='torneio', gateway Efí) reusando o motor das rifas.
-    Organizador cria DE GRAÇA — a casa ganha no rake (15%), não em mensalidade →
-    por isso NÃO exige plano ativo (diferente de slotzap_nova). Cada 'slot' = uma vaga
-    de jogador; quando paga, vira inscrito. Jaya/rifas intocadas (tipo default 'rifa')."""
+    05/11/26 (DIN2-01): só conta com plano ativo cria; a conta grátis tirava prêmio sem pagar.
+    Sem plano vê "pausado", e NÃO vai para /slotzap/assinar: hoje o pagamento não ativa o plano (DIN2-02).
+    Cada 'slot' = uma vaga de jogador; quando paga, vira inscrito. Jaya/rifas intocadas (tipo default 'rifa')."""
+    if not _sz_plan_active():
+        return render_template('camponline/nova.html', pausado=True, erro=None,
+                               camp_rake=CAMP_RAKE, camp_gw_taxa=CAMP_GW_TAXA), (403 if request.method == 'POST' else 200)
     erro = None
     if request.method == 'POST':
         nome    = request.form.get('nome', '').strip()

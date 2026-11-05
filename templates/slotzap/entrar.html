@@ -51,9 +51,11 @@ input:focus{border-color:#6366f1}
   <div style="text-align:center;margin-top:14px;font-size:13px">
     <a href="/slotzap/recuperar-senha" style="color:#8888aa;text-decoration:none">Esqueci minha senha</a>
   </div>
+  {% if brand != 'camponline' %}
   <div style="text-align:center;margin-top:10px;font-size:13px;color:#8888aa">
     Ainda não tem conta? <a href="{{ '/rifaja' if brand == 'rifaja' else '/slotzap/planos' }}" style="color:#a5b4fc;text-decoration:none;font-weight:600">{{ 'Conhecer a RifaJá' if brand == 'rifaja' else 'Ver planos' }}</a>
   </div>
+  {% endif %}
 </div>
 </body>
 </html>

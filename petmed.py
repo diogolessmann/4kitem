@@ -5,7 +5,6 @@ Triagem veterinária inteligente 24/7
 import json
 import logging
 import os
-import random
 import re
 import requests as _requests
 from datetime import datetime, timedelta
@@ -1167,7 +1166,6 @@ def esqueci_senha():
     """Gera código de 6 dígitos para redefinição de senha."""
     if session.get('pm_user_id'):
         return redirect('/vetzap/dashboard')
-    codigo_gerado = None
     erro = ''
     msg = ''
     if request.method == 'POST':
@@ -1179,14 +1177,15 @@ def esqueci_senha():
             u = conn.execute(
                 'SELECT id FROM petmed_users WHERE email=?', (email,)
             ).fetchone()
-            if u:
-                codigo = ''.join(random.choices('0123456789', k=6))
+            if u and not (codigo := _rec_novo_codigo('petmed_users', u['id'])):
+                erro = _REC_MSG_SEM_ENVIO
+            elif u:
                 conn.execute(
                     '''UPDATE petmed_users
                        SET reset_token=?,
-                           reset_expires=datetime("now","+30 minutes")
+                           reset_expires=?
                        WHERE id=?''',
-                    (codigo, u['id'])
+                    (codigo, (datetime.now() + timedelta(minutes=30)).isoformat(), u['id'])
                 )
                 conn.commit()
                 # Tenta enviar por e-mail
@@ -1196,13 +1195,12 @@ def esqueci_senha():
                     html=_email_recuperacao(codigo)
                 )
                 if not email_ok:
-                    # Fallback: exibe o código na tela (sem e-mail configurado)
-                    codigo_gerado = codigo
+                    erro = _REC_MSG_SEM_ENVIO
             conn.close()
-            if not codigo_gerado:
+            if not erro:
                 msg = 'Código enviado para seu e-mail. Verifique a caixa de entrada (e o spam).'
     return render_template('petmed/esqueci-senha.html',
-                           erro=erro, msg=msg, codigo_gerado=codigo_gerado)
+                           erro=erro, msg=msg)
 
 
 @petmed_bp.route('/redefinir-senha', methods=['GET', 'POST'])
@@ -1226,12 +1224,10 @@ def redefinir_senha():
         else:
             conn = get_petmed_db()
             u = conn.execute(
-                '''SELECT id FROM petmed_users
-                   WHERE email=? AND reset_token=?
-                   AND reset_expires > datetime("now")''',
-                (email, codigo)
+                'SELECT id, reset_token, reset_expires FROM petmed_users WHERE email=?',
+                (email,)
             ).fetchone()
-            if u:
+            if _rec_confere(conn, 'petmed_users', u, codigo) == 'ok':
                 conn.execute(
                     '''UPDATE petmed_users
                        SET password_hash=?, reset_token=NULL, reset_expires=NULL

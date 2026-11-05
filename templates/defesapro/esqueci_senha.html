@@ -45,19 +45,10 @@
     </div>
 
     {% if enviado %}
-      {% if codigo_tela %}
-        <h2>🔑 Seu código</h2>
-        <p class="sub">Use o código abaixo para redefinir sua senha.</p>
-        <div class="code-box">
-          <div class="code-val">{{ codigo_tela }}</div>
-          <div class="code-label">Válido por 2 horas</div>
-        </div>
-      {% else %}
-        <div class="sucesso">
-          📬 <strong>E-mail enviado!</strong><br>
-          Verifique sua caixa de entrada e siga as instruções para redefinir sua senha.
-        </div>
-      {% endif %}
+      <div class="sucesso">
+        📬 <strong>E-mail enviado!</strong><br>
+        Verifique sua caixa de entrada e siga as instruções para redefinir sua senha.
+      </div>
       <a href="/defesapro/redefinir-senha" class="btn" style="display:block;text-align:center;text-decoration:none;padding:12px">
         Inserir código →
       </a>

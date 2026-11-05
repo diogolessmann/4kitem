@@ -15,30 +15,7 @@
   <div class="alert alert-error">{{ erro }}</div>
   {% endif %}
 
-  {% if codigo_gerado %}
-  <!-- Fallback: e-mail não configurado ainda — exibe código na tela -->
-  <div style="background:#fff3cd;border:2px solid #fde68a;border-radius:14px;padding:16px;text-align:center;margin-bottom:12px">
-    <div style="font-size:12px;color:#92400e;font-weight:600;margin-bottom:4px">
-      ⚠️ Modo de desenvolvimento — código exibido na tela
-    </div>
-  </div>
-  <div style="background:#f0fdf4;border:2px solid #22c55e;border-radius:14px;padding:24px;text-align:center;margin-bottom:20px">
-    <div style="font-size:13px;color:#166534;font-weight:600;margin-bottom:10px">
-      ✅ Seu código de recuperação
-    </div>
-    <div style="font-size:44px;font-weight:900;letter-spacing:10px;color:#15803d;margin:10px 0">
-      {{ codigo_gerado }}
-    </div>
-    <div style="font-size:12px;color:#166534;margin-top:8px">
-      ⏱️ Válido por 30 minutos — anote este código!
-    </div>
-  </div>
-  <a href="/vetzap/redefinir-senha"
-     style="display:block;text-align:center;background:var(--teal);color:#fff;padding:14px;border-radius:10px;font-weight:700;font-size:15px;text-decoration:none">
-    Usar código para redefinir senha →
-  </a>
-
-  {% elif msg %}
+  {% if msg %}
   <!-- E-mail enviado com sucesso -->
   <div style="background:#f0fdf4;border:2px solid #22c55e;border-radius:14px;padding:24px;text-align:center;margin-bottom:20px">
     <div style="font-size:36px;margin-bottom:10px">📬</div>

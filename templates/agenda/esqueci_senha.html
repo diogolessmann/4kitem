@@ -33,15 +33,7 @@
   <div class="subtitle">Recuperação de senha</div>
 
   {% if enviado %}
-    {% if codigo_tela %}
-      <div class="code-box">
-        <div style="font-size:13px;color:#9090a8;margin-bottom:10px">Seu código de recuperação:</div>
-        <div class="code-val">{{ codigo_tela }}</div>
-        <div class="code-label">Válido por 2 horas</div>
-      </div>
-    {% else %}
-      <div class="sucesso">📬 <strong>Código enviado!</strong><br>Verifique seu e-mail e use o código para redefinir a senha.</div>
-    {% endif %}
+    <div class="sucesso">📬 <strong>Código enviado!</strong><br>Verifique seu e-mail e use o código para redefinir a senha.</div>
     <a href="/agenda/redefinir-senha" class="btn-submit" style="display:block;text-align:center;text-decoration:none;padding:13px;border-radius:12px">
       Inserir código →
     </a>
