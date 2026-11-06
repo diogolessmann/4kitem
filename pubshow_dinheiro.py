@@ -5,6 +5,10 @@ pubshow_dinheiro.py — 💰 Dinheiro do PubShow (F1, 25/10/26): a página /saas
 Pedido do Diogo (24/10/26): "preciso ter certeza do que está acontecendo nos bares, lucros, pagamento reais".
 Plano aprovado: PUBSHOW_15out/ADMIN_DINHEIRO_24out/PLANO.md (a F1 e a parte técnica T1–T6).
 
+A tela simples por bar (06/11/26), com as palavras do Diogo: "eu gostaria de saber por bar, hoje deu X, semana deu XY,
+mes deu XYZ, Ai uma opção pra que eu possa baixar o valor a repassar". A baixa é o POST da tela Repasses
+(pubshow.admin_repasse_registrar), com o formulário aqui: este módulo continua sem gravar.
+
 SÓ LÊ. Nada aqui grava no banco (a conexão abre com PRAGMA query_only=1: qualquer escrita explode), nada mexe em
 pedido, nada devolve, nada saca. No Asaas/Efí só GET, e só pelas funções que o pubshow.py já usa (_asaas_saldo,
 _asaas_req('GET', ...), a consulta da cobrança da Efí). Nenhum POST/PUT/DELETE que mude algo: o único POST é o
@@ -26,6 +30,8 @@ Identidade (o teste confere): C + S + M + Xp do mês = somar_pagos(conn, bar, de
 
 Fuso: o banco grava UTC; Brasília = UTC−3 fixo (como o resto do código). "Esta noite" começa às 12:00 de Brasília
 (antes do meio-dia, a noite ainda é a que começou ontem às 12:00): às 00:30 a tela não zera.
+A "semana" começa na segunda às 12:00 de Brasília: a noite de domingo termina na segunda de madrugada e é da semana que
+o Diogo paga na segunda. Segunda às 9h ainda mostra a semana inteira; às 12h vira.
 """
 import os
 import re
@@ -65,6 +71,8 @@ HORAS_DEVOLUCAO = 24            # devolução parada há mais que isso = aviso v
 TV_LIGADA_MIN = 5               # o mesmo _TV_SEM_SINAL_MIN do painel do bar (pubshow.py:4247)
 MAX_AVISOS_VISIVEIS = 3
 TEMPLATE = 'pubshow/admin_dinheiro.html'
+# A baixa grava o valor mostrado; PIX que entrou depois fica no cartão. O "zerou" da tela Repasses aqui podia ser falso
+MSG_BAIXA_OK = ('ok', '✅ Baixa registrada. Se sobrou valor no cartão, é de PIX que entrou depois.')
 
 _BRT = timedelta(hours=-3)
 _FMT = '%Y-%m-%d %H:%M:%S'
@@ -209,18 +217,21 @@ def _fone_chave(tel):
 
 
 def limites(agora):
-    """As fronteiras de tempo (UTC) da tela: começo da noite (12:00 de Brasília) e do mês (dia 1, 00:00 de Brasília)."""
+    """As fronteiras de tempo (UTC) da tela: começo da noite (12:00 de Brasília), da semana (segunda 12:00 de Brasília)
+    e do mês (dia 1, 00:00 de Brasília)."""
     ab = agora + _BRT
     meio_dia = datetime(ab.year, ab.month, ab.day, 12)
     if ab < meio_dia:
         meio_dia -= timedelta(days=1)   # antes do meio-dia, a noite ainda é a que começou ontem às 12h
     mes_brt = datetime(ab.year, ab.month, 1)
+    semana_brt = meio_dia - timedelta(days=meio_dia.weekday())
     return {'agora_brt': ab, 'noite_brt': meio_dia, 'noite_ini': meio_dia - _BRT, 'mes_brt': mes_brt,
-            'mes_ini': mes_brt - _BRT, 'mes_de': mes_brt.date(), 'noite_ontem': meio_dia.date() < ab.date()}
+            'mes_ini': mes_brt - _BRT, 'mes_de': mes_brt.date(), 'noite_ontem': meio_dia.date() < ab.date(),
+            'semana_brt': semana_brt, 'semana_ini': semana_brt - _BRT}
 
 
 def _bar_zero():
-    return {'c_n': 0, 'c_cob': 0, 'c_val': 0, 'c_marg': 0, 'noite_n': 0, 'noite_cob': 0,
+    return {'c_n': 0, 'c_cob': 0, 'c_val': 0, 'c_marg': 0, 'noite_n': 0, 'noite_cob': 0, 'sem_cob': 0,
             'x_n': 0, 'x_cob': 0, 'x_bar': 0, 'x_marg': 0,
             's_n': 0, 's_val': 0, 'm_n': 0, 'm_val': 0, 'xp_n': 0, 'xp_val': 0, 'm0_n': 0,
             's_aberto_n': 0, 's_aberto_val': 0, 'dev_mes_n': 0, 'ult_pix': None,
@@ -264,17 +275,19 @@ def calcular(conn, agora):
 
     A, E = _ps._TEM_ASAAS, _ps._TEM_EFI
     st_ph = ','.join('?' * len(STATUS_PAGOS))
-    mes_ini, noite_ini = _txt(L['mes_ini']), _txt(L['noite_ini'])
-    desde = _txt(min(L['mes_ini'], L['noite_ini']))
+    mes_ini, noite_ini, semana_ini = _txt(L['mes_ini']), _txt(L['noite_ini']), _txt(L['semana_ini'])
+    # a semana pode começar no mês anterior: sem ela aqui, a semana que atravessa a virada perderia PIX
+    desde = _txt(min(L['mes_ini'], L['noite_ini'], L['semana_ini']))
     tar_asaas = _c(T['asaas'])
 
     # C: confirmado pelo Asaas/Efí (a regra dos Repasses, com os 4 status de pago)
     w, wp = _ps._repasse_where_pago(STATUS_PAGOS)
     for r in conn.execute(
             f'''SELECT business_id, valor, valor_cobrado, {A} AS eh_asaas,
-                       datetime(pago_em) >= datetime(?) AS no_mes, datetime(pago_em) >= datetime(?) AS na_noite
+                       datetime(pago_em) >= datetime(?) AS no_mes, datetime(pago_em) >= datetime(?) AS na_noite,
+                       datetime(pago_em) >= datetime(?) AS na_semana
                 FROM pubshow_pedidos WHERE {w} AND datetime(pago_em) >= datetime(?)''',
-            [mes_ini, noite_ini] + wp + [desde]).fetchall():
+            [mes_ini, noite_ini, semana_ini] + wp + [desde]).fetchall():
         s = _st(r['business_id'])
         cob = _c(r['valor_cobrado'] if r['valor_cobrado'] is not None else r['valor'])
         val = _c(r['valor'])
@@ -283,6 +296,8 @@ def calcular(conn, agora):
             s['c_n'] += 1; s['c_cob'] += cob; s['c_val'] += val; s['c_marg'] += cob - tarifa - val
         if r['na_noite']:
             s['noite_n'] += 1; s['noite_cob'] += cob
+        if r['na_semana']:
+            s['sem_cob'] += cob
     for r in conn.execute(f'SELECT business_id, MAX(datetime(pago_em)) AS u FROM pubshow_pedidos WHERE {w} '
                           f'GROUP BY business_id', wp).fetchall():
         _st(r['business_id'])['ult_pix'] = r['u']
@@ -296,10 +311,11 @@ def calcular(conn, agora):
         xw, xconv = _x_vale(conn)
         for r in conn.execute(
                 f'''SELECT c.business_id, c.valor_cent, c.bar_cent, {xconv} AS conv,
-                          datetime(c.pago_em) >= datetime(?) AS no_mes, datetime(c.pago_em) >= datetime(?) AS na_noite
+                          datetime(c.pago_em) >= datetime(?) AS no_mes, datetime(c.pago_em) >= datetime(?) AS na_noite,
+                          datetime(c.pago_em) >= datetime(?) AS na_semana
                    FROM pubshow_pay_cobrancas c LEFT JOIN pubshow_pedidos p ON p.id = c.pedido_id
                    WHERE {xw} AND datetime(c.pago_em) >= datetime(?)''',
-                (mes_ini, noite_ini, desde)).fetchall():
+                (mes_ini, noite_ini, semana_ini, desde)).fetchall():
             s = _st(r['business_id'])
             vc = int(r['valor_cent'] or 0)
             if r['no_mes']:
@@ -307,6 +323,8 @@ def calcular(conn, agora):
                 s['x_marg'] += int(r['conv'] or 0) - _pct_cent(vc, T['efi_pct'])
             if r['na_noite']:
                 s['noite_n'] += 1; s['noite_cob'] += vc
+            if r['na_semana']:
+                s['sem_cob'] += vc
         com_cob = {r[0] for r in conn.execute('SELECT pedido_id FROM pubshow_pay_cobrancas').fetchall()}
         for r in conn.execute(f"SELECT c.business_id, MAX(datetime(c.pago_em)) AS u FROM pubshow_pay_cobrancas c "
                               f"LEFT JOIN pubshow_pedidos p ON p.id = c.pedido_id WHERE {xw} "
@@ -1031,6 +1049,20 @@ def montar(conn, agora, leitura=None):
                                   f"{_plural(s_n, 'pago', 'pagos')} sem confirmação do banco · {brl(_r(s_val))}",
                              'Liberados à mão ou de antes da conferência. Confira antes de repassar.',
                              'Conferir agora', '/pubshow/admin/repasses', ordem=70))
+    # 🟠 PIX em conferência fora do aviso de cima (que só conta quem tem pago_em). Sem isto, o cartão dizia ⏳ e o sinal 🟢,
+    # e só abrir a tela Repasses dispara a conferência. A subtração garante: ⏳ em bar real = sinal nunca verde
+    conf_por = {}
+    for x in rep['sem_prova']:
+        if x['pendente_conf']:
+            n, cent = conf_por.get(x['business_id'], (0, 0))
+            conf_por[x['business_id']] = (n + 1, cent + _c(x['valor']))
+    conf_n = sum(max(0, conf_por.get(b['id'], (0, 0))[0] - por[b['id']]['s_aberto_n']) for b in reais)
+    conf_cent = sum(max(0, conf_por.get(b['id'], (0, 0))[1] - por[b['id']]['s_aberto_val']) for b in reais)
+    if conf_n:
+        avisos.append(_aviso('a', f"{conf_n} PIX em conferência · {brl(_r(conf_cent))}",
+                             'Têm status de pago, mas o banco ainda não confirmou: ficam fora do "a repassar". '
+                             'Abrir a tela Repasses dispara a conferência.',
+                             'Abrir Repasses', '/pubshow/admin/repasses', ordem=71))
     # 🟠 Contas com o mesmo telefone (a não ser que o aviso de "conta que vende" já fale delas)
     for f, ids in sorted(mesmo_fone.items()):
         if f in cobertos:
@@ -1046,12 +1078,10 @@ def montar(conn, agora, leitura=None):
             break
     nr = sum(1 for a in avisos if a['nivel'] == 'r')
     na = len(avisos) - nr
-    mais = avisos[MAX_AVISOS_VISIVEIS:]
-    mais_r = sum(1 for a in mais if a['nivel'] == 'r')
-    mais_a = len(mais) - mais_r
-    # o "+N" usa as mesmas palavras do sinal: "urgentes" (🔴) e "avisos" (🟠)
-    mais_txt = ' e '.join(([f"{mais_r} {_plural(mais_r, 'urgente', 'urgentes')}"] if mais_r else [])
-                          + ([f"{mais_a} {_plural(mais_a, 'aviso', 'avisos')}"] if mais_a else []))
+    # 06/11/26, Diogo: "esconder nao". Urgente fica sempre à vista; só 🟠 pode ficar atrás do "+N avisos"
+    vis_n = max(MAX_AVISOS_VISIVEIS, nr)
+    mais = avisos[vis_n:]
+    mais_txt = f"{len(mais)} {_plural(len(mais), 'aviso', 'avisos')}"
 
     # ── sinal ─────────────────────────────────────────────────────────────────────────────────────────────────
     hora_lida = (_parse(leitura['lido_em']) + _BRT).strftime('%H:%M') if leitura and leitura.get('lido_em') else ''
@@ -1075,7 +1105,8 @@ def montar(conn, agora, leitura=None):
     deve_asaas = round(float(rep['total_asaas']) - sum(por[i]['devido_asaas'] for i in teste_ids if i in por), 2)
     deve_efi = round(float(rep['total_efi']) - sum(por[i]['devido_efi'] for i in teste_ids if i in por), 2)
     # 🎤 04/11/26: só mostra; já está dentro do "deve". O bar de teste fica fora, como no total
-    _kara = [k for i, k in _ps._karaoke_no_repasse(conn, agora_utc=agora).items() if i not in teste_ids]
+    kara_por = _ps._karaoke_no_repasse(conn, agora_utc=agora)
+    _kara = [k for i, k in kara_por.items() if i not in teste_ids]
     deve_kara_n = sum(k['n'] for k in _kara)
 
     # ── a devolver (dinheiro de cliente parado na conta do PubShow) ───────────────────────────────────────────
@@ -1164,6 +1195,37 @@ def montar(conn, agora, leitura=None):
             return {'texto': '● ligada agora', 'cor': 'verde'}
         return {'texto': 'última vez ' + _quando(b['tv_visto_em'], agora), 'cor': 'cinza'}
 
+    rep_por = {x['id']: x for x in rep['bares']}
+
+    def _baixa(b):
+        """Os campos do cartão que saem da conta da tela Repasses (_repasses_calcular): o valor a repassar, o que o
+        formulário envia e por que não há botão. Nenhuma regra nova: quem decide o que grava é o _repasse_registrar."""
+        x = rep_por.get(b['id']) or {}
+        dev = x.get('devido') or {}
+        total = float(x.get('devido_total') or 0)
+        # de sem_prova, e não do x: bar sem histórico não entra em rep['bares'] e o cartão diria R$ 0,00 sem explicar
+        conf_n = conf_por.get(b['id'], (0, 0))[0]
+        if conf_n:
+            tipo = 'conferindo'
+        elif rotas[b['id']] == 'split':
+            tipo = 'direto'
+        else:
+            tipo = 'botao' if total > 0 else 'nada'
+        k = kara_por.get(b['id'])
+        u = x.get('ultimo')
+        ate = _parse(u.get('ate_em')) if u else None
+        s = por[b['id']]
+        return {'bar_deve_txt': brl(_r(s['rep_dev_val'])) if s['rep_dev_n'] else '', 'repassar': total, 'repassar_txt': brl(total), 'baixa': tipo, 'ate_id': dev.get('max_id', 0),
+                'total_cent': int(round(total * 100)),
+                'conf_txt': f"⏳ {conf_n} PIX {_plural(conf_n, 'antigo', 'antigos')} em conferência" if conf_n else '',
+                # 04/11/26, Diogo: "assim posso pagar corretamente"
+                'kara_txt': f"{brl(k['valor'])} · {_ps._karaoke_vezes(k['n'])}" if k else '',
+                'gorj_txt': (f"bar {brl(dev['bar'])} + gorjeta {brl(dev['gorj'])}" if float(dev.get('gorj') or 0) > 0
+                             else ''),
+                'ultima_baixa': (f"{(ate + _BRT).strftime('%d/%m')} · "
+                                 f"{brl(round(float(u.get('valor_bar') or 0) + float(u.get('valor_gorjeta') or 0), 2))}"
+                                 if ate else '')}
+
     def _cartao(b):
         s = por[b['id']]
         n = s['c_n'] + s['x_n']
@@ -1173,7 +1235,10 @@ def montar(conn, agora, leitura=None):
         if s['m_n']:
             mes_txt += f" · {s['m_n']} na chave do bar"
         f = _fone(b.get('telefone'))
-        return {'id': b['id'], 'nome': nome[b['id']], 'code': b.get('code') or '', 'rota': _ROTA_TXT[rotas[b['id']]],
+        return {**_baixa(b), 'teste': b['id'] in teste_ids, 'hoje_txt': brl(_r(s['noite_cob'])),
+                'semana_txt': brl(_r(s['sem_cob'])), 'mes_val_txt': brl(_r(s['c_cob'] + s['x_cob'])),
+                'parte_bar_txt': brl(_r(s['c_val'] + s['x_bar'])), 'pix_key': (b.get('pix_key') or '').strip(),
+                'id': b['id'], 'nome': nome[b['id']], 'code': b.get('code') or '', 'rota': _ROTA_TXT[rotas[b['id']]],
                 'mesmo_fone': b['id'] in fone_de, 'mens': mens[b['id']], 'tv': _tv(b),
                 'ult_pix': _quando(s['ult_pix'], agora) if s['ult_pix'] else '—', 'mes_txt': mes_txt,
                 'devido': s['devido'], 'devido_txt': brl(s['devido']),
@@ -1192,10 +1257,12 @@ def montar(conn, agora, leitura=None):
                  'asaas': deve_asaas, 'efi': deve_efi, 'repasses_txt': brl(rep['total_devido']),
                  'karaoke_txt': (f"{brl(round(sum(k['valor'] for k in _kara), 2))} · {_ps._karaoke_vezes(deve_kara_n)}"
                                  if deve_kara_n else '')},
+        'todos': {'hoje_txt': brl(_r(noite_cent)), 'semana_txt': brl(_r(_soma('sem_cob'))),
+                  'mes_txt': brl(mes['clientes']), 'repassar_txt': brl(deve)},
         'a_devolver': {'asaas': _r(dev_asaas), 'efi': _r(dev_efi)},
         'ja_devolvido_efi': [x['id'] for x in ja_devolvido],
-        'sinal': sinal, 'avisos': avisos, 'avisos_vis': avisos[:MAX_AVISOS_VISIVEIS],
-        'avisos_mais': mais, 'mais_txt': mais_txt, 'mais_r': mais_r, 'n_vermelhos': nr, 'n_laranjas': na,
+        'sinal': sinal, 'avisos': avisos, 'avisos_vis': avisos[:vis_n],
+        'avisos_mais': mais, 'mais_txt': mais_txt, 'n_vermelhos': nr, 'n_laranjas': na,
         'linhas': linhas, 'linhas_falha': linhas_falha, 'lido': bool(leitura), 'completo': bool(leitura and leitura.get('completo')),
         'mes': mes, 'contas': contas, 'teste': teste, 'perdidos': perdidos,
         'tarifas': {'asaas': T['asaas'], 'asaas_txt': brl(T['asaas']),
@@ -1216,14 +1283,17 @@ def _sem_cache(resp):
 
 def pagina():
     """GET /saas-admin/pubshow: a página abre só com o banco (o sinal fica ⏳, nunca verde) e o JS busca a leitura."""
-    from flask import make_response, render_template
+    from flask import make_response, render_template, request
     agora = agora_utc()
     conn = _conn()
     try:
         d = montar(conn, agora, None)
     finally:
         conn.close()
-    return _sem_cache(make_response(render_template(TEMPLATE, d=d)))
+    codigo = request.args.get('msg', '')
+    d['msg'] = MSG_BAIXA_OK if codigo == 'ok' else _ps._REPASSE_MSGS.get(codigo)
+    # o csrf grava na sessão: só aqui. O leitura_json não pode (os formulários não vão nele)
+    return _sem_cache(make_response(render_template(TEMPLATE, d=d, csrf=_ps._admin_csrf_token())))
 
 
 def leitura_json(de_novo=False):
@@ -1239,7 +1309,7 @@ def leitura_json(de_novo=False):
         d = montar(conn, agora, leitura)
     finally:
         conn.close()
-    html = render_template(TEMPLATE, d=d)
+    html = render_template(TEMPLATE, d=d, csrf='')
     return _sem_cache(jsonify({
         'ok': True, 'pronto': True, 'sinal': d['sinal']['cor'], 'completo': bool(leitura.get('completo')),
         'configurado': bool(leitura.get('configurado')) and leitura.get('motivo') != 'sem_chave',

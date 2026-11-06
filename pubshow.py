@@ -11333,12 +11333,17 @@ def admin_repasses():
 def admin_repasse_registrar(bid):
     if not _admin_csrf_ok():
         return 'Sessão expirada — volte e recarregue a tela de repasses.', 403
+    # 06/11/26: a tela simples do dinheiro dá baixa por aqui e volta pra ela. Só o valor exato: nunca URL do formulário
+    para_dinheiro = request.form.get('volta') == 'dinheiro'
     # crítico dinheiro C1: nada de conferir aqui (mudaria o valor depois do PIX feito); grava o que a tela mostrou
     try:
         ate_id, total_cent = int(request.form.get('ate_id', '')), int(request.form.get('total_cent', ''))
     except (TypeError, ValueError):
-        return redirect('/pubshow/admin/repasses?msg=mudou')
+        return redirect(f"/saas-admin/pubshow?msg=mudou#conta-{bid}" if para_dinheiro
+                        else '/pubshow/admin/repasses?msg=mudou')
     res = _repasse_registrar(bid, request.form.get('obs', ''), ate_id=ate_id, total_cent=total_cent)
+    if para_dinheiro:
+        return redirect(f"/saas-admin/pubshow?msg={res['codigo']}#conta-{bid}")
     return redirect(f"/pubshow/admin/repasses?msg={res['codigo']}#bar-{bid}")
 
 

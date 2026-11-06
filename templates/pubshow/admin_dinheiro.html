@@ -5,11 +5,12 @@
 {%- macro sinal_box(s) -%}
 <div class="box sinal {{ s.cor }}" data-cor="{{ s.cor }}" role="status">
   {%- if s.cor == 'w' %}
-  <div class="b so-js">{{ s.icone }}</div><div class="t so-js">{% for l in s.linhas %}{{ l }}{% if not loop.last %}<br>{% endif %}{% endfor %}</div>
+  <div class="b so-js">{{ s.icone }}</div><div class="t so-js">{{ s.linhas|join(' · ') }}</div>
   <div class="b so-nojs">🟠</div><div class="t so-nojs">não conferido (sem JavaScript)</div>
   {%- else %}
-  <div class="b">{{ s.icone }}</div><div class="t">{% for l in s.linhas %}{{ l }}{% if not loop.last %}<br>{% endif %}{% endfor %}</div>
+  <div class="b">{{ s.icone }}</div><div class="t">{{ s.linhas|join(' · ') }}</div>
   {%- endif %}
+  <span class="seta" aria-hidden="true">▾</span>
 </div>
 {%- endmacro -%}
 {%- macro aviso(a) -%}
@@ -29,6 +30,70 @@
 {%- endmacro -%}
 {%- macro mens_linha(m) -%}
 <span>Mensalidade</span><b class="{{ m.cor }}">{{ m.icone }} {{ m.texto }}</b>
+{%- endmacro -%}
+{%- macro tres(hoje, semana, mes) -%}
+<div class="tres num">
+  <div><span class="rot">Hoje</span><b class="val">{{ hoje }}</b></div>
+  <div><span class="rot">Semana</span><b class="val">{{ semana }}</b></div>
+  <div><span class="rot">Mês</span><b class="val">{{ mes }}</b></div>
+</div>
+{%- endmacro -%}
+{%- macro cartao(c, csrf) -%}
+<div class="conta{{ ' teste' if c.teste }}" id="conta-{{ c.id }}">
+  <h3>{{ c.nome }}{% if c.teste %} <span class="chip">TESTE · fora dos totais</span>{% endif %}</h3>
+  {{ tres(c.hoje_txt, c.semana_txt, c.mes_val_txt) }}
+  <div class="repassar num"><span>A repassar</span><b>{{ c.repassar_txt }}</b></div>
+  {%- if c.bar_deve_txt %}
+  <div class="deve">⚠️ O bar te deve {{ c.bar_deve_txt }} de PIX devolvido: desconte à mão. Este aviso some depois da baixa.</div>
+  {%- endif %}
+  {%- if c.kara_txt %}
+  <div class="sub-rep">🎤 Do karaokê: {{ c.kara_txt }}</div>
+  {%- endif %}
+  {%- if c.gorj_txt %}
+  <div class="sub-rep">{{ c.gorj_txt }}</div>
+  {%- endif %}
+  <div class="pix">
+    {%- if c.pix_key %}
+    <span class="chave">Chave PIX: <code>{{ c.pix_key }}</code></span>
+    <button type="button" class="btn so-js" data-copiar="{{ c.pix_key }}">Copiar</button>
+    {%- else %}
+    <span class="chave cinza">sem chave cadastrada</span>
+    {%- endif %}
+  </div>
+  {#- crítico dinheiro C1 (17/10/26): grava exatamente o que esta tela mostrou. Nunca dentro de um pedaço F: #}
+  {%- if c.baixa == 'botao' %}
+  {#- sem JavaScript o onsubmit não roda: o botão gravaria com 1 toque, sem a confirmação. Por isso fica escondido -#}
+  <form class="baixa-f so-js" method="POST" action="/pubshow/admin/repasses/{{ c.id }}/repassei"
+        data-msg="Você JÁ fez o PIX de {{ c.repassar_txt }} pro {{ c.nome }}? Isso tira {{ c.repassar_txt }} do valor a repassar.{% if c.bar_deve_txt %} O bar te deve {{ c.bar_deve_txt }}: desconte antes de pagar, porque este aviso some depois da baixa.{% endif %}"
+        onsubmit="return confirmaRepasse(this)">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="ate_id" value="{{ c.ate_id }}">
+    <input type="hidden" name="total_cent" value="{{ c.total_cent }}">
+    <input type="hidden" name="volta" value="dinheiro">
+    <button type="submit" class="btn baixa">✅ Dar baixa · {{ c.repassar_txt }}</button>
+  </form>
+  <div class="sem-baixa so-nojs">Dar baixa precisa de JavaScript.</div>
+  {%- elif c.baixa == 'conferindo' %}
+  <div class="sem-baixa">{{ c.conf_txt }} · <a href="/pubshow/admin/repasses#bar-{{ c.id }}">abrir em Repasses</a></div>
+  {%- elif c.baixa == 'direto' %}
+  <div class="sem-baixa">Cai direto na conta do bar{% if c.repassar > 0 %} · <a href="/pubshow/admin/repasses#bar-{{ c.id }}">valor de antes: dar baixa em Repasses</a>{% endif %}</div>
+  {%- endif %}
+  {%- if c.ultima_baixa %}
+  <div class="sub-rep">Última baixa: {{ c.ultima_baixa }}</div>
+  {%- endif %}
+  <details class="det">
+    <summary>Detalhes</summary>
+    <div class="chips"><span class="chip">{{ c.rota }}</span>{% if c.code %}<span class="chip">{{ c.code }}</span>{% endif %}{% if c.mesmo_fone %}<span class="chip amar">mesmo telefone de outra conta</span>{% endif %}</div>
+    <div class="linhas num">
+      <div id="F-mens-{{ c.id }}"><!--F:mens-{{ c.id }}-->{{ mens_linha(c.mens) }}<!--/F:mens-{{ c.id }}--></div>
+      <div><span>TV</span><b class="{{ c.tv.cor }}">{{ c.tv.texto }}</b></div>
+      <div><span>Último PIX confirmado</span><b>{{ c.ult_pix }}</b></div>
+      <div><span>No mês</span><b>{{ c.mes_txt }}</b></div>
+      <div><span>Parte do bar no mês</span><b>{{ c.parte_bar_txt }}</b></div>
+    </div>
+    <div class="acoes"><a class="btn" href="/pubshow/admin/bar/{{ c.id }}">Gerenciar</a>{% if c.whatsapp %}<a class="btn" href="{{ c.whatsapp }}" target="_blank" rel="noopener">💬 WhatsApp</a>{% endif %}</div>
+  </details>
+</div>
 {%- endmacro -%}
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -57,23 +122,44 @@
   header.h small{display:block;color:var(--text2);font-size:12px}
   header.h nav{display:flex;gap:8px;flex-wrap:wrap}
   header.h nav a{font-size:12.5px;border:1px solid var(--border);border-radius:8px;padding:0 12px;background:var(--surface);
-                 min-height:40px;display:inline-flex;align-items:center}
+                 min-height:44px;display:inline-flex;align-items:center}
 
-  .topo{display:grid;grid-template-columns:auto 1fr 1fr;gap:10px;margin-bottom:12px}
   .box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;min-width:0}
-  .sinal{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;min-width:110px}
-  .sinal .b{font-size:30px;line-height:1}
-  .sinal .t{font-size:12.5px;margin-top:4px;font-weight:700;overflow-wrap:anywhere}
+  .linha-al{display:block;color:var(--text);margin-bottom:12px}
+  .sinal{display:flex;align-items:center;gap:10px;min-height:48px;padding:8px 14px}
+  .sinal .b{font-size:20px;line-height:1;flex:none}
+  .sinal .t{font-size:14px;font-weight:700;overflow-wrap:anywhere;min-width:0}
+  .sinal .seta{margin-left:auto;color:var(--text2);flex:none}
   .sinal.r{background:var(--r-bg);border-color:rgba(248,113,113,.35)}
   .sinal.a{background:var(--a-bg);border-color:rgba(251,191,36,.35)}
   .sinal.g{background:var(--g-bg);border-color:rgba(74,222,128,.35)}
   .so-nojs{display:none}
-  .box .rot{font-size:12.5px;color:var(--text2)}
-  .box .val{font-size:26px;font-weight:800;margin:2px 0;letter-spacing:-.01em;overflow-wrap:anywhere}
-  .box .sub{font-size:12px;color:var(--text2);overflow-wrap:anywhere}
-
-  .precisa{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:12px}
-  .precisa h2{margin:0 0 6px;font-size:15px}
+  .msg{border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:14px;font-weight:600;
+       border:1px solid var(--border);background:var(--surface2)}
+  .msg.ok{border-color:rgba(74,222,128,.5);background:#17301f}
+  .msg.aviso{border-color:rgba(251,191,36,.5);background:#30290f}
+  .msg.erro{border-color:rgba(248,113,113,.5);background:#341a1a}
+  .legenda{font-size:12px;color:var(--text2);margin:0 0 8px}
+  .tres{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px}
+  .tres > div{min-width:0}
+  .tres .rot{display:block;font-size:12.5px;color:var(--text2)}
+  .tres .val{display:block;font-size:22px;font-weight:800;letter-spacing:-.01em;white-space:nowrap}
+  .repassar{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+  .repassar b{font-size:20px;font-weight:800;color:var(--green);overflow-wrap:anywhere;text-align:right}
+  .sub-rep,.sub{font-size:12.5px;color:var(--text2);margin-top:3px;overflow-wrap:anywhere}
+  .pix{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px}
+  .pix .chave{font-size:13px;min-width:0;overflow-wrap:anywhere}
+  .pix code{font:inherit;font-weight:600}
+  .baixa-f{margin-top:10px}
+  .btn.baixa{width:100%;background:var(--green);border-color:var(--green);color:#0f0f1c;font-size:14.5px;white-space:normal}
+  .sem-baixa{font-size:13px;color:var(--text2);margin-top:10px;overflow-wrap:anywhere}
+  .sem-baixa a{display:inline-flex;align-items:center;min-height:44px}
+  .deve{font-size:13px;font-weight:600;color:var(--amber);margin-top:6px;overflow-wrap:anywhere}
+  details.det{margin-top:10px;border-top:1px dashed var(--border)}
+  details.det > summary{cursor:pointer;color:var(--text2);font-size:13.5px;min-height:44px;display:flex;align-items:center;list-style:none}
+  details.det > summary::-webkit-details-marker{display:none}
+  details.det > summary::after{content:" ▾";white-space:pre}
+  details.det[open] > summary::after{content:" ▴"}
   .nada{margin:6px 0 0;font-size:14px}
   .al{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px;border-radius:9px;margin-top:6px}
   .al .tx{font-size:14px;min-width:0;overflow-wrap:anywhere}
@@ -82,17 +168,16 @@
   .al.a{background:var(--a-bg);border:1px solid rgba(251,191,36,.28)}
   .btn{flex:none;font:inherit;font-size:13px;font-weight:700;border-radius:8px;padding:0 12px;border:1px solid var(--border);
        background:var(--surface2);color:var(--text);white-space:nowrap;text-align:center;cursor:pointer;
-       min-height:40px;min-width:40px;display:inline-flex;align-items:center;justify-content:center}
+       min-height:44px;min-width:44px;display:inline-flex;align-items:center;justify-content:center}
   .btn.pri{background:var(--indigo);border-color:var(--indigo);color:#0f0f1c}
   .btn[disabled]{opacity:.6;cursor:wait}
   details.mais-av{margin-top:6px}
-  details.mais-av > summary{cursor:pointer;color:var(--text2);font-size:13px;list-style:none;min-height:40px;
+  details.mais-av > summary{cursor:pointer;color:var(--text2);font-size:13px;list-style:none;min-height:44px;
                             display:flex;align-items:center;padding:0 10px;border:1px dashed var(--border);border-radius:8px}
   details.mais-av > summary::-webkit-details-marker{display:none}
-  details.mais-av > summary.verm{color:var(--red);border-color:rgba(248,113,113,.5);font-weight:700}
-  .ok{font-size:12.5px;color:var(--text2);margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
-  .ok div{margin-top:3px;overflow-wrap:anywhere}
-  .ok .v{color:var(--green)}
+  #linhas{font-size:12.5px;color:var(--text2);margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+  #linhas div{margin-top:3px;overflow-wrap:anywhere}
+  #linhas .v{color:var(--green)}
   .nota{font-size:12px;color:var(--text2);margin:6px 0 0}
 
   details.sec{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:12px}
@@ -107,12 +192,10 @@
   table.t td small{display:block;color:var(--text2);font-size:11.5px}
   .neg{color:var(--red)}
 
-  h2.contas{font-size:14.5px;margin:18px 0 8px;color:var(--text2);font-weight:700}
-  .conta{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+  .conta,.todos{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:10px;scroll-margin-top:64px}
+  .todos{border-color:rgba(129,140,248,.45)}
+  .conta h3,.todos h3{margin:0;font-size:16px;overflow-wrap:anywhere}
   .conta.teste{opacity:.6}
-  .conta-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
-  .conta-h > div{min-width:0}
-  .conta-h h3{margin:0;font-size:16px;overflow-wrap:anywhere}
   .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
   .chip{font-size:11.5px;border-radius:999px;padding:2px 8px;border:1px solid var(--border);color:var(--text2)}
   .chip.amar{color:var(--amber);border-color:rgba(251,191,36,.5)}
@@ -129,15 +212,10 @@
 
   @media (max-width:600px){
     body{font-size:14.5px}
-    .topo{grid-template-columns:1fr 1fr}
-    .sinal{grid-column:1 / -1;flex-direction:row;gap:10px;justify-content:flex-start;min-width:0;padding:10px 12px;text-align:left}
-    .sinal .b{font-size:22px}
-    .sinal .t{margin-top:0}
-    .box .val{font-size:clamp(17px,5.2vw,21px)}
+    /* 3 números lado a lado no celular: 'R$ 12.345,60' cabe numa linha a 360 px */
+    .tres{gap:6px}
+    .tres .val{font-size:clamp(12.5px,3.75vw,20px)}
     .al{flex-direction:column;align-items:stretch}
-  }
-  @media (max-width:340px){
-    .topo{grid-template-columns:1fr}
   }
 </style>
 <noscript><style>.so-js{display:none!important}.so-nojs{display:block!important}</style></noscript>
@@ -153,33 +231,46 @@
     <nav><a href="/pubshow/admin/repasses">💸 Repasses</a><a href="/saas-admin">Tela antiga</a></nav>
   </header>
 
-  <section class="topo">
-    <div class="frag" id="F-sinal"><!--F:sinal-->{{ sinal_box(d.sinal) }}<!--/F:sinal--></div>
-    <div class="box">
-      <div class="rot">Entrou esta noite</div>
-      <div class="val num">{{ d.noite.txt }}</div>
-      <div class="sub">{{ d.noite.n }} PIX {{ 'confirmado' if d.noite.n == 1 else 'confirmados' }} · {{ d.noite.desde }}</div>
-    </div>
-    <div class="box">
-      <div class="rot">Você deve aos bares</div>
-      <div class="val num">{{ d.deve.txt }}</div>
-      <div class="sub">{% if d.deve.teste %}sem o bar de teste · na tela Repasses: {{ d.deve.repasses_txt }}{% else %}a mesma conta da tela Repasses{% endif %}</div>{% if d.deve.karaoke_txt %}<div class="sub" id="soma-karaoke">🎤 Do karaokê: {{ d.deve.karaoke_txt }}</div>{% endif %}
-      {%- if d.deve.teste %}
-      <div class="sub cinza">+ {{ d.deve.teste_txt }} do bar de teste, fora</div>
-      {%- endif %}
-    </div>
+  {%- if d.msg %}
+  <div class="msg {{ d.msg[0] }}" role="status">{{ d.msg[1] }}</div>
+  {%- endif %}
+
+  {#- 06/11/26, Diogo: "esconder nao só por ela em outro local so pra ela". Os alertas não ficam escondidos: a linha do
+      topo mostra o sinal e leva ao lugar deles, logo depois dos cartões (id="alertas"). -#}
+  <a class="linha-al" href="#alertas" id="ir-alertas"><div class="frag" id="F-sinal"><!--F:sinal-->{{ sinal_box(d.sinal) }}<!--/F:sinal--></div></a>
+
+  <p class="legenda">Hoje = desde 12h · Semana = desde segunda 12h · Mês = desde o dia 1 · valores = o que os clientes pagaram</p>
+
+  <section class="todos" id="todos">
+    <h3>Todos os bares</h3>
+    {{ tres(d.todos.hoje_txt, d.todos.semana_txt, d.todos.mes_txt) }}
+    <div class="repassar num"><span>A repassar</span><b>{{ d.todos.repassar_txt }}</b></div>
+    {%- if d.deve.karaoke_txt %}
+    <div class="sub" id="soma-karaoke">🎤 Do karaokê: {{ d.deve.karaoke_txt }}</div>
+    {%- endif %}
   </section>
 
-  <section class="precisa" aria-live="polite">
+  {%- for c in d.contas %}
+  {{ cartao(c, csrf) }}
+  {%- else %}
+  <p class="nada cinza">Nenhum bar cadastrado ainda.</p>
+  {%- endfor %}
+
+  {%- for c in d.teste %}
+  {{ cartao(c, csrf) }}
+  {%- endfor %}
+
+  <details class="sec precisa" id="alertas" open>
+    <summary>👉 Precisa de você</summary>
+    <div class="sec-c" aria-live="polite">
     <noscript><div class="al a"><div class="tx">🟠 Esta página precisa de JavaScript pra conferir no Asaas/Efí.</div></div></noscript>
     <div id="F-precisa"><!--F:precisa-->
-    <h2>👉 Precisa de você</h2>
     {%- if d.avisos %}
     {%- for a in d.avisos_vis %}
     {{ aviso(a) }}
     {%- endfor %}
     {%- if d.avisos_mais %}
-    <details class="mais-av"><summary{% if d.mais_r %} class="verm"{% endif %}>+{{ d.mais_txt }}</summary>
+    <details class="mais-av"><summary>+{{ d.mais_txt }}</summary>
       {%- for a in d.avisos_mais %}
       {{ aviso(a) }}
       {%- endfor %}
@@ -193,7 +284,8 @@
     <div class="ok" id="linhas">{{ linhas_cinza(d.linhas) }}</div>
     <!--/F:precisa--></div>
     <p class="nota" id="nota" hidden></p>
-  </section>
+    </div>
+  </details>
 
   <details class="sec" id="mes">
     <summary>📅 {{ d.mes.nome }} até agora</summary>
@@ -203,7 +295,7 @@
         <tr><td>Parte dos bares <small>o que vira repasse</small></td><td>{{ brl(d.mes.bares) }}</td></tr>
         <tr><td>Margem dos PIX <span class="est">estimado</span> <small>sem mensalidade · tarifa de tabela: Asaas {{ d.tarifas.asaas_txt }} por PIX, Efí {{ d.tarifas.efi_txt }} do PIX</small></td><td class="{{ 'neg' if d.mes.margem < 0 else '' }}">{{ brl(d.mes.margem) }}</td></tr>
         <tr id="F-mes-mens"><!--F:mes-mens--><td>Mensalidades pagas <small>{% if not d.lido %}conferindo no Asaas…{% elif d.mes.mens_lidas %}{{ d.mes.mens_n }} {{ 'lida' if d.mes.mens_n == 1 else 'lidas' }} no Asaas agora{% if not d.mes.mens_todas %}; o resto não respondeu a tempo{% endif %}{% else %}não lidas (a chave do Asaas não está configurada){% endif %}</small></td><td>{% if d.mes.mens_lidas %}{{ brl(d.mes.mens_val) }}{% else %}—{% endif %}</td><!--/F:mes-mens--></tr>
-        <tr><td>Sem confirmação do banco <small>{{ d.mes.s_n }} PIX · não {{ 'entra' if d.mes.s_n == 1 else 'entram' }} no "você deve" até conferir</small></td><td>{{ brl(d.mes.s_val) }}</td></tr>
+        <tr><td>Sem confirmação do banco <small>{{ d.mes.s_n }} PIX · não {{ 'entra' if d.mes.s_n == 1 else 'entram' }} no "a repassar" até conferir</small></td><td>{{ brl(d.mes.s_val) }}</td></tr>
         <tr><td>Direto na chave do bar <small>{{ d.mes.m_n }} PIX · o dono confirmou; não passou por você</small></td><td>{{ brl(d.mes.m_val) }}</td></tr>
         <tr><td>"O cliente disse que pagou" <small>ninguém confirmou; fora de toda soma</small></td><td>{{ d.mes.m0_n }}</td></tr>
         <tr><td>Devoluções <span class="est">estimado</span> <small>{{ d.mes.dev_n }} no mês · cada uma já pagou a tarifa de recebimento</small></td><td class="{{ 'neg' if d.mes.dev_custo else '' }}">{{ brl(-d.mes.dev_custo) if d.mes.dev_custo else brl(0) }}</td></tr>
@@ -228,51 +320,18 @@
     </div>
   </details>
 
-  <h2 class="contas">Contas ({{ d.contas|length }})</h2>
-  {%- for c in d.contas %}
-  <div class="conta" id="conta-{{ c.id }}">
-    <div class="conta-h">
-      <div>
-        <h3>{{ c.nome }}</h3>
-        <div class="chips"><span class="chip">{{ c.rota }}</span>{% if c.code %}<span class="chip">{{ c.code }}</span>{% endif %}{% if c.mesmo_fone %}<span class="chip amar">mesmo telefone de outra conta</span>{% endif %}</div>
-      </div>
-      {%- if c.whatsapp %}
-      <a class="btn" href="{{ c.whatsapp }}" target="_blank" rel="noopener">💬 WhatsApp</a>
-      {%- endif %}
-    </div>
-    <div class="linhas num">
-      <div id="F-mens-{{ c.id }}"><!--F:mens-{{ c.id }}-->{{ mens_linha(c.mens) }}<!--/F:mens-{{ c.id }}--></div>
-      <div><span>TV</span><b class="{{ c.tv.cor }}">{{ c.tv.texto }}</b></div>
-      <div><span>Último PIX confirmado</span><b>{{ c.ult_pix }}</b></div>
-      <div><span>No mês</span><b>{{ c.mes_txt }}</b></div>
-      <div><span>Você deve a ele</span><b>{{ c.devido_txt }}</b></div>
-    </div>
-    <div class="acoes"><a class="btn" href="/pubshow/admin/bar/{{ c.id }}">Gerenciar</a></div>
-  </div>
-  {%- else %}
-  <p class="nada cinza">Nenhum bar cadastrado ainda.</p>
-  {%- endfor %}
-
-  {%- for c in d.teste %}
-  <div class="conta teste" id="conta-{{ c.id }}">
-    <div class="conta-h"><div><h3>{{ c.nome }}</h3>
-      <div class="chips"><span class="chip">{{ c.rota }}</span>{% if c.code %}<span class="chip">{{ c.code }}</span>{% endif %}<span class="chip">TESTE · fora dos totais</span></div></div></div>
-    <div class="linhas num">
-      <div><span>No mês</span><b>{{ c.mes_txt }}</b></div>
-      <div><span>Você deve a ele</span><b>{{ c.devido_txt }} (fora)</b></div>
-    </div>
-  </div>
-  {%- endfor %}
-
   <details class="sec como">
     <summary>Como contamos</summary>
     <div class="sec-c"><dl>
       <dt>Confirmado</dt><dd>PIX que o Asaas ou a Efí confirmou. É a mesma regra da tela Repasses.</dd>
-      <dt>Entrou esta noite</dt><dd>O que os clientes pagaram (com a taxa do app) desde as 12h de Brasília. Não zera à meia-noite: antes do meio-dia, ainda é a noite de ontem.</dd>
-      <dt>Você deve aos bares</dt><dd>PIX confirmados ainda sem "Repassei", a mesma conta da tela Repasses. O bar de teste fica fora.</dd>
+      <dt>Hoje</dt><dd>O que os clientes pagaram (com a taxa do app) desde as 12h de Brasília. Não zera à meia-noite: antes do meio-dia, ainda é a noite de ontem.</dd>
+      <dt>Semana</dt><dd>O mesmo, desde segunda às 12h de Brasília. A noite de domingo termina na segunda de madrugada e é da semana que você paga na segunda. Segunda às 9h ainda mostra a semana inteira; às 12h vira.</dd>
+      <dt>Mês</dt><dd>O mesmo, desde o dia 1 às 00h de Brasília.</dd>
+      <dt>A repassar</dt><dd>A parte do bar nos PIX confirmados ainda sem baixa, a mesma conta da tela Repasses. O bar de teste fica fora do total.</dd>
+      <dt>Dar baixa</dt><dd>Registra que você já fez o PIX pro bar e tira esse valor do "a repassar". Não manda dinheiro. PIX que entrou depois de a tela abrir fica para a próxima baixa. Se um PIX antigo foi confirmado nesse meio-tempo, nada é gravado e a tela avisa. O histórico e as observações ficam na tela Repasses.</dd>
       <dt>PIX perdido</dt><dd>QR dos últimos {{ d.dias_perdidos }} dias que ficaram sem pagamento aqui. A página pergunta ao Asaas/Efí se algum foi pago (os {{ d.max_perdidos }} mais novos por vez).</dd>
       <dt>Mensalidade verde</dt><dd>Só quando o Asaas mostra a fatura do mês paga por PIX ou cartão, lida ao abrir esta página. Fatura marcada como paga à mão no Asaas não fica verde (o dinheiro não passou pelo Asaas). Sem isso: "pagamento não conferido".</dd>
-      <dt>Sem confirmação do banco</dt><dd>PIX liberados à mão ("PIX caiu") ou de antes da conferência automática. Não entram no "você deve" até alguém conferir.</dd>
+      <dt>Sem confirmação do banco</dt><dd>PIX liberados à mão ("PIX caiu") ou de antes da conferência automática. Não entram no "a repassar" até alguém conferir.</dd>
       <dt>Saldo do Asaas</dt><dd>É a conta de todos os SaaS. Por isso a página não diz se "cobre".</dd>
       <dt>Margem dos PIX</dt><dd>Estimada com a tarifa de tabela (Asaas {{ d.tarifas.asaas_txt }} por PIX, Efí {{ d.tarifas.efi_txt }}), sem mensalidade e antes de custos fixos e imposto. Na divisão automática conta só a taxa do app: a parte da mensalidade e o que cobre devolução antiga ficam fora. PIX que está voltando pro cliente não conta.</dd>
       <dt>Devoluções</dt><dd>Cada PIX devolvido já pagou a tarifa de recebimento. O custo é estimado com a tarifa do Asaas. A devolução feita no app da Efí não fica registrada no sistema (até a próxima fase): o PIX segue nas somas, e a página pergunta à Efí se o que está "a devolver" já foi devolvido.</dd>
@@ -301,6 +360,13 @@ window.__psFalha = function () {
   } catch (e) {}
 };
 window.__psVigia = setTimeout(function () { if (!window.__psOk) { window.__psFalha(); } }, 25000);
+/* Igual ao confirmaRepasse da tela Repasses: confirma e trava o 2º toque. */
+function confirmaRepasse(f) {
+  if (!confirm(f.dataset.msg)) { return false; }
+  var bt = f.querySelector('button');
+  setTimeout(function () { bt.disabled = true; bt.textContent = 'Gravando…'; }, 0);
+  return true;
+}
 </script>
 <script>
 (function () {
@@ -345,6 +411,45 @@ window.__psVigia = setTimeout(function () { if (!window.__psOk) { window.__psFal
     if (document.visibilityState === 'visible' && velha()) { location.reload(); }
   });
   window.addEventListener('pageshow', function (e) { if (e.persisted && velha()) { location.reload(); } });
+  /* A volta da baixa rola até o cartão: a mensagem vai pra dentro dele, em vez de ficar fora da tela ou por cima do nome. */
+  var msgBaixa = document.querySelector('.msg');
+  var cartaoBaixa = msgBaixa && location.hash ? document.getElementById(location.hash.slice(1)) : null;
+  if (cartaoBaixa && cartaoBaixa.classList.contains('conta')) {
+    cartaoBaixa.insertBefore(msgBaixa, cartaoBaixa.firstChild);
+    cartaoBaixa.scrollIntoView();
+  }
+  /* A aba recarrega sozinha depois de 5 min: sem isto, a mensagem da baixa apareceria de novo, velha. */
+  if (location.search) { history.replaceState(null, '', location.pathname + location.hash); }
+  function copiar(txt) {
+    /* writeText pode ser recusado (permissão do navegador): aí tenta o jeito antigo antes de dizer que não copiou */
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(txt).catch(function () { return copiarAntigo(txt); });
+    }
+    return copiarAntigo(txt);
+  }
+  function copiarAntigo(txt) {
+    return new Promise(function (ok, erro) {
+      var a = document.createElement('textarea');
+      a.value = txt;
+      a.style.position = 'fixed';
+      document.body.appendChild(a);
+      a.select();
+      var foi = false;
+      try { foi = document.execCommand('copy'); } catch (x) {}
+      a.remove();
+      if (foi) { ok(); } else { erro(); }
+    });
+  }
+  document.addEventListener('click', function (e) {
+    var alvo = e.target && e.target.closest ? e.target : null;
+    if (!alvo) { return; }
+    if (alvo.closest('#ir-alertas')) { document.getElementById('alertas').open = true; return; }
+    var c = alvo.closest('[data-copiar]');
+    if (!c) { return; }
+    copiar(c.getAttribute('data-copiar')).then(function () { c.textContent = 'Copiado ✓'; },
+                                               function () { c.textContent = 'Não copiou'; });
+    setTimeout(function () { c.textContent = 'Copiar'; }, 2500);
+  });
   document.addEventListener('click', function (e) {
     var b = e.target && e.target.closest ? e.target.closest('[data-de-novo]') : null;
     if (!b) { return; }
