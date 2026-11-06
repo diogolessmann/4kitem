@@ -437,6 +437,8 @@ def init_pubshow_db():
     # 29/10/26 (estilos 2): clipes dos botões novos (Heavy Metal, Punk, Rock Nacional, Country, Forró, Funk, Rap,
     # Eletrônica) — 1 vez por versão do pubshow_clipes_fase2; sem o módulo, nada muda e o boot segue
     _semear_estilos2(conn)
+    # 04/11/26: clipes de Sertanejo e Pagode (o botão estava escondido: 6 e 2 clipes no ar) — 1 vez só
+    _semear_sert_pagode(conn)
 
     # 24/10/26: 39 vídeos do acervo que tocavam outra coisa (auditoria do ar) — 1 vez só
     _corrigir_ids_trocados_24out(conn)
@@ -780,6 +782,45 @@ def _semear_estilos2(conn):
         return n
     except Exception as e:
         log.error('[PUBSHOW] clipes do estilos 2 falharam: %s', e)
+        try: conn.rollback()
+        except Exception: pass
+        return 0
+
+
+CHAVE_SERT_PAGODE = 'seed_sert_pagode_04nov'
+
+
+def _semear_sert_pagode(conn):
+    """Os clipes de pubshow_clipes_brasil entram UMA vez na vida do banco, como o _semear_estilos_novos: INSERT OR IGNORE
+    (ID que já está no acervo fica onde está) e o que o admin apagar depois continua apagado. Marcador próprio: subir a
+    VERSAO da fase 2 traria de volta o que o admin apagou lá. Sem o módulo: nada, e o marcador não grava."""
+    try:
+        from pubshow_clipes_brasil import CLIPES
+    except Exception as e:
+        log.warning('[PUBSHOW] sertanejo e pagode: sem o pubshow_clipes_brasil (%s), nada semeado', e)
+        return 0
+    try:
+        conn.execute('CREATE TABLE IF NOT EXISTS pubshow_meta (chave TEXT PRIMARY KEY, valor TEXT)')
+        if conn.execute('SELECT 1 FROM pubshow_meta WHERE chave=?', (CHAVE_SERT_PAGODE,)).fetchone():
+            return 0
+        antes = conn.total_changes
+        conn.executemany(
+            '''INSERT OR IGNORE INTO pubshow_videos
+               (youtube_id, titulo, artista, categoria, subcategoria, duracao_seg, views_milhoes)
+               VALUES (?,?,?,?,?,?,?)''',
+            CLIPES
+        )
+        n = conn.total_changes - antes
+        conn.execute("INSERT OR REPLACE INTO pubshow_meta (chave, valor) VALUES (?, datetime('now'))", (CHAVE_SERT_PAGODE,))
+        if n:
+            import time as _t
+            conn.execute("INSERT OR REPLACE INTO pubshow_meta (chave, valor) VALUES ('videos_version', ?)",
+                         (str(int(_t.time() * 1000)),))
+        conn.commit()
+        log.info('[PUBSHOW] sertanejo e pagode: %d clipe(s) entraram no acervo', n)
+        return n
+    except Exception as e:
+        log.error('[PUBSHOW] clipes de sertanejo e pagode falharam: %s', e)
         try: conn.rollback()
         except Exception: pass
         return 0

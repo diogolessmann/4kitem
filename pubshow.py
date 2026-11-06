@@ -69,8 +69,10 @@ CANAIS = {
                        # que acender o botão deles), nem o Rock Nacional (fora do combinado de 20/10).
                        # 29/10/26 (consertador): nem o Country (era vazio; o Variado de quem nunca escolheu não ganha
                        # country americano sem o dono pedir). Variado + 🐎 Country aceso continua misturando o Country.
-                       'cat': ['rock', 'sertanejo', 'pagode', 'pop', 'punk', 'reggae', 'mpb', 'blues', 'forro',
-                               'eletronica', 'variado'],
+                       # 04/11/26 (Sertanejo e Pagode de volta ao painel, pubshow_clipes_brasil): a mesma regra. No ar eram
+                       # poucos clipes; com os novos, o Variado de quem nunca escolheu passaria a tocar sertanejo e pagode
+                       # sem o dono pedir, inclusive no Garage. Variado + 🤠 Sertanejo aceso continua misturando.
+                       'cat': ['rock', 'pop', 'punk', 'reggae', 'mpb', 'blues', 'forro', 'eletronica', 'variado'],
                        'grupo': 'musica'},
     # 17/10/26: SHOWS AO VIVO saiu (show passa de 10 min). Canal e vídeos: pubshow_db.SHOWS_FORA
     # ── SPORT ────────────────────────────────────────────────────────────────
