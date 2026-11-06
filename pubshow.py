@@ -5316,10 +5316,15 @@ def api_pedido_exibido(pedido_id):
         return jsonify({'error': 'unauthorized'}), 403
     # Só pedido 'pendente' vira exibido (15/10/26 junção + 17/10/26 befa911): a TV só recebe pendente (/api/status).
     # Sem isso, um pedido não pago ou recusado virava 'exibido' e contava como pago; dispensado no meio fica dispensado.
+    # 05/11/26: o exibido_at tem precisão de 1 s e "o último que começou" é ORDER BY exibido_at DESC, id DESC. Vídeo que falha
+    # ao abrir + o próximo com id menor caíam no mesmo segundo, e o ⏭️ Pular e o "Não veio" pegavam o pedido errado (PIX da
+    # pessoa errada). Cada início grava pelo menos 1 s depois do anterior do bar; horário torto lá na frente não contamina.
     ok = conn.execute(
-        "UPDATE pubshow_pedidos SET status='exibido', exibido_at=datetime('now','-3 hours') "
+        "UPDATE pubshow_pedidos SET status='exibido', exibido_at=MAX(datetime('now','-3 hours'), COALESCE("
+        "(SELECT datetime(MAX(x.exibido_at),'+1 second') FROM pubshow_pedidos x WHERE x.business_id=? "
+        "AND x.exibido_at <= datetime('now','-3 hours','+1 minutes')), '')) "
         "WHERE id=? AND business_id=? AND status='pendente'",
-        (pedido_id, b['id'])
+        (b['id'], pedido_id, b['id'])
     ).rowcount == 1
     if not ok:
         conn.close()
