@@ -331,7 +331,13 @@
   body.fila-on:not(.modo-fundo) #proximo-card{display:none!important}
   body.fila-on:not(.modo-fundo) #fila-tv{flex:1 1 auto;min-height:0;padding:0;border:0;background:transparent;border-radius:0}
   body.fila-on:not(.modo-fundo) .ft-gratis{margin-top:auto}
-  body.fila-on:not(.modo-fundo).com-fila #qr-fixo{display:none!important}
+  /* 06/11/26 (Diogo, prints do Garage: cada música que entra escondia o QR; "faz os 2"): com fila ele fica compacto no pé */
+  body.fila-on:not(.modo-fundo).com-fila #qr-fixo{display:flex;flex-direction:row;align-items:center;gap:1vh;padding:.8vh;
+    max-width:none;opacity:1;pointer-events:auto;background:rgba(0,0,0,.8);border:2px solid rgba(74,222,128,.6);
+    animation:ftEntra .6s ease}
+  body.fila-on:not(.modo-fundo).com-fila #qr-fixo img{width:14vh!important;height:14vh!important;flex:none}
+  body.fila-on:not(.modo-fundo).com-fila #qr-fixo .qr-txt1{font-weight:900!important;font-size:2.8vh!important;line-height:1.2!important;color:#fff!important}
+  body.fila-on:not(.modo-fundo).com-fila #qr-fixo #qr-preco{font-weight:900!important;font-size:2.8vh!important;line-height:1.2!important;color:#4ade80!important}
   body.fila-on:not(.modo-fundo):not(.com-fila) #qr-fixo{display:flex;margin-top:auto}
   body.fila-on:not(.modo-fundo) #sem-som.show{display:flex;align-self:center}
   /* "Tela cheia" (mouse / 8 s quando o som liga sozinho): no canto de cima da coluna, nunca sobre o player */
