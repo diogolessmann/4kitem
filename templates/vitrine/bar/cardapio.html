@@ -35,6 +35,21 @@
 .item:last-child{border-bottom:0}
 .item.cf{grid-template-columns:68px 1fr auto}
 .item img{width:68px;height:68px;border-radius:10px;object-fit:cover;background:var(--asfalto-3)}
+.item .zoom{position:relative;display:block;width:68px;height:68px;border-radius:10px;cursor:zoom-in;-webkit-tap-highlight-color:transparent}
+.item .zoom .lupa{position:absolute;right:4px;bottom:4px;display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:rgba(14,11,9,.72);color:var(--osso)}
+.item .zoom:focus-visible{outline:2px solid var(--ambar);outline-offset:2px}
+.dica-zoom{display:flex;align-items:center;gap:6px;margin-top:6px;color:var(--texto-2);font-size:.9rem}
+.dica-zoom .ico{color:var(--ambar)}
+#zoom{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:16px;border:0;background:rgba(10,8,6,.95);color:var(--osso);flex-direction:column;align-items:center;justify-content:center;gap:14px;cursor:zoom-out}
+#zoom[open]{display:flex}
+#zoom::backdrop{background:transparent}
+#zoom img{display:block;max-width:100%;max-height:66vh;width:auto;height:auto;border-radius:12px;object-fit:contain;background:var(--asfalto-3)}
+#zoom .z-leg{max-width:34rem;text-align:center}
+#zoom .z-nome{font:700 1.5rem/1.15 var(--f-disp);letter-spacing:.02em;text-transform:uppercase}
+#zoom .z-desc{margin-top:4px;color:var(--texto-2);font-size:.95rem;line-height:1.4}
+#zoom .z-preco{margin-top:6px;font:700 1.6rem/1 var(--f-disp);color:var(--osso)}
+#zoom .z-hh{display:block;margin-top:4px;color:var(--ambar);font:600 .95rem/1.2 var(--f-txt)}
+#zoom .z-x{position:absolute;top:12px;right:12px;display:grid;place-items:center;width:48px;height:48px;border-radius:50%;border:1px solid var(--linha-2);background:rgba(255,255,255,.08);color:var(--osso);cursor:pointer}
 .item h3{font:600 1.1rem/1.25 var(--f-txt);color:var(--texto);letter-spacing:0}
 .item .med{color:var(--texto-2);font-weight:500;white-space:nowrap}
 .item .d{margin-top:3px;font-size:.93rem;color:var(--texto-2);line-height:1.4}
@@ -71,13 +86,16 @@
 </nav>
 
 <main class="in">
+  {% set ns = namespace(dica=false) %}
   {% for s in secs %}
   <section class="sec" id="{{ s.chave }}" aria-labelledby="t-{{ s.chave }}">
     <h2 id="t-{{ s.chave }}">{{ s.nome }}</h2>
     {% if s.nota %}<p class="nota">{{ s.nota }}</p>{% endif %}
+    {% if s.zoom and not ns.dica and s.itens|selectattr('foto')|list %}{% set ns.dica = true %}<p class="dica-zoom">{{ ico('lupa', 16) }}Toque na foto para ampliar</p>{% endif %}
     <ul class="itens">
       {% for it in s.itens %}<li class="item{{ ' cf' if it.foto }}" id="i{{ it.id }}">
-        {% if it.foto %}<img src="{{ foto(it.foto, True) }}" width="68" height="68" loading="lazy" decoding="async" alt="Foto: {{ it.titulo }}">{% endif %}
+        {% if it.foto and s.zoom %}<a class="zoom" href="{{ foto(it.foto) }}" data-nome="{{ it.titulo }}" data-desc="{{ it.desc }}" data-preco="{% if it.preco %}R$ {{ preco(it.preco) }}{% endif %}" data-hh="{% if it.hh %}happy hour R$ {{ preco(it.hh) }}{% endif %}" aria-label="Ampliar foto: {{ it.titulo }}"><img src="{{ foto(it.foto, True) }}" width="68" height="68" loading="lazy" decoding="async" alt=""><span class="lupa">{{ ico('lupa', 14) }}</span></a>
+        {% elif it.foto %}<img src="{{ foto(it.foto, True) }}" width="68" height="68" loading="lazy" decoding="async" alt="Foto: {{ it.titulo }}">{% endif %}
         <div>
           {% if it.mais %}<span class="selo-mais">Mais pedido</span>{% endif %}
           <h3>{{ it.nome }}{% if it.medida %} <span class="med">{{ it.medida }}</span>{% endif %}</h3>
@@ -99,5 +117,41 @@
     </div>
   </div>
 </main>
+{% if secs|selectattr('zoom')|list %}
+<dialog id="zoom" aria-label="Foto ampliada">
+  <button type="button" class="z-x" aria-label="Fechar foto">{{ ico('fechar', 24) }}</button>
+  <img alt="">
+  <div class="z-leg"><p class="z-nome"></p><p class="z-desc"></p><p class="z-preco num"></p><span class="z-hh"></span></div>
+</dialog>
+<script>
+(function(){
+  var d=document.getElementById('zoom');
+  if(!d||typeof d.showModal!=='function')return;   // sem <dialog>: o link abre a foto inteira, como página
+  var im=d.querySelector('img'),aberto=false,vez=0;
+  function txt(s,v){d.querySelector(s).textContent=v||''}
+  function abre(a){
+    var mini=a.querySelector('img'),cheia=new Image(),minha=++vez;
+    im.src=mini?(mini.currentSrc||mini.src):a.href;   // a miniatura aparece na hora; a foto cheia troca quando chegar
+    cheia.onload=function(){if(minha===vez&&d.open)im.src=a.href};
+    cheia.src=a.href;
+    im.alt=a.getAttribute('data-nome')||'';
+    txt('.z-nome',a.getAttribute('data-nome'));txt('.z-desc',a.getAttribute('data-desc'));
+    txt('.z-preco',a.getAttribute('data-preco'));txt('.z-hh',a.getAttribute('data-hh'));
+    d.showModal();aberto=true;
+    try{history.pushState({zoom:1},'')}catch(e){}   // o "voltar" do celular fecha a foto em vez de sair do cardápio
+  }
+  d.addEventListener('close',function(){
+    im.removeAttribute('src');
+    if(aberto){aberto=false;try{if(history.state&&history.state.zoom)history.back()}catch(e){}}
+  });
+  window.addEventListener('popstate',function(){if(d.open){aberto=false;d.close()}});
+  d.addEventListener('click',function(){d.close()});   // tocar em qualquer lugar fecha
+  document.addEventListener('click',function(e){
+    var a=e.target.closest&&e.target.closest('a.zoom');
+    if(a){e.preventDefault();abre(a)}
+  });
+})();
+</script>
+{% endif %}
 {{ rodape(loja, precos_em, noindex) }}
 {% endblock %}

@@ -221,7 +221,8 @@ def secoes(loja, c, n, so_disponiveis=True):
     conn = get_vit_db()
     rows = conn.execute('SELECT * FROM vit_produtos WHERE loja_id=? AND ativo=1 ORDER BY ordem, id', (loja['id'],)).fetchall()
     conn.close()
-    secs = [dict(chave=s.get('chave'), nome=s.get('nome') or s.get('chave'), nota=s.get('nota') or '', itens=[])
+    secs = [dict(chave=s.get('chave'), nome=s.get('nome') or s.get('chave'), nota=s.get('nota') or '',
+                 zoom=bool(s.get('zoom')), itens=[])
             for s in (c.get('secoes') or []) if s.get('chave')]
     por = {s['chave']: s for s in secs}
     resto = dict(chave='mais', nome='Mais', nota='', itens=[])
@@ -1216,6 +1217,32 @@ def migra_garage_29out():
         c['migracoes'] = (c.get('migracoes') or []) + ['garage_29out']
         conn.execute('UPDATE vit_lojas SET cfg_json=?, horario=? WHERE id=?',
                      (json.dumps(c, ensure_ascii=False), HORARIO_29OUT, loja['id']))
+        conn.commit()
+        return True
+    finally:
+        conn.close()
+
+
+SECOES_COMIDA = ('porcoes', 'tabuas', 'carnes', 'lanches')
+
+
+def migra_garage_03nov():
+    """3/nov, ideia do Diogo: foto ampliável (toque na miniatura) só nos pratos de comida, via cfg.secoes[].zoom. Chopp,
+    baldes, cervejas, drinks e doses ficam como estão (a mesma caneca em 6 itens não ganha nada ampliando). Roda UMA vez
+    (marca 'garage_03nov' no cfg): o que o dono mudar depois no admin não é sobrescrito no deploy."""
+    conn = get_vit_db()
+    try:
+        loja = conn.execute('SELECT * FROM vit_lojas WHERE slug=?', (SLUG_SEMENTE,)).fetchone()
+        if not loja:
+            return False
+        c = cfg_de(loja)
+        if 'garage_03nov' in (c.get('migracoes') or []):
+            return False
+        for s in c.get('secoes') or []:
+            if s.get('chave') in SECOES_COMIDA:
+                s['zoom'] = True
+        c['migracoes'] = (c.get('migracoes') or []) + ['garage_03nov']
+        conn.execute('UPDATE vit_lojas SET cfg_json=? WHERE id=?', (json.dumps(c, ensure_ascii=False), loja['id']))
         conn.commit()
         return True
     finally:
