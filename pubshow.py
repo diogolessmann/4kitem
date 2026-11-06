@@ -8125,6 +8125,7 @@ def painel():
     musicas_bloqueadas, ultimo_repasse = _painel_bloqueadas_e_repasse(bd, _efi_bar)
     repasse_pedido = _painel_pedido_repasse(bd, _efi_bar)
     return render_template('pubshow/painel.html',
+                           karaoke_soma=(None if _efi_bar else _painel_karaoke_soma(bd)),   # 🎤 04/11/26: só mostra
                            musicas_bloqueadas=musicas_bloqueadas,   # painel por assunto (17/10/26): aba 🎵 Estilo
                            nao_tocar_txt=', '.join(_artistas_bloqueados(bd)),   # 🚫 22/10/26: "Não tocar aqui"
                            ultimo_repasse=ultimo_repasse,           # aba 💰 Dinheiro ("quando cai na sua conta")
@@ -8247,6 +8248,22 @@ def _painel_bloqueadas_e_repasse(bd, efi_bar):
     except Exception as ex:
         log.warning('[PUBSHOW] painel: bloqueadas/repasse do bar %s não leram: %s', bd.get('id'), ex)
     return lista, rep
+
+
+def _painel_karaoke_soma(bd):
+    """🎤 04/11/26: a linha "Do karaokê" do cartão "Quando cai na sua conta". None sem vez no palco a receber."""
+    if not _K.pix_bares():
+        return None
+    try:
+        conn = get_pubshow_db()
+        try:
+            k = _karaoke_no_repasse(conn, bd['id']).get(bd['id'])
+        finally:
+            conn.close()
+        return f"{_brl(k['valor'])} · {_karaoke_vezes(k['n'])}" if k else None
+    except Exception as ex:
+        log.warning('[PUBSHOW] painel: soma do karaokê do bar %s não leu: %s', bd.get('id'), ex)
+        return None
 
 
 def _painel_pedido_repasse(bd, efi_bar):
@@ -10970,6 +10987,29 @@ def _repasse_somar(conn, extra_sql, extra_params, statuses=_REPASSE_STATUS_DEVID
     return out
 
 
+def _karaoke_no_repasse(conn, bid=None, agora_utc=None):
+    """🎤 04/11/26 (Diogo: "faz uma somatorio do karaoke separado [...] assim posso pagar corretamente"): SÓ MOSTRA, não entra
+    em conta nenhuma. {business_id: {valor, n}} do que o bar ainda tem a receber de karaokê: o MESMO filtro do devido de
+    _repasses_calcular, mais karaoke_pago=1, então zera quando o repasse é marcado. Env vazia: nenhum SQL. Erro: {} com log."""
+    if not _K.pix_bares():
+        return {}
+    try:
+        w, wp = _repasse_where_pago()
+        params = wp + [_utc_txt(agora_utc or _utc_agora())] + ([bid] if bid is not None else [])
+        rows = conn.execute(
+            f'''SELECT business_id, COALESCE(SUM(valor),0) AS valor, COUNT(*) AS n FROM pubshow_pedidos
+                WHERE {w} AND repasse_manual_id IS NULL AND datetime(created_at) <= datetime(?) AND karaoke_pago=1
+                {'AND business_id=?' if bid is not None else ''} GROUP BY business_id''', params).fetchall()
+        return {r['business_id']: {'valor': round(float(r['valor']), 2), 'n': int(r['n'])} for r in rows}
+    except Exception as ex:
+        log.warning('[PUBSHOW] soma do karaokê não lida: %s', ex)
+        return {}
+
+
+def _karaoke_vezes(n):
+    return f"{n} {'vez' if n == 1 else 'vezes'} no palco"
+
+
 def _repasses_calcular(conn, agora_utc=None):
     """Tudo que a tela /admin/repasses mostra (sem os saldos)."""
     agora = agora_utc or _utc_agora()
@@ -11278,13 +11318,14 @@ def admin_repasses():
     conn = get_pubshow_db()
     try:
         d = _repasses_calcular(conn)
+        karaoke = _karaoke_no_repasse(conn)   # 🎤 04/11/26: só mostra
     finally:
         conn.close()
     saldo = _asaas_saldo()
     falta = None if saldo is None else round(max(0.0, d['total_asaas'] - saldo), 2)
     msg = _REPASSE_MSGS.get(request.args.get('msg', ''))
     return render_template('pubshow/admin_repasses.html', d=d, saldo=saldo, falta=falta,
-                           brl=_brl, csrf=_admin_csrf_token(), msg=msg)
+                           brl=_brl, csrf=_admin_csrf_token(), msg=msg, karaoke=karaoke, karaoke_vezes=_karaoke_vezes)
 
 
 @pubshow_bp.route('/admin/repasses/<int:bid>/repassei', methods=['POST'])

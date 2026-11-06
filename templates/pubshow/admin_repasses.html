@@ -112,7 +112,7 @@
     <div class="lbl" style="margin-bottom:4px">
       Devido {% if b.ultimo %}desde o último repasse ({{ b.ultimo.ate_brt }}){% else %}desde o 1º pedido (nunca repassado){% endif %}
     </div>
-    <div class="linha"><span>🍺 Bar <span class="n">· {{ b.devido.bar_n }} PIX</span></span><span class="v">{{ brl(b.devido.bar) }}</span></div>
+    <div class="linha"><span>🍺 Bar <span class="n">· {{ b.devido.bar_n }} PIX</span></span><span class="v">{{ brl(b.devido.bar) }}</span></div>{% set k = karaoke.get(b.id) %}{% if k %}<div class="linha soma-karaoke"><span class="cinza">🎤 Do karaokê <span class="n">· {{ karaoke_vezes(k.n) }}</span></span><span class="v cinza">{{ brl(k.valor) }}</span></div><div class="linha soma-resto"><span class="cinza">⚡ Furar e outros <span class="n">· {{ b.devido.bar_n - k.n }} PIX</span></span><span class="v cinza">{{ brl(b.devido.bar - k.valor) }}</span></div>{% endif %}
     <div class="linha"><span>🙏 Gorjeta da equipe <span class="n">· {{ b.devido.gorj_n }} PIX</span></span><span class="v amarelo">{{ brl(b.devido.gorj) }}</span></div>
     <div class="linha"><span><b>Total a repassar</b></span><span class="v verde" style="font-size:17px">{{ brl(b.devido_total) }}</span></div>
     {% if b.devido.efi > 0 %}<div class="linha"><span class="cinza">💳 de onde sai</span><span class="v cinza">Asaas {{ brl(b.devido.asaas) }} · Efí {{ brl(b.devido.efi) }}</span></div>{% endif %}

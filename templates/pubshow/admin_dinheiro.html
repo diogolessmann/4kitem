@@ -163,7 +163,7 @@
     <div class="box">
       <div class="rot">Você deve aos bares</div>
       <div class="val num">{{ d.deve.txt }}</div>
-      <div class="sub">{% if d.deve.teste %}sem o bar de teste · na tela Repasses: {{ d.deve.repasses_txt }}{% else %}a mesma conta da tela Repasses{% endif %}</div>
+      <div class="sub">{% if d.deve.teste %}sem o bar de teste · na tela Repasses: {{ d.deve.repasses_txt }}{% else %}a mesma conta da tela Repasses{% endif %}</div>{% if d.deve.karaoke_txt %}<div class="sub" id="soma-karaoke">🎤 Do karaokê: {{ d.deve.karaoke_txt }}</div>{% endif %}
       {%- if d.deve.teste %}
       <div class="sub cinza">+ {{ d.deve.teste_txt }} do bar de teste, fora</div>
       {%- endif %}

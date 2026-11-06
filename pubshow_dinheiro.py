@@ -1074,6 +1074,9 @@ def montar(conn, agora, leitura=None):
     deve = round(float(rep['total_devido']) - deve_teste, 2)
     deve_asaas = round(float(rep['total_asaas']) - sum(por[i]['devido_asaas'] for i in teste_ids if i in por), 2)
     deve_efi = round(float(rep['total_efi']) - sum(por[i]['devido_efi'] for i in teste_ids if i in por), 2)
+    # 🎤 04/11/26: só mostra; já está dentro do "deve". O bar de teste fica fora, como no total
+    _kara = [k for i, k in _ps._karaoke_no_repasse(conn, agora_utc=agora).items() if i not in teste_ids]
+    deve_kara_n = sum(k['n'] for k in _kara)
 
     # ── a devolver (dinheiro de cliente parado na conta do PubShow) ───────────────────────────────────────────
     dev_asaas = sum(x['cent'] for x in a_dev if x['onde'] == 'asaas')
@@ -1186,7 +1189,9 @@ def montar(conn, agora, leitura=None):
         'teste_nomes': [nome[i] for i in sorted(teste_ids)],
         'noite': {'total': _r(noite_cent), 'txt': brl(_r(noite_cent)), 'n': noite_n, 'desde': noite_desde},
         'deve': {'total': deve, 'txt': brl(deve), 'teste': deve_teste, 'teste_txt': brl(deve_teste),
-                 'asaas': deve_asaas, 'efi': deve_efi, 'repasses_txt': brl(rep['total_devido'])},
+                 'asaas': deve_asaas, 'efi': deve_efi, 'repasses_txt': brl(rep['total_devido']),
+                 'karaoke_txt': (f"{brl(round(sum(k['valor'] for k in _kara), 2))} · {_ps._karaoke_vezes(deve_kara_n)}"
+                                 if deve_kara_n else '')},
         'a_devolver': {'asaas': _r(dev_asaas), 'efi': _r(dev_efi)},
         'ja_devolvido_efi': [x['id'] for x in ja_devolvido],
         'sinal': sinal, 'avisos': avisos, 'avisos_vis': avisos[:MAX_AVISOS_VISIVEIS],
