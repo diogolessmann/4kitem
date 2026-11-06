@@ -974,6 +974,7 @@ async function jaPaguei() {
       <div class="card-preco">{{ brl(t.preco + pix_conv) }}</div>
       {%- endif %}
       {%- if O_QUE_FAZ.get(key) %}<div class="card-detalhe">{{ O_QUE_FAZ[key] }}</div>{% endif %}
+      {%- if t.get('promo_fds') %}<div class="card-detalhe">🔥 Lançamento: só até sábado</div>{% endif %}
       {%- if t.get('ok') and (b.moderar_ok is none or b.moderar_ok) %}<div class="card-detalhe card-confere">o bar confere antes</div>{% endif %}
     </div>
     {%- endfor %}

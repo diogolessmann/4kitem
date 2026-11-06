@@ -2375,6 +2375,20 @@ def _happy_hour_desconto(b):
     return 0
 
 
+# 06/11/26 (Diogo: "esse final de semana a gente baixar os precos ... pra ver se sai algo novo"): preço de lançamento só
+# no Garage e no demo. Total no PIX; acaba domingo 08/11/26 às 08:00 de Brasília e daí o código fica inerte.
+PROMO_FDS_BARES = ('QHUK7J4V', 'CC4TN7PG')
+PROMO_FDS_TOTAL = {'parabens': 10.00, 'brinde': 5.00}
+PROMO_FDS_FIM_UTC = datetime(2026, 11, 8, 11, 0, 0)
+
+
+def _promo_fds_valendo(b, agora_utc=None):
+    try:
+        return b['code'] in PROMO_FDS_BARES and (agora_utc or datetime.utcnow()) < PROMO_FDS_FIM_UTC
+    except Exception:   # bar sem code, sqlite3.Row ou dict: nunca derruba cobrança, cai na tabela
+        return False
+
+
 def _precos_do_bar(b):
     """Retorna preços customizados + Happy Hour aplicado."""
     import json
@@ -2416,6 +2430,18 @@ def _precos_do_bar(b):
                 t['preco_original'] = preco_original
                 t['happy_hour'] = True
         tipos[k] = t
+    try:
+        if _promo_fds_valendo(b):
+            for k, total in PROMO_FDS_TOTAL.items():
+                _tx = _taxa_pix_bar(b, k)
+                # celular, TV e painel somam a taxa do furar: taxa diferente não entra, para o número nunca divergir do PIX
+                if k in tipos and _tx == _taxa_pix_bar(b, 'flash'):
+                    _novo = max(round(total - _tx, 2), _piso)
+                    if _novo < tipos[k]['preco']:   # só baixa: preço salvo menor continua menor
+                        tipos[k]['preco'] = _novo
+                        tipos[k]['promo_fds'] = True
+    except Exception as ex:
+        log.warning('[PUBSHOW] preço de lançamento: %s', ex)
     return tipos, desconto_pct
 
 
@@ -8182,6 +8208,8 @@ def painel():
                            precos_parsed=precos_parsed, precos_cortados=precos_cortados,
                            precos_salvos=precos_salvos,   # 17/10/26 (CD2/CD3): o salvo, sem corte (data-salvo)
                            piso_preco=_piso_do_bar(bd),   # 17/10/26 (CD3): o "o cliente paga" segue o piso da cobrança
+                           # 06/11/26 (preço de lançamento): só a tela; o campo escondido segue com precos_salvos
+                           promo_fds={k: v['preco'] for k, v in _precos_do_bar(bd)[0].items() if v.get('promo_fds')},
                            temas_habilitados=temas_habilitados,
                            anuncios_parsed=anuncios_parsed,
                            happy_hour=None,               # 17/10/26 (decisão 2): sem happy hour, o card some

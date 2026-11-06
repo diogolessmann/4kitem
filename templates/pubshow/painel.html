@@ -839,7 +839,7 @@
     {% set _v = (_sv|float) if _sv is not none and _sv != '' else 0 %}
     {% if not (_v > 0) %}{% set _v = t.preco|float %}{% endif %}
     {% if _v > 0 and _v < _piso and key != 'pular_espera' %}{% set _v = _piso %}{% endif %}{#- ⏩: preço fixo #}
-    {% if preco_teto and _v > preco_teto %}{% set _v = preco_teto|float %}{% endif %}
+    {% if preco_teto and _v > preco_teto %}{% set _v = preco_teto|float %}{% endif %}{% if promo_fds and promo_fds.get(key) %}{% set _v = promo_fds[key]|float %}{% endif %}{#- 06/11/26: só a tela; o campo escondido segue no salvo #}
     <div class="momento-row{% if key in bloqueados_parsed %} desligado{% endif %}" data-k="{{ key }}">
       <label class="sw"><input type="checkbox" id="mom-{{ key }}" name="tipos_ativos" value="{{ key }}" form="f-config" aria-label="Vender {{ _nome }}"{% if key not in bloqueados_parsed %} checked{% endif %}><span class="sw-t"></span></label>
       <label class="momento-txt" for="mom-{{ key }}">
@@ -861,7 +861,7 @@
     {% if loop.last and _resto %}</details>{% endif %}
     {% endfor %}
     {#- Lote D B (aprovado): nunca "taxa de serviço" — o selo já é o que o cliente paga. 27/10/26 (D2): os 20% do app #}
-    {% if asaas_ativo %}<div class="momento-preco-txt" id="taxa-app" style="margin-top:10px">💡 Rosa = o que o cliente paga no PIX. O app fica com {{ APP_REGRA_TXT }} do total; o resto é do bar.</div>{% endif %}
+    {% if asaas_ativo %}<div class="momento-preco-txt" id="taxa-app" style="margin-top:10px">💡 Rosa = o que o cliente paga no PIX. O app fica com {{ APP_REGRA_TXT }} do total; o resto é do bar.</div>{% endif %}{% if promo_fds %}<div class="momento-preco-txt" id="promo-fds-aviso" style="margin-top:8px">Preço de lançamento até sábado. Volta sozinho no domingo.</div>{% endif %}
     {#- 17/10/26 (Lote D, críticos CD2/CD3): preço salvo fora da faixa diz QUAL momento e o preço de antes #}
     {%- if precos_cortados %}
     <div id="precos-cortados" style="font-size:12px;color:var(--text2);margin-top:8px;line-height:1.6">
