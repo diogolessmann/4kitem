@@ -2445,6 +2445,17 @@ def _precos_do_bar(b):
     return tipos, desconto_pct
 
 
+def _promo_fds_do_painel(b):
+    # 06/11/26: só a tela do painel. Preço sujo no banco não pode tirar o painel do ar, e fora da promoção nem chama
+    if not _promo_fds_valendo(b):
+        return {}
+    try:
+        return {k: v['preco'] for k, v in _precos_do_bar(b)[0].items() if v.get('promo_fds')}
+    except Exception as ex:
+        log.warning('[PUBSHOW] preço de lançamento no painel: %s', ex)
+        return {}
+
+
 def _hh_maior_desconto(precos, visiveis):
     """Maior desconto REAL (%, arredondado pra baixo) entre os cards que o cliente vê (15/10/26).
     Com o piso de R$ 5, o % configurado no painel não vale pra todo item: o banner diz só o que é verdade (CDC)."""
@@ -8209,7 +8220,7 @@ def painel():
                            precos_salvos=precos_salvos,   # 17/10/26 (CD2/CD3): o salvo, sem corte (data-salvo)
                            piso_preco=_piso_do_bar(bd),   # 17/10/26 (CD3): o "o cliente paga" segue o piso da cobrança
                            # 06/11/26 (preço de lançamento): só a tela; o campo escondido segue com precos_salvos
-                           promo_fds={k: v['preco'] for k, v in _precos_do_bar(bd)[0].items() if v.get('promo_fds')},
+                           promo_fds=_promo_fds_do_painel(bd),
                            temas_habilitados=temas_habilitados,
                            anuncios_parsed=anuncios_parsed,
                            happy_hour=None,               # 17/10/26 (decisão 2): sem happy hour, o card some
