@@ -1,0 +1,289 @@
+{#- 📺 06/11/26 (Item 24): cartão "Tu apareceu na TV". Entra no jukebox.html e no karaoke.html, no fim do body, fora dos ifs.
+    O celular lembra os pedidos dele (localStorage), pergunta a /api/cartao-tv a cada 20 s (só com a aba aberta e só com
+    pedido na espera) e, quando o pedido passou na TV, desenha a imagem 1080x1920 no canvas e oferece. Compartilhar nativo
+    quando existir; senão baixa. Nada de imagem de fora (ela sujaria o canvas e o toBlob falharia), nada de valor no cartão.
+    O que vem de fora (nome, música, bar) entra por textContent e fillText. Os comentários que explicam o desenho ficam aqui
+    no Jinja: este pedaço sai no HTML do karaokê, que tem lista de palavras proibidas (t_karaoke_29out, _PROIBIDO_CEL).
+    Área livre do story: de 270 a 1540 na altura; em cima e embaixo o próprio Instagram cobre. -#}
+{%- set _ctv_novo = ((pix_pendente.pedido_id if pix_pendente else pedido_id_sucesso) or 0)|int %}
+<style>
+  #ctv-faixa{position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:900;display:none;
+    align-items:center;gap:6px;max-width:460px;margin:0 auto;padding:8px 4px 8px 14px;border-radius:16px;background:#1f1f33;
+    border:2px solid #fbbf24;box-shadow:0 8px 28px rgba(0,0,0,.55);color:#fff;
+    font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;line-height:1.3}
+  #ctv-faixa.on{display:flex}
+  body.ctv-com-faixa{padding-bottom:96px}
+  .ctv-txt{flex:1;min-width:0}
+  .ctv-t1{font-size:15px;font-weight:800}
+  .ctv-t2{font-size:13px;color:#d6d6e7;margin-top:1px}
+  .ctv-ver{flex:none;min-height:44px;padding:0 12px;border:0;border-radius:12px;background:#fbbf24;color:#111;
+    font:inherit;font-size:15px;font-weight:900;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .ctv-x{flex:none;width:44px;height:44px;border:0;background:none;color:#d6d6e7;font:inherit;font-size:20px;cursor:pointer;
+    -webkit-tap-highlight-color:transparent}
+  #ctv-modal{position:fixed;inset:0;z-index:1100;display:none;flex-direction:column;align-items:center;gap:10px;overflow:auto;
+    padding:calc(12px + env(safe-area-inset-top,0px)) 16px calc(12px + env(safe-area-inset-bottom,0px));background:#0b0b14;color:#fff;
+    font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;line-height:1.35}
+  #ctv-modal.on{display:flex}
+  body.ctv-travado{overflow:hidden}
+  #ctv-tit{flex:none;font-size:18px;font-weight:900;margin:0;text-align:center}
+  #ctv-img{display:block;flex:none;height:calc(100vh - 226px);height:calc(100dvh - 226px);min-height:240px;max-width:100%;
+    aspect-ratio:9/16;object-fit:contain;border-radius:14px;box-shadow:0 0 0 1px rgba(255,255,255,.14);
+    -webkit-touch-callout:default}
+  .ctv-btn{flex:none;width:100%;max-width:420px;min-height:52px;border-radius:14px;border:0;background:#fbbf24;color:#111;
+    font:inherit;font-size:18px;font-weight:900;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .ctv-btn.claro{min-height:44px;background:none;border:1px solid rgba(255,255,255,.28);color:#fff;font-size:16px;font-weight:700}
+  #ctv-dica{flex:none;font-size:14px;color:#d6d6e7;text-align:center;margin:0;max-width:420px}
+</style>
+<div id="ctv-faixa" role="status">
+  <div class="ctv-txt"><div class="ctv-t1" id="ctv-t1"></div><div class="ctv-t2">Cartão pro story pronto.</div></div>
+  <button type="button" class="ctv-ver" id="ctv-ver">Ver cartão</button>
+  <button type="button" class="ctv-x" id="ctv-x" aria-label="Agora não">✕</button>
+</div>
+<div id="ctv-modal" role="dialog" aria-modal="true" aria-labelledby="ctv-tit">
+  <p id="ctv-tit">Teu cartão pro story</p>
+  <img id="ctv-img" alt="Cartão para o story">
+  <button type="button" class="ctv-btn" id="ctv-postar"></button>
+  <p id="ctv-dica"></p>
+  <button type="button" class="ctv-btn claro" id="ctv-fechar">Fechar</button>
+</div>
+<script>
+(function () {
+  const NOVO = {{ _ctv_novo }}, TOKEN = {{ (b.jukebox_token or b.code)|tojson }};
+  const CHAVE = 'jk_cartao_tv', VALE_MS = 12 * 3600 * 1000, CADA_MS = 20000, ARQ = 'tu-apareceu-na-tv.png';
+  const $ = id => document.getElementById(id);
+
+  function _ler() {
+    try {
+      const a = JSON.parse(localStorage.getItem(CHAVE) || '[]');
+      return Array.isArray(a) ? a.filter(e => e && e.id && Date.now() - (e.t || 0) < VALE_MS) : [];
+    } catch (e) { return []; }
+  }
+  function _gravar(a) { try { localStorage.setItem(CHAVE, JSON.stringify(a.slice(-20))); } catch (e) {} }
+  function _encerrar(id) { _gravar(_ler().map(e => e.id === id ? Object.assign({}, e, {f: 1}) : e)); }
+  function _esperando() { return _ler().filter(e => !e.f); }
+  function _cid() {
+    try { const c = localStorage.getItem('jk_cid') || ''; return /^[A-Za-z0-9_-]{8,40}$/.test(c) ? c : ''; } catch (e) { return ''; }
+  }
+  if (NOVO && !_ler().some(e => e.id === NOVO)) _gravar(_ler().concat([{id: NOVO, b: TOKEN, t: Date.now()}]));
+
+  // ── a imagem ──
+  const GRANDE = px => `400 ${px}px Anton, Impact, 'Arial Narrow', system-ui, sans-serif`;
+  const FORTE = px => `700 ${px}px system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif`;
+  function _caber(g, txt, fonte, px, min, larg) {
+    let p = px;
+    g.font = fonte(p);
+    while (p > min && g.measureText(txt).width > larg) { p -= 2; g.font = fonte(p); }
+    return p;
+  }
+  function _cortar(g, txt, larg) {
+    if (g.measureText(txt).width <= larg) return txt;
+    let s = Array.from(txt);
+    while (s.length && g.measureText(s.join('') + '…').width > larg) s.pop();
+    return s.join('').trimEnd() + '…';
+  }
+  function _linhas(g, txt, larg, max) {
+    const out = [];
+    let atual = '', resto = txt.split(' ').filter(Boolean);
+    while (resto.length) {
+      const prova = atual ? atual + ' ' + resto[0] : resto[0];
+      if (g.measureText(prova).width <= larg) { atual = prova; resto.shift(); continue; }
+      if (!atual) { atual = _cortar(g, resto.shift(), larg); }
+      out.push(atual); atual = '';
+      if (out.length === max) break;
+    }
+    if (atual && out.length < max) out.push(atual);
+    else if (resto.length || atual) out[max - 1] = _cortar(g, out[max - 1] + ' ' + (atual ? atual + ' ' : '') + resto.join(' '), larg);
+    return out;
+  }
+  function _hora(iso) {
+    const d = new Date(iso);
+    if (!iso || isNaN(d.getTime())) return '';
+    const p = n => String(n).padStart(2, '0');
+    return `${p(d.getDate())}/${p(d.getMonth() + 1)} · ${p(d.getHours())}h${p(d.getMinutes())}`;
+  }
+  function desenhar(c) {
+    const W = 1080, H = 1920, cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const g = cv.getContext('2d');
+    const fundo = g.createLinearGradient(0, 0, 0, H);
+    fundo.addColorStop(0, '#14040f'); fundo.addColorStop(.38, '#4f0f30'); fundo.addColorStop(.72, '#5e2c0a'); fundo.addColorStop(1, '#140a04');
+    g.fillStyle = fundo; g.fillRect(0, 0, W, H);
+    const luz = g.createRadialGradient(W / 2, 930, 80, W / 2, 930, 820);
+    luz.addColorStop(0, 'rgba(251,191,36,.30)'); luz.addColorStop(1, 'rgba(251,191,36,0)');
+    g.fillStyle = luz; g.fillRect(0, 0, W, H);
+    g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+    g.shadowColor = 'rgba(0,0,0,.45)'; g.shadowBlur = 18;
+
+    g.fillStyle = '#fde68a';
+    const c1 = c.tu ? 'TU APARECEU' : 'APARECEU';
+    _caber(g, c1, GRANDE, 150, 80, 940);
+    g.fillText(c1, W / 2, 420);
+    g.fillStyle = '#fff';
+    g.font = GRANDE(190);
+    g.fillText('NA TV', W / 2, 620);
+
+    // a TV: o nome é a estrela, dentro da tela
+    const tx = 90, ty = 670, tw = 900, th = 560;
+    g.shadowColor = 'rgba(251,191,36,.55)'; g.shadowBlur = 46;
+    g.fillStyle = '#0b0b14';
+    g.beginPath();
+    if (g.roundRect) g.roundRect(tx, ty, tw, th, 36); else g.rect(tx, ty, tw, th);
+    g.fill();
+    g.shadowBlur = 0;
+    g.lineWidth = 10; g.strokeStyle = '#fbbf24'; g.stroke();
+    g.fillStyle = '#fbbf24';
+    g.fillRect(W / 2 - 34, ty + th + 5, 68, 26);
+    g.fillRect(W / 2 - 160, ty + th + 31, 320, 12);
+
+    const LARG = tw - 90, blocos = [];
+    if (c.nome) {
+      const nome = c.nome.toLocaleUpperCase('pt-BR');
+      const px = _caber(g, nome, GRANDE, 170, 64, LARG);
+      blocos.push({t: _cortar(g, nome, LARG), f: GRANDE(px), h: Math.round(px * 1.18), cor: '#fff'});
+    }
+    if (c.rotulo) {
+      const px = _caber(g, c.rotulo, FORTE, 66, 40, LARG);
+      blocos.push({t: _cortar(g, c.rotulo, LARG), f: FORTE(px), h: Math.round(px * 1.32), cor: '#fbbf24'});
+    }
+    if (c.musica) {
+      g.font = FORTE(c.rotulo ? 50 : 58);
+      const px = c.rotulo ? 50 : 58;
+      _linhas(g, c.musica, LARG, 3).forEach(t => blocos.push({t, f: FORTE(px), h: Math.round(px * 1.28), cor: '#f3f3fa'}));
+    }
+    const alto = blocos.reduce((s, b) => s + b.h, 0);
+    let y = ty + (th - alto) / 2;
+    g.shadowColor = 'rgba(0,0,0,.45)'; g.shadowBlur = 12;
+    blocos.forEach(b => {
+      g.font = b.f; g.fillStyle = b.cor;
+      g.fillText(b.t, W / 2, Math.round(y + b.h * .8));
+      y += b.h;
+    });
+
+    g.fillStyle = '#fde68a';
+    if (c.bar) {
+      const px = _caber(g, c.bar, GRANDE, 96, 44, 940);
+      g.font = GRANDE(px);
+      g.fillText(_cortar(g, c.bar, 940), W / 2, 1400);
+    }
+    const hora = _hora(c.quando);
+    if (hora) {
+      g.fillStyle = 'rgba(255,255,255,.9)';
+      g.font = FORTE(58);
+      g.fillText(hora, W / 2, 1490);
+    }
+    return cv;
+  }
+  let _fonte = null;
+  function _anton() {   // a mesma letra da TV; sem internet fica a reserva, sem travar
+    if (_fonte) return _fonte;
+    const tem = () => { try { return Array.from(document.fonts).some(f => /Anton/.test(f.family)); } catch (e) { return false; } };
+    const css = new Promise(ok => {
+      if (tem()) { ok(); return; }
+      let l = document.querySelector('link[href*="family=Anton"]');
+      if (!l) {
+        l = document.createElement('link'); l.rel = 'stylesheet';
+        l.href = 'https://fonts.googleapis.com/css2?family=Anton&display=swap';
+        document.head.append(l);
+      }
+      l.addEventListener('load', ok, {once: true}); l.addEventListener('error', ok, {once: true});
+      setTimeout(ok, 2000);
+    });
+    _fonte = css.then(() => Promise.race([
+      (document.fonts && document.fonts.load) ? document.fonts.load('400 120px Anton').catch(() => {}) : null,
+      new Promise(ok => setTimeout(ok, 2000)),
+    ]));
+    return _fonte;
+  }
+  function _gerar(c) {
+    return _anton().then(() => new Promise(ok => {
+      try { desenhar(c).toBlob(b => ok(b), 'image/png'); } catch (e) { ok(null); }
+    }));
+  }
+
+  // ── a oferta ──
+  let atual = null, _ocupado = false, _timer = null;
+  function _soltar() {
+    if (atual && atual.url) URL.revokeObjectURL(atual.url);
+    atual = null;
+  }
+  function _faixa(on) {
+    $('ctv-faixa').classList.toggle('on', on);
+    document.body.classList.toggle('ctv-com-faixa', on);
+  }
+  function _podeNativo(a) {
+    try { return !!(navigator.share && navigator.canShare && navigator.canShare({files: [a.arq]})); } catch (e) { return false; }
+  }
+  function _abrir() {
+    if (!atual) return;
+    const nativo = _podeNativo(atual);
+    $('ctv-img').src = atual.url;
+    $('ctv-postar').textContent = nativo ? '📲 Postar no story' : '⬇️ Baixar a imagem';
+    $('ctv-dica').textContent = nativo ? 'Na lista, escolhe o Instagram.' : '';
+    $('ctv-modal').classList.add('on');
+    document.body.classList.add('ctv-travado');
+    $('ctv-postar').focus();
+  }
+  function _fechar() {
+    $('ctv-modal').classList.remove('on');
+    document.body.classList.remove('ctv-travado');
+    if (atual && atual.feito) { _soltar(); conferir(); }
+    else if (atual) $('ctv-ver').focus();
+  }
+  function _feito() {
+    if (!atual) return;
+    atual.feito = true;
+    _encerrar(atual.id);
+    _faixa(false);
+  }
+  function _baixar() {
+    const el = document.createElement('a');
+    el.href = atual.url; el.download = ARQ;
+    document.body.append(el); el.click(); el.remove();
+    $('ctv-dica').textContent = 'Baixou? Abre o Instagram e posta no story. Não baixou? Segura na imagem e salva.';
+    _feito();
+  }
+  async function _postar() {
+    if (!atual) return;
+    if (_podeNativo(atual)) {
+      try { await navigator.share({files: [atual.arq]}); $('ctv-dica').textContent = 'Pronto! 🍻'; _feito(); return; }
+      catch (e) { if (e && e.name === 'AbortError') return; }   // desistiu na lista: fica como está
+    }
+    _baixar();
+  }
+  async function _oferecer(id, c) {
+    const blob = await _gerar(c);
+    if (!blob) { _encerrar(id); return; }
+    atual = {id, blob, url: URL.createObjectURL(blob), arq: new File([blob], ARQ, {type: 'image/png'})};
+    $('ctv-t1').textContent = '📺 ' + (c.tu ? 'Tu apareceu na TV!' : 'Apareceu na TV!');
+    _faixa(true);
+  }
+  async function conferir() {
+    if (_ocupado || atual || document.hidden) return;
+    const cid = _cid(), lista = _esperando();
+    if (!cid || !lista.length) { clearInterval(_timer); _timer = null; return; }
+    _ocupado = true;
+    try {
+      for (const e of lista) {
+        const r = await fetch(`/pubshow/api/cartao-tv/${encodeURIComponent(e.b || TOKEN)}/${e.id}?c=${encodeURIComponent(cid)}`, {cache: 'no-store'});
+        if (r.status === 404) { _encerrar(e.id); continue; }
+        if (!r.ok) continue;
+        const d = await r.json();
+        if (d.fim) { _encerrar(e.id); continue; }
+        if (d.pronto && d.cartao) { await _oferecer(e.id, d.cartao); break; }
+      }
+    } catch (e) {
+      /* sem internet: pergunta de novo na próxima */
+    } finally {
+      _ocupado = false;
+    }
+  }
+  $('ctv-ver').addEventListener('click', _abrir);
+  $('ctv-x').addEventListener('click', () => { if (atual) { _encerrar(atual.id); _soltar(); } _faixa(false); conferir(); });
+  $('ctv-postar').addEventListener('click', _postar);
+  $('ctv-fechar').addEventListener('click', _fechar);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('ctv-modal').classList.contains('on')) _fechar(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) conferir(); });
+  window.PubCartao = {conferir, desenhar};
+  if (_esperando().length) { _timer = setInterval(conferir, CADA_MS); conferir(); }
+})();
+</script>

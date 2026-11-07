@@ -5325,6 +5325,77 @@ def api_pedido_status(token, pedido_id):
     return jsonify(resp)
 
 
+# 📺 06/11/26 (Item 24, cartão "Tu apareceu na TV"): a imagem do story é desenhada no próprio celular (_cartao_tv.html, canvas,
+# sem servidor de imagem). Esta rota só diz se o pedido já passou na TV e devolve os textos. Só leitura e nunca o valor: o
+# cartão é igual pro grátis e pro pago. Só o celular que pediu recebe (o client_id do POST fica no fim do ip_cliente): o id é
+# sequencial e a rota não pode virar lista de nomes. A hora vai com o fuso de Brasília (o do exibido_at) e o celular mostra na
+# hora dele: o servidor não sabe o fuso do bar, e o Garage é em Manaus.
+CARTAO_TV_ESPERA_SEG = 15   # a TV desiste de um vídeo em até 8 s (o stall detector): só oferece depois disso
+_CARTAO_TV_ROTULO = {'flash': '⚡ Furou a fila', 'parabens': '🎂 Parabéns', 'brinde': '🍻 Brinde',
+                     'dedicatoria': '💌 Dedicatória', 'chegada': '🎉 Chegamos', 'cantada': '😏 Cantada', 'salve': '📣 Salve',
+                     'casamento': '💕 Pedido de namoro', 'gorjeta': '🙏 Gorjeta pra equipe', 'donate_bar': '🙏 Donate para o bar'}
+
+
+def _cartao_tv_textos(row):
+    """Os textos do cartão: o nome como a TV escreve, a música (sem ruído) e/ou o rótulo do tipo, o bar e a hora."""
+    tipo = row.get('tipo') or ''
+    eh_musica = tipo == 'musica' or tipo in TIPOS_MUSICA_FILA
+    karaoke = bool(row.get('karaoke'))
+    nome = ' '.join((row.get('nome_cliente') or '').split())
+    if karaoke:
+        nome = _K.nome_exibido(row, _dia_da_votacao())   # "Convidado" se o dono escondeu o nome
+    elif eh_musica and _dia_da_votacao():
+        nome = ''   # a mesma regra do _pedido_para_tv: no domingo da votação o nome da música não sai
+    musica = ''
+    if eh_musica:
+        titulo = row.get('titulo_pedido') or ''
+        musica = (_K.titulo_limpo(titulo, row.get('youtube_id'), _K.acervo_por_id()) if karaoke
+                  else _yt_titulo_limpo(titulo))
+        musica = ' '.join(re.sub(r'(?i)you\s*tube', ' ', musica or '').split()).strip(' -–—|·~:')
+        if musica == (row.get('youtube_id') or ''):
+            musica = ''   # sem título de verdade: o código do vídeo não vai pro story
+    rotulo = '🎤 Karaokê' if karaoke else _CARTAO_TV_ROTULO.get(tipo, '')
+    if not musica and not rotulo:
+        rotulo = '🎵 Tua música'
+    quando = str(row.get('exibido_at') or '')[:19]
+    quando = quando.replace(' ', 'T') + '-03:00' if re.fullmatch(r'\d{4}-\d\d-\d\d \d\d:\d\d:\d\d', quando) else ''
+    # no parabéns o nome grande é o do aniversariante, não o de quem mandou: sem o "Tu"
+    return {'tu': tipo != 'parabens', 'nome': nome, 'rotulo': rotulo, 'musica': musica,
+            'bar': row.get('bar_nome') or '', 'quando': quando}
+
+
+@pubshow_bp.route('/api/cartao-tv/<token>/<int:pedido_id>')
+def api_cartao_tv(token, pedido_id):
+    """{pronto: true, cartao: {...}} quando o pedido deste celular já passou na TV; {pronto: false} enquanto espera;
+    {pronto: false, fim: true} quando não vai mais aparecer (o celular para de perguntar). 1 SELECT pela chave, sem escrever."""
+    _c = (request.args.get('c') or '').strip()
+    if not re.fullmatch(r'[A-Za-z0-9_-]{8,40}', _c):
+        return jsonify({'error': 'not_found'}), 404
+    conn = get_pubshow_db()
+    try:
+        row = conn.execute(
+            "SELECT p.*, b.nome AS bar_nome, (p.created_at < datetime('now','-30 minutes')) AS pix_velho, "
+            "(p.exibido_at <= datetime('now','-3 hours',?)) AS ja_passou "
+            "FROM pubshow_pedidos p JOIN pubshow_businesses b ON p.business_id = b.id "
+            "WHERE p.id=? AND (b.jukebox_token=? OR b.code=?)",
+            (f'-{CARTAO_TV_ESPERA_SEG} seconds', pedido_id, token, token)).fetchone()
+    finally:
+        conn.close()
+    row = dict(row) if row else None
+    if not row or not (row.get('ip_cliente') or '').endswith('#' + _c):
+        return jsonify({'error': 'not_found'}), 404
+    status = row.get('status')
+    if row.get('tipo') == 'donate_sistema' or (row.get('karaoke') and row.get('karaoke_pulado')):
+        return jsonify({'pronto': False, 'fim': True})   # nunca passa na TV / a vez dele não aconteceu
+    if status == 'exibido':
+        if not row.get('ja_passou'):
+            return jsonify({'pronto': False})
+        return jsonify({'pronto': True, 'cartao': _cartao_tv_textos(row)})
+    if status in ('pendente', 'aguardando_ok') or (status == 'aguardando_pix' and not row.get('pix_velho')):
+        return jsonify({'pronto': False})
+    return jsonify({'pronto': False, 'fim': True})
+
+
 @pubshow_bp.route('/api/pedido-exibido/<int:pedido_id>', methods=['POST'])
 def api_pedido_exibido(pedido_id):
     """Marca pedido como exibido. Valida que a TV (code) é dona do pedido."""
