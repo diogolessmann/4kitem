@@ -5301,6 +5301,10 @@ def api_pedido_status(token, pedido_id):
     # diz "Essa música não vai tocar. Teus R$ X voltam no teu PIX." (o Diogo devolve pelo "PIX a devolver")
     if status == 'recusado' and row['tipo'] in TIPOS_MUSICA_FILA and row['pix_volta']:
         resp['musica_volta'] = _brl(row['valor_cli'])
+    # 💸 05/11/26: o vídeo não abriu na TV, fora do karaokê (_musica_nao_abriu): o celular diz onde está o PIX
+    if not row['karaoke'] and int(row['karaoke_pulado'] or 0) == _K.PULADO_FALHOU and status in ('recusado', 'exibido'):
+        resp['musica_falhou'] = (f"Teus {_brl(row['valor_cli'])} voltam no teu PIX. {_K.MSG_PRAZO}" if status == 'recusado'
+                                 else f"Teu PIX de {_brl(row['valor_cli'])} foi pra conta do bar. Fala no balcão.")
     if _efi_ligado():
         # Lote C: a tela diz "Teu PIX já foi devolvido" (recusa/atraso) ou "O QR venceu, pede de novo"
         # VCa-07 (16/10/26): "já foi devolvido" só depois da Efí confirmar (DEVOLVIDO); no meio do caminho é
@@ -5322,6 +5326,8 @@ def api_pedido_status(token, pedido_id):
                 dev_aprov = ''
             resp['pix_devolucao_suporte'] = dev_aprov == 'pendente'
             resp['pix_devolucao_negada'] = dev_aprov.startswith('negada')
+            if resp['pix_devolucao_negada'] and 'musica_falhou' in resp:   # 💸 05/11/26: negada: não promete o PIX de volta
+                resp['musica_falhou'] = 'O suporte do jukebox não aprovou a devolução. Fala no balcão ou chama (47) 99776-6831.'
     return jsonify(resp)
 
 
@@ -7793,7 +7799,8 @@ def painel_karaoke_esconder(pid):
 def api_pedido_falhou(pedido_id):
     """🎤 A TV do karaokê não conseguiu tocar o vídeo do pedido (erro 100/150 ou travou nos 8 s) e pulou: a vez não conta
     no ranking (karaoke_pulado=2) e o celular diz que a música não carregou. Mesma prova do /api/pedido-exibido (o code
-    da TV). Só pedido de karaokê que a TV acabou de começar (até 2 min)."""
+    da TV). Só pedido de karaokê que a TV acabou de começar (até 2 min).
+    💸 05/11/26: fora do karaokê quem decide é o _musica_nao_abriu. Pedido que não é dele segue a resposta de antes."""
     data = request.get_json(silent=True) or {}
     code = data.get('code') or request.form.get('code', '')
     if not code:
@@ -7801,20 +7808,26 @@ def api_pedido_falhou(pedido_id):
     conn = get_pubshow_db()
     try:
         b = conn.execute('SELECT * FROM pubshow_businesses WHERE code=?', (code,)).fetchone()
-        if not b or not _K.ligado(dict(b)):
+        if not b:
             return jsonify({'error': 'unauthorized'}), 403
-        ok = conn.execute(
+        modo = _K.ligado(dict(b))
+        ok = modo and conn.execute(
             "UPDATE pubshow_pedidos SET karaoke_pulado=2 WHERE id=? AND business_id=? AND karaoke=1 "
             "AND status='exibido' AND COALESCE(karaoke_pulado,0)=0 "
             "AND exibido_at >= datetime('now', '-3 hours', '-2 minutes')", (pedido_id, b['id'])).rowcount == 1
         if ok:
             # 🎤 03/11/26 (V2a): vez paga que não carregou: o PIX volta (grátis: 1 comando sem efeito). A marca manda
             _karaoke_devolver(conn, b['id'], pedido_id, _K.PULADO_FALHOU, de=('exibido',))
+        fora = None if ok else _musica_nao_abriu(conn, b['id'], pedido_id)   # 💸 05/11/26
         conn.commit()
     finally:
         conn.close()
     if ok:
         _karaoke_cache_limpar(b['id'])
+    if fora is not None:
+        return jsonify({'ok': fora}), 200
+    if not modo:
+        return jsonify({'error': 'unauthorized'}), 403
     return jsonify({'ok': ok}), (200 if ok else 409)
 
 
@@ -10003,6 +10016,31 @@ def _tirar_da_fila(conn, bid, pid=None, de='pendente', resto='dispensado', motiv
     return volta + _kvolta
 
 
+def _musica_nao_abriu(conn, bid, pid):
+    """💸 05/11/26: a TV não abriu o vídeo de uma música de pedido fora do karaokê (erro 100/150 ou travou nos 8 s, sem nunca
+    tocar). None = não vale (outro bar, karaokê, ainda não 'exibido', já marcado ou fora do prazo). False = grátis, nada a
+    fazer. True = marcou. Asaas e ponte: a regra do ⏭️ Pular ('recusado', "PIX a devolver"). Split: 'recusado' e "Devoluções
+    esperando seu OK", como no karaokê. Chave do bar: o dinheiro está com o bar; fica 'exibido', só com a marca. Só SQL, na
+    transação de quem chama: nenhuma devolução sai sem uma pessoa. Prazo: os 2 min do karaokê + a pausa máxima do ⏸️ (o ⚡
+    pausado na vinheta só carrega o vídeo depois da pausa)."""
+    r = conn.execute(
+        "SELECT pago_em FROM pubshow_pedidos WHERE id=? AND business_id=? AND COALESCE(karaoke,0)=0 AND status='exibido' "
+        "AND COALESCE(karaoke_pulado,0)=0 AND TRIM(COALESCE(youtube_id,''))<>'' AND exibido_at >= datetime('now','-3 hours',?)",
+        (pid, bid, f'-{120 + PAUSA_MUSICA_MIN * 60} seconds')).fetchone()
+    if not r:
+        return None
+    if not str(r['pago_em'] or '').strip():
+        return False
+    conn.execute('UPDATE pubshow_pedidos SET karaoke_pulado=? WHERE id=?', (_K.PULADO_FALHOU, pid))
+    motivo = 'o vídeo não abriu na TV'
+    if (not _tirar_da_fila(conn, bid, pid, de='exibido', resto=None, motivo=motivo) and pubshow_pay is not None
+            and conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='pubshow_pay_cobrancas'").fetchone()
+            and pubshow_pay.marcar_devolucao_manual(conn, pid, motivo)):
+        conn.execute("UPDATE pubshow_pedidos SET status='recusado' WHERE id=? AND status='exibido'", (pid,))
+    log.warning('[PUBSHOW] bar %s: pedido pago #%s: %s', bid, pid, motivo)
+    return True
+
+
 _PULAR_FOLGA_SEG = 10   # o ⚡ abre com a "Entrada de estrela" (4 s) e o YouTube leva uns segundos pra carregar
 # 27/10/26 (revisão da fila, C): os 10 s são só do ⚡ (tipo 'flash', o único com vinheta). Os outros pagos (👑, ⏩, 🎵)
 # ganham 3 s: depois disso a música tocou inteira e o Pular não pergunta "o PIX volta pro cliente".
@@ -10908,6 +10946,7 @@ def admin_dashboard():
            FROM pubshow_pedidos p JOIN pubshow_businesses b ON b.id = p.business_id
            WHERE p.status='recusado' AND p.pago_em IS NOT NULL AND p.estornado_em IS NULL
            ORDER BY p.pago_em DESC LIMIT 100''').fetchall()]
+    _espera_ok = set()   # 💸 05/11/26: devolução que espera o clique no saas-admin: a linha não diz "o robô devolve sozinho"
     if pix_a_devolver and _efi_ligado():
         # Lote C (16/10/26): o PIX Efí que o robô já está devolvendo (ou devolveu) não é "a devolver na mão".
         # A devolução recusada pela Efí (devolver_erro) continua aqui e no card "devoluções travadas" do saas-admin.
@@ -10915,6 +10954,7 @@ def admin_dashboard():
             _cx = _pp_conn()
             _auto = {r[0] for r in _cx.execute("SELECT pedido_id FROM pubshow_pay_cobrancas "
                                                "WHERE status IN ('devolvendo','devolvida')")}
+            _espera_ok = {r[0] for r in _cx.execute("SELECT pedido_id FROM pubshow_pay_cobrancas WHERE dev_aprovacao='pendente'")}
             _cx.close()
             pix_a_devolver = [p for p in pix_a_devolver if p['id'] not in _auto]
         except Exception as ex:
@@ -10945,6 +10985,7 @@ def admin_dashboard():
         # CC3 R3 (16/10/26): o texto do card sai do status REAL da cobrança Efí (não só do gateway)
         if p['efi']:
             p['efi_status'], p['efi_marcado'] = _efi_rows[p['id']][0], bool(_efi_rows[p['id']][1])
+            p['efi_espera_ok'] = p['id'] in _espera_ok
         if p.get('karaoke_pago'):
             p['karaoke_motivo'] = _K.MOTIVO_PULADO.get(int(p.get('karaoke_pulado') or 0), 'karaokê')
     conn.close()

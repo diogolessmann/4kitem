@@ -561,6 +561,7 @@ const TIPOS_MUSICA  = ['flash','vip','musica','musica_especifica','musica_extern
 const _POLL_MAX_MS  = 30 * 60 * 1000;   // 16/10/26 (CEL-30): o polling não roda pra sempre
 const _pollIni      = Date.now();
 let _posicaoTimer = null;
+let _exibidoEm    = 0;   // 💸 05/11/26: quando este celular viu a música começar
 // 16/10/26 (crítico C2): a tela do PIX era a resposta de um POST — recarregar (o iPhone faz sozinho ao
 // voltar do banco) reenviava o pedido e criava a 2ª cobrança. A URL vira o GET deste PIX, e o celular
 // lembra o PIX aberto pra lista mostrar "Teu PIX de R$ X → ver se caiu".
@@ -646,6 +647,11 @@ async function _atualizarPosicao() {
     const r = await fetch(`/pubshow/api/pedido-status/${PIX_TOKEN}/${PIX_PEDIDO_ID}?c=${encodeURIComponent(PIX_CID)}`);
     const d = await r.json();
     const musica = TIPOS_MUSICA.includes(PIX_TIPO);
+    if (d.musica_falhou) {   // 💸 05/11/26: antes dos textos da Efí: aqui o bar não recusou nada
+      clearInterval(_posicaoTimer);
+      _pixStatus('ruim', '🔊', 'Deu problema na TV e essa música não abriu.', d.musica_falhou);
+      return;
+    }
     {%- if pix_pendente.efi %}
     // Lote C, fatia b (16/10/26): só com a Efí — PIX devolvido (recusa do bar ou PIX atrasado) e QR vencido
     const _recusou = d.status === 'recusado';
@@ -703,7 +709,9 @@ async function _atualizarPosicao() {
       _pixStatus('pago', '✅', _textoPago(), sub);
       _fraseFama(PIX_TIPO === 'flash');   // 25/10/26 (leva 1 da fama): "Teu nome entra na TV antes da música. 📸 …"
     } else if (d.status === 'exibido') {
-      clearInterval(_posicaoTimer);
+      // 💸 05/11/26: a TV ainda pode avisar que o vídeo não abriu: música segue perguntando por 1 min depois de começar
+      if (musica && !_exibidoEm) _exibidoEm = Date.now();
+      if (!musica || Date.now() - _exibidoEm > 60000) clearInterval(_posicaoTimer);
       _pixStatus('pago', '🎉', musica ? '🎵 Tua música está tocando!' : '🎉 Apareceu na TV!', 'Curte aí! 🍻');
     } else if (d.status === 'dispensado') {
       clearInterval(_posicaoTimer);

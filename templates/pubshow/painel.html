@@ -1099,9 +1099,9 @@
             <td style="padding:8px 0">{{ t.get('emoji','') }} {{ t.get('nome', p.tipo) }}{% if p.tipo == 'gorjeta' %} <span style="font-size:10px;color:#4ade80;font-weight:800">EQUIPE</span>{% endif %}</td>
             {#- crítico leigo M7 (17/10/26): verde só o PIX confirmado (o mesmo critério do total embaixo) #}
             {% if p.pago_em and p.status != 'recusado' %}
-            <td style="padding:8px 0;text-align:right;color:var(--green);font-weight:700">R$ {{ '%.2f'|format(p.valor or 0)|replace('.',',') }}</td>
+            <td style="padding:8px 0;text-align:right;color:var(--green);font-weight:700">R$ {{ '%.2f'|format(p.valor or 0)|replace('.',',') }}{% if p.karaoke_pulado == 2 and not p.karaoke %} <span style="font-size:10px">não abriu na TV: devolve pro cliente</span>{% endif %}</td>
             {% else %}
-            <td style="padding:8px 0;text-align:right;color:var(--text2);font-weight:600">{% if not (p.valor or 0) %}grátis{% else %}<s>R$ {{ '%.2f'|format(p.valor or 0)|replace('.',',') }}</s> <span style="font-size:10px">{% if p.status == 'recusado' %}recusado{% else %}não pagou{% endif %}</span>{% endif %}</td>
+            <td style="padding:8px 0;text-align:right;color:var(--text2);font-weight:600">{% if not (p.valor or 0) %}grátis{% else %}<s>R$ {{ '%.2f'|format(p.valor or 0)|replace('.',',') }}</s> <span style="font-size:10px">{% if p.status == 'recusado' %}{% if p.karaoke_pulado == 2 and not p.karaoke %}não abriu na TV: o PIX volta pro cliente{% else %}recusado{% endif %}{% else %}não pagou{% endif %}</span>{% endif %}</td>
             {% endif %}
           </tr>
           {% endfor %}

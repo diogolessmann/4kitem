@@ -823,6 +823,7 @@ const VIDEOS = {{ videos | tojson }};
 let videoIdx        = Math.floor(Math.random() * VIDEOS.length);  // começa em qualquer ponto do acervo (não só nos 5 primeiros)
 let _videosPlayed   = 0;   // contador de vídeos tocados — trigger de propaganda
 let _pedidoYtId     = null; // youtube_id do pedido específico em carregamento (null = nenhum)
+let _pedidoId       = null; // 💸 05/11/26: o id desse pedido (o _avisarFalha conta ao servidor)
 let _anuncioIdx     = 0;   // qual slide mostrar agora
 let overlayAtivo    = false;
 // 24/10/26 (momentos no telão): o momento pago espera o intervalo (nada por cima do clipe tocando)
@@ -1238,6 +1239,16 @@ function iniciarStallDetector(delayMs) {
   }, delay);
 }
 
+// 💸 05/11/26: música de pedido que não abriu: o servidor decide o que fazer com o PIX. Sem o 200 (o aviso do "exibido" ainda
+// não chegou, ou a rede falhou), tenta de novo: até 4 vezes em 16 s.
+function _avisarFalha(id, tent) {
+  if (!id || MODO_TESTE) return;
+  const denovo = () => { if ((tent || 0) < 4) setTimeout(() => _avisarFalha(id, (tent || 0) + 1), 4000); };
+  _fetchTV(`${BASE_URL}/api/pedido-falhou/${id}`, {method: 'POST', headers: {'Content-Type': 'application/json'},
+                                                  body: JSON.stringify({code: CODE})})
+    .then(r => { if (!r.ok) denovo(); }).catch(denovo);
+}
+
 // Pula para o próximo vídeo por erro/stall — NÃO conta como vídeo tocado
 // (evita acionar slide de propaganda durante recuperação de erro)
 // 16/10/26 (TV-15): o pulo confere a FILA antes da biblioteca (pedido não espera mais 1 música inteira)
@@ -1247,7 +1258,8 @@ function _pularVideo() {
   if (_pedidoYtId) {
     // Stall num pedido específico — não marca nenhum vídeo da biblioteca como ruim
     console.warn('Pedido específico (' + _pedidoYtId + ') não carregou → segue a fila');{% if karaoke %}
-    _karaokeFalhou();   // 🎤 a vez não conta no ranking e o celular diz que a música não carregou{% endif %}
+    _karaokeFalhou();   // 🎤 a vez não conta no ranking e o celular diz que a música não carregou{% else %}
+    _avisarFalha(_pedidoId);{% endif %}
     _pedidoYtId = null;
     _tocandoPago = false;
     _tocandoPedido = false;
@@ -1352,6 +1364,7 @@ function _tocarPedido(p) {
   // ⏸️ 25/10/26: pausou durante a vinheta do ⚡ furar → o clipe pedido nem carrega (nenhum som escapa); entra no ▶️ Voltar
   if (_pausaBar) { _pausaPend = () => _tocarPedido(p); return; }
   _pedidoYtId  = p.youtube_id; // flag para stall detector não marcar vídeos como ruins
+  _pedidoId    = p.id;
   _tocandoPago = _ehPago(p);
   _tocandoPedido = true;
   _pedidoDesde   = Date.now();
