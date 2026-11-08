@@ -1220,7 +1220,8 @@ function onPlayerError(e) {
   // Erro 100/101/150 = vídeo indisponível ou sem embed
   console.warn('YT erro código:', e.data, '→ pulando...');
   clearTimeout(stallTimer);
-  setTimeout(_pularVideo, 600);
+  const _deQuem = _pedidoYtId;   // 🧹 06/11/26: a resposta do YouTube vale só pro pedido que estava abrindo
+  setTimeout(() => _pularVideo(_deQuem && _deQuem === _pedidoYtId ? e.data : 0), 600);
 }
 
 function iniciarStallDetector(delayMs) {
@@ -1241,25 +1242,25 @@ function iniciarStallDetector(delayMs) {
 
 // 💸 05/11/26: música de pedido que não abriu: o servidor decide o que fazer com o PIX. Sem o 200 (o aviso do "exibido" ainda
 // não chegou, ou a rede falhou), tenta de novo: até 4 vezes em 16 s.
-function _avisarFalha(id, tent) {
+function _avisarFalha(id, tent, erro) {
   if (!id || MODO_TESTE) return;
-  const denovo = () => { if ((tent || 0) < 4) setTimeout(() => _avisarFalha(id, (tent || 0) + 1), 4000); };
+  const denovo = () => { if ((tent || 0) < 4) setTimeout(() => _avisarFalha(id, (tent || 0) + 1, erro), 4000); };
   _fetchTV(`${BASE_URL}/api/pedido-falhou/${id}`, {method: 'POST', headers: {'Content-Type': 'application/json'},
-                                                  body: JSON.stringify({code: CODE})})
+                                                  body: JSON.stringify({code: CODE, erro: erro || 0})})
     .then(r => { if (!r.ok) denovo(); }).catch(denovo);
 }
 
 // Pula para o próximo vídeo por erro/stall — NÃO conta como vídeo tocado
 // (evita acionar slide de propaganda durante recuperação de erro)
 // 16/10/26 (TV-15): o pulo confere a FILA antes da biblioteca (pedido não espera mais 1 música inteira)
-function _pularVideo() {
+function _pularVideo(erroYT) {
   clearTimeout(stallTimer);
   if (_palcoAtivo) return;   // 24/10/26 (revisão TV-2): no palco nada é "vídeo ruim"; o fim da cena segue a fila
   if (_pedidoYtId) {
     // Stall num pedido específico — não marca nenhum vídeo da biblioteca como ruim
     console.warn('Pedido específico (' + _pedidoYtId + ') não carregou → segue a fila');{% if karaoke %}
     _karaokeFalhou();   // 🎤 a vez não conta no ranking e o celular diz que a música não carregou{% else %}
-    _avisarFalha(_pedidoId);{% endif %}
+    _avisarFalha(_pedidoId, 0, erroYT);{% endif %}
     _pedidoYtId = null;
     _tocandoPago = false;
     _tocandoPedido = false;

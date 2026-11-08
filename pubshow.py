@@ -1998,6 +1998,15 @@ def _oembed_status(yid):
         return 0, None
 
 
+MSG_VIDEO_FALHOU = 'Esse clipe não está abrindo na TV agora. Escolhe outro. 🙏'
+
+
+def _em_quarentena(conn, yid):
+    """🧹 06/11/26: o YouTube recusou este vídeo ao abrir numa TV e o prazo ainda corre (_video_nao_abre)?"""
+    return conn.execute("SELECT 1 FROM pubshow_video_quarentena WHERE youtube_id=? AND ate>datetime('now')",
+                        (yid,)).fetchone() is not None
+
+
 def _validar_video_pedido(b, youtube_id, info=None):
     """Retorna '' se o vídeo pode entrar na fila deste bar, senão a mensagem de erro pro cliente.
     Acervo curado passa direto; fora do acervo só com o YouTube liberado pelo bar E embed OK.
@@ -2012,10 +2021,13 @@ def _validar_video_pedido(b, youtube_id, info=None):
     conn = get_pubshow_db()
     curado = conn.execute('SELECT titulo, artista FROM pubshow_videos WHERE youtube_id=? AND ativo=1'
                           + (" AND COALESCE(subcategoria,'')<>'pedido_publico'" if _vot else ''), (youtube_id,)).fetchone()
+    _preso = not curado and _em_quarentena(conn, youtube_id)   # 🧹 06/11/26: o oEmbed diz 200 pra vídeo que a TV recusa
     conn.close()
     if curado:
         info['titulo'] = _sem_invisiveis(curado['titulo']).strip()[:80]
         return MSG_NAO_TOCA if _nao_toca(_nt, curado['titulo'], curado['artista']) else ''
+    if _preso:
+        return MSG_VIDEO_FALHOU
     if not _youtube_liberado(b):
         return MSG_SO_ACERVO_ELEICAO if _vot else 'Esse bar só aceita músicas do acervo. Escolhe na lista. 🎵'
     st, _oj = _oembed_status(youtube_id)
@@ -5461,7 +5473,7 @@ def api_pedido_exibido(pedido_id):
     # 🎤 29/10/26: pedido de KARAOKÊ não entra no acervo (senão a rotação e a lista do bar tocam karaokê depois que o modo
     # desliga). Só o pedido marcado: com o modo desligado nada muda (o filtro geral por título ficou pra V1.1)
     if (ok and _yid_ok(_yid) and not _tem_politica(pedido['titulo_pedido'])   # 11 letras, igual ao POST (16/10/26, V4-01)
-            and not pedido['karaoke']):
+            and not pedido['karaoke'] and not _em_quarentena(conn, _yid)):   # 🧹 06/11/26: em quarentena não volta pelo pedido
         _cat = SHOWS_FORA.get(pedido['categoria'], pedido['categoria'])   # 17/10/26: pedido feito no show → o clipe
         _cat = _cat if _cat in CANAIS else 'rock'
         _seg = _YT_DURACAO.get(_yid) or 180       # 17/10/26: a duração real que a busca viu (antes: 180 fixo)
@@ -7819,6 +7831,11 @@ def api_pedido_falhou(pedido_id):
             # 🎤 03/11/26 (V2a): vez paga que não carregou: o PIX volta (grátis: 1 comando sem efeito). A marca manda
             _karaoke_devolver(conn, b['id'], pedido_id, _K.PULADO_FALHOU, de=('exibido',))
         fora = None if ok else _musica_nao_abriu(conn, b['id'], pedido_id)   # 💸 05/11/26
+        if fora is not None:
+            try:
+                _video_nao_abre(conn, pedido_id, data.get('erro'))
+            except sqlite3.Error as ex:   # 🧹 06/11/26: o acervo nunca derruba o PIX marcado acima
+                log.error('[PUBSHOW] quarentena do pedido #%s falhou: %s', pedido_id, ex)
         conn.commit()
     finally:
         conn.close()
@@ -10041,6 +10058,40 @@ def _musica_nao_abriu(conn, bid, pid):
     return True
 
 
+_YT_ERROS_DO_VIDEO = (100, 101, 150)        # 🧹 06/11/26: a resposta do player sobre o vídeo. Sem internet o player não dá erro nenhum
+_QUARENTENA_HORAS = (12, 7 * 24, 30 * 24)   # 1ª falha, 2ª, da 3ª em diante. 30 dias de volta ao acervo sem falhar: conta do zero
+_QUARENTENA_POR_HORA = 5                    # além disso a TV é que está com defeito, não o vídeo (em 127.0.0.1 tudo dá 150)
+
+
+def _video_nao_abre(conn, pid, erro):
+    """🧹 06/11/26: o pedido não abriu na TV (quem chama já provou: deste bar, fora do karaokê, dentro do prazo). Vídeo do
+    público que nunca tocou: desfaz o INSERT do /api/pedido-exibido; o 1º pedido que tocar grava de novo. Quarentena só com a
+    resposta do próprio YouTube (_YT_ERROS_DO_VIDEO): travou (erro 0), nem conta, porque pode ser a rede. Sai do acervo com
+    ativo=0 e volta sozinho quando o prazo vence (_quarentena_soltar). Só SQL, na transação de quem chama."""
+    yid = (conn.execute('SELECT youtube_id FROM pubshow_pedidos WHERE id=?', (pid,)).fetchone()[0] or '').strip()
+    v = conn.execute('SELECT subcategoria, ativo FROM pubshow_videos WHERE youtube_id=?', (yid,)).fetchone()
+    if v and v['subcategoria'] == 'pedido_publico' and not conn.execute(
+            "SELECT 1 FROM pubshow_pedidos WHERE youtube_id=? AND id<>? AND status='exibido' AND COALESCE(karaoke,0)=0 "
+            "AND COALESCE(karaoke_pulado,0)=0 LIMIT 1", (yid, pid)).fetchone():
+        conn.execute('DELETE FROM pubshow_videos WHERE youtube_id=?', (yid,))
+        v = None
+    if erro not in _YT_ERROS_DO_VIDEO or _em_quarentena(conn, yid):
+        return
+    if conn.execute("SELECT COUNT(*) FROM pubshow_video_quarentena WHERE falhou_em>datetime('now','-1 hour')"
+                    ).fetchone()[0] >= _QUARENTENA_POR_HORA:
+        log.error('[PUBSHOW] quarentena TRAVADA: mais de %d vídeos na última hora; %s fica no acervo', _QUARENTENA_POR_HORA, yid)
+        return
+    q = conn.execute("SELECT falhas, religar, ate>datetime('now','-30 days') AS recente "
+                     'FROM pubshow_video_quarentena WHERE youtube_id=?', (yid,)).fetchone()
+    falhas = q['falhas'] + 1 if q and q['recente'] else 1
+    horas = _QUARENTENA_HORAS[min(falhas, len(_QUARENTENA_HORAS)) - 1]
+    conn.execute("INSERT OR REPLACE INTO pubshow_video_quarentena (youtube_id, falhas, falhou_em, ate, religar) "
+                 "VALUES (?,?,datetime('now'),datetime('now',?),?)",
+                 (yid, falhas, f'+{horas} hours', 1 if (v and v['ativo']) or (q and q['religar']) else 0))
+    conn.execute('UPDATE pubshow_videos SET ativo=0 WHERE youtube_id=?', (yid,))
+    log.warning('[PUBSHOW] vídeo %s em quarentena por %d h (erro %s, %dª falha)', yid, horas, erro, falhas)
+
+
 _PULAR_FOLGA_SEG = 10   # o ⚡ abre com a "Entrada de estrela" (4 s) e o YouTube leva uns segundos pra carregar
 # 27/10/26 (revisão da fila, C): os 10 s são só do ⚡ (tipo 'flash', o único com vinheta). Os outros pagos (👑, ⏩, 🎵)
 # ganham 3 s: depois disso a música tocou inteira e o Pular não pergunta "o PIX volta pro cliente".
@@ -12006,6 +12057,15 @@ def admin_videos_atualizar_tvs():
     return jsonify({'ok': True})
 
 
+def _quarentena_soltar(conn):
+    """🧹 06/11/26: prazo vencido, o vídeo volta pro acervo. Só quem a quarentena desligou (religar=1): o que já estava
+    desligado segue desligado. Não dá commit."""
+    agora = conn.execute("SELECT datetime('now')").fetchone()[0]
+    conn.execute('UPDATE pubshow_videos SET ativo=1 WHERE youtube_id IN '
+                 '(SELECT youtube_id FROM pubshow_video_quarentena WHERE religar=1 AND ate<=?)', (agora,))
+    conn.execute('UPDATE pubshow_video_quarentena SET religar=0 WHERE religar=1 AND ate<=?', (agora,))
+
+
 def _limpar_videos_quebrados(max_videos=None):
     """Checa todos os vídeos ativos via oEmbed (em paralelo) e desativa
     (ativo=0) os comprovadamente quebrados — 404 (removido) ou 401 (embed
@@ -12017,6 +12077,8 @@ def _limpar_videos_quebrados(max_videos=None):
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
     conn = get_pubshow_db()
+    _quarentena_soltar(conn)   # 🧹 06/11/26: antes da leitura: quem volta já passa pela conferência abaixo
+    conn.commit()
     todos = conn.execute(
         'SELECT youtube_id FROM pubshow_videos WHERE ativo=1'
     ).fetchall()

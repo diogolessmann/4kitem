@@ -119,6 +119,15 @@ def init_pubshow_db():
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
+        -- 🧹 06/11/26: vídeo que o YouTube recusou ao abrir na TV fica fora do acervo até `ate` (pubshow._video_nao_abre)
+        CREATE TABLE IF NOT EXISTS pubshow_video_quarentena (
+            youtube_id TEXT PRIMARY KEY,
+            falhas     INTEGER NOT NULL,
+            falhou_em  TEXT NOT NULL,
+            ate        TEXT NOT NULL,
+            religar    INTEGER NOT NULL DEFAULT 0
+        );
+
         -- ── Índices ────────────────────────────────────────────────────────────
         CREATE INDEX IF NOT EXISTS idx_pubshow_pedidos_biz    ON pubshow_pedidos(business_id);
         CREATE INDEX IF NOT EXISTS idx_pubshow_pedidos_status ON pubshow_pedidos(status);
