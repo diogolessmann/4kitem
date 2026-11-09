@@ -2153,6 +2153,9 @@ function mostrarCena(p, depois) {
   _pcCanto(p.tipo, 0);
   _pcFase(p.tipo + ':cartao');
   mostrarOverlay(p, fim);
+  // 09/11/26: a intro dos pagos abre o cartão; na cantada, o assobio entra quando a intro acaba (3 s)
+  _somArquivo('intro');
+  if (p.tipo === 'cantada') _somArquivo('cantada', 3000);
 }
 
 // 🎂 parabéns (16 s, parabens.html; SEM 3·2·1): fanfarra (nossa, ≤ 1,5 s) em 0 s → "🎂 hoje é dia de" → 0,8 s o NOME (o
@@ -2173,7 +2176,7 @@ function _cenaParabens(p, fim) {
   });
   _pcAjusta();
   _pcClasse(0, $('palco'), 'pc-zoom7');
-  _somCena('fanfarra');
+  if (!_somArquivo('intro')) _somCena('fanfarra');   // 09/11/26: a intro dos pagos abre a cena
   const cores = ['#f472b6', '#facc15', '#38bdf8', '#a78bfa', '#4ade80', '#fb7185'];
   // balões subindo o tempo todo
   for (let t = 0; t < 14200; t += 700) {
@@ -2232,6 +2235,7 @@ function _cenaBrinde(p, fim) {
   $('pcb-msg').textContent = String(p.mensagem || '').trim();
   _pcAjusta();
   _pcClasse(0, $('palco'), 'pc-zoom7');
+  _somArquivo('intro');   // 09/11/26: a intro dos pagos na contagem; o tilintar dos copos continua em 2,5 s
   for (let t = 0; t < 7000; t += 350) {
     _palcoPasso(t, () => _fxChuva(_fxN(4), {tipo: 'bolha', v: 2.2, tam: 7, cores: ['#fde68a', '#fff'], dv: .003}));
   }
@@ -2286,7 +2290,7 @@ function _vinhetaFurar(p, depois) {
   _pcAjusta();
   _pcClasse(0, $('palco'), 'pc-zoom4');
   _pcFase('furar:raio');
-  _palcoPasso(100, () => _somCena('estalo'));
+  _palcoPasso(100, () => { if (!_somArquivo('intro')) _somCena('estalo'); });   // 09/11/26: a intro dos pagos
   _pcClasse(250, $('pc-flash'), 'pc-flash-f');
   _pcFase('furar:nome', 750);
   _palcoPasso(800, () => _fxEstoura(_fx.W / 2, _fx.H / 2, _fxN(260), {cores: ['#fbbf24', '#fbbf24', '#fff'], vmin: 4, vmax: 20}));
@@ -2365,6 +2369,54 @@ function _pararSom() {
   _somNos.forEach(n => { try { n.stop(); } catch(e) {} });
   _somNos = [];
 }
+
+// 🔊 09/11/26 (Diogo: "Furar fila e todos os demais pedidos pagos terão essa PRE INTRO" e "cantada esse"): os sons do
+// pedido pago viram arquivos nossos (static/pubshow/sons), no lugar do som sintetizado da abertura. Mesma regra do
+// _somCena: só com o palco aberto e o clipe parado, no volume do painel, e param junto com o palco (_pararSom). O
+// arquivo é baixado e decodificado uma vez, num contexto offline (nada de áudio antes do toque na TV). Sem o arquivo
+// pronto (1ª vez, rede ruim, navegador antigo), quem chamou usa o som sintetizado de antes.
+const SONS_URL = {intro: '/static/pubshow/sons/intro_pedidos.mp3?v=1', cantada: '/static/pubshow/sons/cantada.mp3?v=1'};
+const _sonsBuf = {}, _sonsBaixando = {};
+function _somBaixar(qual) {
+  if (_sonsBuf[qual] || _sonsBaixando[qual] || !SONS_URL[qual] || !window.fetch) return;
+  const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  if (!OAC) return;
+  _sonsBaixando[qual] = true;
+  fetch(SONS_URL[qual]).then(r => r.ok ? r.arrayBuffer() : null).then(ab => {
+    if (!ab) { _sonsBaixando[qual] = false; return; }
+    const oac = new OAC(2, 44100, 44100);
+    oac.decodeAudioData(ab, b => { _sonsBuf[qual] = b; _sonsBaixando[qual] = false; },
+                        () => { _sonsBaixando[qual] = false; });
+  }).catch(() => { _sonsBaixando[qual] = false; });
+}
+// true = o arquivo está pronto (tocou, ou ficou mudo pela regra); false = ainda não baixou: use o som de antes
+function _somArquivo(qual, aposMs) {
+  const buf = _sonsBuf[qual];
+  if (!buf) { _somBaixar(qual); return false; }
+  if (_isMuted || !_palcoAtivo || _clipeTocando()) return true;
+  const vol = volumeAtualTV() / 100;
+  if (!(vol > 0)) return true;
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return false;
+    if (!_ac) _ac = new AC();
+    if (_ac.state === 'suspended' && _ac.resume) _ac.resume().catch(() => {});
+    const s = _ac.createBufferSource(), g = _ac.createGain();
+    g.gain.value = 0.9 * vol;
+    s.buffer = buf; s.connect(g); g.connect(_ac.destination);
+    const t0 = _ac.currentTime + 0.02 + (aposMs || 0) / 1000;
+    s.start(t0);
+    s.stop(t0 + buf.duration);   // o fim marcado, como os sons sintetizados (o _pararSom ainda corta antes, se o palco fechar)
+    _somNos.push(s);
+    return true;
+  } catch(e) { return false; }
+}
+// ~90 KB, uma vez por carga da TV, e só depois que ela ganha som: a TV muda não baixa nada (a carga dela fica < 200 KB)
+const _sonsPre = setInterval(() => {
+  if (_isMuted) return;
+  clearInterval(_sonsPre);
+  _somBaixar('intro'); _somBaixar('cantada');
+}, 5000);
 
 // ── Propaganda do bar — slide entre vídeos ───────────────────────────────────
 function proximoVideoOuSlide() {

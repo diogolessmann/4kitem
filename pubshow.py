@@ -407,7 +407,10 @@ _SLIDES_DIR = os.path.join(
 
 GORJETA_VALORES = (5.0, 10.0, 20.0, 50.0)   # opções de gorjeta no celular do cliente
 TIPOS_SEMPRE_GRATIS = ('musica', 'musica_especifica', 'musica_externa')   # nunca cobrados, mesmo com precos_custom (YouTube incluído — 12/09/26, Garage tinha 0,50)
-TIPOS_OCULTOS = ('vip', 'gorjeta')   # existem no banco/TV, mas o cliente não vê ("Tocar agora" saiu, YouTube entrou — 11/09/26)
+TIPOS_OCULTOS = ('vip', 'gorjeta', 'pular_espera')   # existem no banco/TV, mas o cliente não vê ("Tocar agora" saiu, YouTube entrou — 11/09/26)
+# 09/11/26 (Diogo: "remove o pular espera"): o ⏩ sai do celular, do painel e do site. O pedido ⏩ que já existe continua
+# na fila (TIPOS_MUSICA_FILA e os IN do SQL não mudam), é tocado e cobrado como antes. O lugar dele no celular vai para o
+# karaokê ("🎤 Cante sua música"), na próxima leva.
 # 27/10/26: a gorjeta saiu do cardápio (virou o Donate para o bar); fica no banco/TV/caixinha pro histórico
 TIPOS_EQUIPE  = ('gorjeta',)   # dinheiro da EQUIPE, não do caixa da casa — somado à parte no painel
 
@@ -3187,8 +3190,8 @@ def _texto_fundador(vagas: int) -> str:
 
 
 # ── 26/10/26 (site = sistema, pedido do Diogo): a tabela de preços do site é o celular de um bar NOVO ───────────────
-SITE_MOMENTOS = ('flash', 'pular_espera', 'parabens', 'dedicatoria', 'casamento', 'cantada', 'salve', 'brinde',
-                 'chegada')
+SITE_MOMENTOS = ('flash', 'parabens', 'dedicatoria', 'casamento', 'cantada', 'salve', 'brinde',
+                 'chegada')   # 09/11/26: sem o ⏩ Pular a espera (saiu da oferta)
 
 
 def _site_bar_novo():
@@ -8695,7 +8698,8 @@ def painel_conta_efi():
         _avisar_conta_efi(b, r.get('efi_conta'), bool(_antes))
     if xhr:
         return jsonify({'ok': not erro, 'erro': erro, 'msg': msg}), (200 if not erro else 400)
-    return redirect('/pubshow/painel?conta_efi=' + (msg if not erro else (r.get('erro') or 'erro')))
+    # 09/11/26: o formulário da conta Efí mora no pé do 💰 Dinheiro: a volta abre essa aba
+    return redirect('/pubshow/painel?aba=dinheiro&conta_efi=' + (msg if not erro else (r.get('erro') or 'erro')))
 
 
 # ── Lote D A5 (16/10/26): "dia do pagamento" — toda segunda às 10h (Brasília), 1 aviso por bar por semana ──────

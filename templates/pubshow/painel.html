@@ -409,16 +409,14 @@
     <a href="#tut-conta" style="color:#f97316;font-weight:800;text-decoration:none;white-space:nowrap">Corrigir a conta →</a>
   </div>
   {%- endif %}
-  {%- if conta_efi_msg == 'ok' %}
-  <div id="conta-efi-ok" style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3);border-radius:14px;padding:14px 18px;margin-bottom:16px;font-size:13px;color:#4ade80">{{ conta_efi_ok_txt or '✅ Conta salva. Você vê cada centavo em 💰 Meu dinheiro.' }}</div>
-  {%- endif %}
 
   {# ── Tutorial do dono: checklist que marca por SINAL e some sozinho quando completa (15/10/26, B6) ── #}
-  {% if tutorial %}
+  {#- 09/11/26: a conta Efí (passo 4) mora no pé do 💰 Dinheiro; aqui só os passos 1 a 3, enquanto faltar algum #}
+  {% if tutorial and not (tutorial.tv and tutorial.qr and tutorial.pedido) %}
   {% set link_tv = 'https://www.4kitem.com.br/bar/' ~ b.code %}
   <div class="card" id="sec-tutorial" style="border-color:rgba(249,115,22,.35);background:linear-gradient(135deg,rgba(239,68,68,.08),rgba(249,115,22,.05))">
     <div style="font-size:16px;font-weight:900;margin-bottom:2px">🚀 Vamos deixar seu PubShow tocando hoje</div>
-    <div style="font-size:12px;color:var(--text2);margin-bottom:14px">{{ tutorial.total }} passos, uns 10 minutos · {{ tutorial.feitos }} de {{ tutorial.total }} prontos</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:14px">3 passos, uns 10 minutos · {{ [tutorial.tv, tutorial.qr, tutorial.pedido]|select|list|length }} de 3 prontos</div>
     <div style="display:flex;flex-direction:column;gap:10px">
 
       <div class="tut-passo" data-passo="tv" data-ok="{{ 1 if tutorial.tv else 0 }}" style="padding:12px 14px;border-radius:12px;background:{% if tutorial.tv %}rgba(34,197,94,.1){% else %}rgba(255,255,255,.04){% endif %};border:1px solid {% if tutorial.tv %}rgba(34,197,94,.3){% else %}rgba(255,255,255,.1){% endif %}">
@@ -459,33 +457,6 @@
         {% endif %}
       </div>
 
-      {% if 'conta' in tutorial %}
-      <div class="tut-passo" id="tut-conta" data-passo="conta" data-ok="{{ 1 if tutorial.conta else 0 }}" style="scroll-margin-top:80px;padding:12px 14px;border-radius:12px;background:{% if tutorial.conta %}rgba(34,197,94,.1){% else %}rgba(255,255,255,.04){% endif %};border:1px solid {% if tutorial.conta %}rgba(34,197,94,.3){% else %}rgba(255,255,255,.1){% endif %}">
-        <div style="font-size:14px;font-weight:800">{% if tutorial.conta %}✅{% else %}4.{% endif %} Diga onde o dinheiro cai 💰</div>
-        {% if not tutorial.conta %}
-        {# Lote C, fatia b (16/10/26): o formulário de verdade (POST /pubshow/painel/conta-efi, §3.6). O titular tem que
-           ser o CPF/CNPJ do cadastro: o campo vem VAZIO de propósito (a conta de outra pessoa é recusada na hora) #}
-        {% if efi_split_recusado %}<div id="tut-conta-recusada" style="font-size:12px;color:#fecaca;margin-top:4px;line-height:1.6">A Efí recusou a conta salva. Digite de novo o número da conta e o CPF/CNPJ do titular, como aparecem no app da Efí.</div>{% endif %}
-        {#- Lote D A2 (16/10/26): a mensalidade sai de 30% de cada momento até fechar (era "os primeiros R$ 49,90") #}
-        <div style="font-size:12px;color:var(--text2);margin-top:4px;line-height:1.6">{% if efi_ponte %}<span id="tut-conta-ponte">Hoje o dinheiro dos momentos vai pra conta do PubShow e chega em você no repasse de toda semana. Conectando a tua conta Efí, ele passa a cair na hora.</span> {% endif %}{% if efi_mens_cent %}Cada momento cai na hora nessa conta. Até fechar a mensalidade ({{ brl_cent(efi_mens_cent) }} no mês), {{ efi_mens_pct }}% de cada momento paga ela: você nunca tira do bolso.{% else %}Cada momento cai na hora nessa conta.{% endif %} Ainda não tem conta? <a href="https://sejaefi.com.br/abrir-conta" target="_blank" rel="noopener" style="color:#f97316;font-weight:800;text-decoration:none">Abra grátis pelo app Efí</a> (uns 15 minutos) e volte aqui. A conta tem que estar no mesmo CPF/CNPJ do cadastro.</div>
-        {% set _doc_cad = (b.cpf_cnpj or '')|replace('.', '')|replace('-', '')|replace('/', '')|replace(' ', '') %}
-        <form method="POST" action="/pubshow/painel/conta-efi" id="form-conta-efi" class="pix-form" style="margin-top:10px;display:flex;flex-direction:column;gap:10px" onsubmit="return salvarContaEfi(event)">
-          <div>
-            <label class="label-sm" for="ce-conta">Número da conta Efí</label>
-            <input type="text" id="ce-conta" name="conta_efi" inputmode="numeric" autocomplete="off" maxlength="20" required placeholder="Aparece no app da Efí, em Minha conta" style="font-size:16px">
-          </div>
-          <div>
-            <label class="label-sm" for="ce-doc">CPF ou CNPJ do titular da conta</label>
-            <input type="text" id="ce-doc" name="doc" autocomplete="off" maxlength="18" required placeholder="Só os números" aria-describedby="ce-doc-dica" style="font-size:16px">
-            {#- CC2 (16/10/26): a dica ficava no placeholder e saía cortada em 390px #}
-            <div id="ce-doc-dica" style="font-size:12px;color:var(--text2);margin-top:4px">O mesmo CPF/CNPJ do cadastro do bar{% if _doc_cad|length > 2 %} (termina em {{ _doc_cad[-2:] }}){% endif %}.</div>
-          </div>
-          <div id="conta-efi-erro" role="alert" style="font-size:13px;color:#f87171;font-weight:700;{% if not conta_efi_msg or conta_efi_msg == 'ok' %}display:none{% endif %}">{% if conta_efi_msg and conta_efi_msg != 'ok' %}{{ conta_efi_msg }}{% endif %}</div>
-          <button type="submit" id="ce-salvar" class="btn-primary" style="min-height:44px;font-size:14px">💰 Conectar a conta Efí do bar</button>
-        </form>
-        {% endif %}
-      </div>
-      {% endif %}
 
     </div>
     <div style="font-size:12px;color:var(--text2);margin-top:12px">Travou? Chama no WhatsApp <a href="https://wa.me/{{ SUPORTE_WA }}?text=Preciso+de+ajuda+pra+ligar+o+PubShow" target="_blank" style="color:#f97316;font-weight:800;text-decoration:none">{{ SUPORTE_WA_FMT }}</a>.</div>
@@ -895,6 +866,9 @@
   <!-- ════════ 💰 DINHEIRO ════════ -->
   <div id="z-dinheiro" class="zona oculta">
   <p class="aba-frase">Quanto entrou e quando cai na sua conta.</p>
+  {%- if conta_efi_msg == 'ok' %}
+  <div id="conta-efi-ok" style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3);border-radius:14px;padding:14px 18px;margin-bottom:16px;font-size:13px;color:#4ade80">{{ conta_efi_ok_txt or '✅ Conta salva. Você vê cada centavo em 💰 Meu dinheiro.' }}</div>
+  {%- endif %}
   <!-- 💰 Hoje (momentos pagos + gorjeta) e, fora da Efí, 7 dias e o mês: 1 card só -->
   <div class="card din-hoje" id="sec-dinheiro-hoje" style="border-color:rgba(34,197,94,.3);background:linear-gradient(135deg,rgba(34,197,94,.06),rgba(16,185,129,.03))">
     <div class="card-title">💰 Hoje</div>
@@ -1122,6 +1096,42 @@
       {% if asaas_ativo %}<div style="font-size:12px;color:var(--text2);margin-top:6px">Valores do bar. Do que o cliente paga no PIX, o app fica com {{ APP_REGRA_TXT }}.</div>{% endif %}
     </div>
   </details>
+  {% endif %}
+
+  {#- 09/11/26 (Diogo: "Isso precisa sair da aba de controle, ir para pagamento na parte de baixo"): o passo 4 do
+      cartão de começo, com os mesmos ids. O aviso da Efí, o e-mail e o WhatsApp linkam #tut-conta e caem aqui #}
+  {% if tutorial and 'conta' in tutorial and not tutorial.conta %}
+  <div class="card" id="sec-conta-passo4" style="border-color:rgba(249,115,22,.35);background:linear-gradient(135deg,rgba(239,68,68,.08),rgba(249,115,22,.05))">
+    <div style="display:flex;flex-direction:column;gap:10px">
+      {% if 'conta' in tutorial %}
+      <div class="tut-passo" id="tut-conta" data-passo="conta" data-ok="{{ 1 if tutorial.conta else 0 }}" style="scroll-margin-top:80px;padding:12px 14px;border-radius:12px;background:{% if tutorial.conta %}rgba(34,197,94,.1){% else %}rgba(255,255,255,.04){% endif %};border:1px solid {% if tutorial.conta %}rgba(34,197,94,.3){% else %}rgba(255,255,255,.1){% endif %}">
+        <div style="font-size:14px;font-weight:800">{% if tutorial.conta %}✅{% else %}4.{% endif %} Diga onde o dinheiro cai 💰</div>
+        {% if not tutorial.conta %}
+        {# Lote C, fatia b (16/10/26): o formulário de verdade (POST /pubshow/painel/conta-efi, §3.6). O titular tem que
+           ser o CPF/CNPJ do cadastro: o campo vem VAZIO de propósito (a conta de outra pessoa é recusada na hora) #}
+        {% if efi_split_recusado %}<div id="tut-conta-recusada" style="font-size:12px;color:#fecaca;margin-top:4px;line-height:1.6">A Efí recusou a conta salva. Digite de novo o número da conta e o CPF/CNPJ do titular, como aparecem no app da Efí.</div>{% endif %}
+        {#- Lote D A2 (16/10/26): a mensalidade sai de 30% de cada momento até fechar (era "os primeiros R$ 49,90") #}
+        <div style="font-size:12px;color:var(--text2);margin-top:4px;line-height:1.6">{% if efi_ponte %}<span id="tut-conta-ponte">Hoje o dinheiro dos momentos vai pra conta do PubShow e chega em você no repasse de toda semana. Conectando a tua conta Efí, ele passa a cair na hora.</span> {% endif %}{% if efi_mens_cent %}Cada momento cai na hora nessa conta. Até fechar a mensalidade ({{ brl_cent(efi_mens_cent) }} no mês), {{ efi_mens_pct }}% de cada momento paga ela: você nunca tira do bolso.{% else %}Cada momento cai na hora nessa conta.{% endif %} Ainda não tem conta? <a href="https://sejaefi.com.br/abrir-conta" target="_blank" rel="noopener" style="color:#f97316;font-weight:800;text-decoration:none">Abra grátis pelo app Efí</a> (uns 15 minutos) e volte aqui. A conta tem que estar no mesmo CPF/CNPJ do cadastro.</div>
+        {% set _doc_cad = (b.cpf_cnpj or '')|replace('.', '')|replace('-', '')|replace('/', '')|replace(' ', '') %}
+        <form method="POST" action="/pubshow/painel/conta-efi" id="form-conta-efi" class="pix-form" style="margin-top:10px;display:flex;flex-direction:column;gap:10px" onsubmit="return salvarContaEfi(event)">
+          <div>
+            <label class="label-sm" for="ce-conta">Número da conta Efí</label>
+            <input type="text" id="ce-conta" name="conta_efi" inputmode="numeric" autocomplete="off" maxlength="20" required placeholder="Aparece no app da Efí, em Minha conta" style="font-size:16px">
+          </div>
+          <div>
+            <label class="label-sm" for="ce-doc">CPF ou CNPJ do titular da conta</label>
+            <input type="text" id="ce-doc" name="doc" autocomplete="off" maxlength="18" required placeholder="Só os números" aria-describedby="ce-doc-dica" style="font-size:16px">
+            {#- CC2 (16/10/26): a dica ficava no placeholder e saía cortada em 390px #}
+            <div id="ce-doc-dica" style="font-size:12px;color:var(--text2);margin-top:4px">O mesmo CPF/CNPJ do cadastro do bar{% if _doc_cad|length > 2 %} (termina em {{ _doc_cad[-2:] }}){% endif %}.</div>
+          </div>
+          <div id="conta-efi-erro" role="alert" style="font-size:13px;color:#f87171;font-weight:700;{% if not conta_efi_msg or conta_efi_msg == 'ok' %}display:none{% endif %}">{% if conta_efi_msg and conta_efi_msg != 'ok' %}{{ conta_efi_msg }}{% endif %}</div>
+          <button type="submit" id="ce-salvar" class="btn-primary" style="min-height:44px;font-size:14px">💰 Conectar a conta Efí do bar</button>
+        </form>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
   {% endif %}
 
   </div><!-- /z-dinheiro -->
@@ -1776,7 +1786,7 @@ async function salvarContaEfi(ev) {
   try {
     const r = await fetch(f.action, {method: 'POST', body: new FormData(f), headers: {'X-Requested-With': 'XMLHttpRequest'}});
     const d = await r.json();
-    if (d.ok) { location.href = '/pubshow/painel?conta_efi=' + (d.msg === 'salva' ? 'salva' : 'ok'); return false; }
+    if (d.ok) { location.href = '/pubshow/painel?aba=dinheiro&conta_efi=' + (d.msg === 'salva' ? 'salva' : 'ok'); return false; }
     err.textContent = d.erro || 'Não deu pra salvar. Tenta de novo.';
   } catch (e) {
     err.textContent = 'Sem conexão. Tenta de novo.';
