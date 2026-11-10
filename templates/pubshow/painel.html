@@ -642,16 +642,16 @@
         {#- 20/10/26: com estilos acesos o YouTube também só acha eles (antes dizia "qualquer música" sempre) #}
         <div class="sub" id="yt-sub">{{ yt_txt }}</div>
       </div>
-      <label class="sw{% if karaoke_on %} k-trava{% endif %}"><input type="checkbox" name="tipos_ativos" value="musica_externa" form="f-config" aria-label="Deixar pedir qualquer música"{% if 'musica_externa' not in bloqueados_parsed or karaoke_on %} checked{% endif %}{% if karaoke_on %} onclick="return false"{% endif %}><span class="sw-t"></span></label>
-    </div>{% if karaoke_ok %}
-    <div class="sub" id="yt-trava" style="margin-top:6px;font-size:13px;color:#fbbf24;font-weight:700"{% if not karaoke_on %} hidden{% endif %}>Ligado pelo karaokê</div>{% endif %}
+      {#- 🎤 09/11/26 (V2b): saiu a trava "Ligado pelo karaokê". O karaokê tem busca própria; esta chave é só do dono #}
+      <label class="sw"><input type="checkbox" name="tipos_ativos" value="musica_externa" form="f-config" aria-label="Deixar pedir qualquer música"{% if 'musica_externa' not in bloqueados_parsed %} checked{% endif %}><span class="sw-t"></span></label>
+    </div>
   </div>
   {% if karaoke_ok %}
   {#- 🎤 29/10/26 (modo karaokê, V1 GRÁTIS): interruptor com rota própria (/painel/karaoke, nunca o f-config) e aceite do
-      ECAD + sem prêmio. Ligado: o "Pedir qualquer música" fica marcado e travado (por onclick, não por disabled: campo
-      disabled não vai no POST e viraria bloqueado). O ranking da noite aparece só com o modo ligado. #}
+      ECAD + sem prêmio. O ranking da noite aparece só com o modo ligado.
+      09/11/26 (V2b): o modo não engessa mais o bar. Ligado, o cardápio do celular segue inteiro e ganha o cartão
+      "🎤 Cante sua música" (aceso só cobrando; senão cinza). Saiu a trava do "Pedir qualquer música". #}
   <style>
-    .sw.k-trava{opacity:.55;cursor:not-allowed}
     .k-aceite{margin-top:12px;padding:12px 14px;border-radius:12px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.35);font-size:14px;line-height:1.55}
     .k-aceite .botoes, .k-zerar-box .botoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
     .k-sim{background:#f97316!important;border-color:#f97316!important;color:#000!important}
@@ -678,21 +678,21 @@
     <div class="linha-chave" style="padding:0">
       <div>
         <div class="rot">🎤 Modo karaokê <span class="salvo" aria-live="polite"></span></div>
-        <div class="sub">Ligado: só música com letra, cada um põe o nome e canta na ordem.</div>
-        <div class="sub"{% if karaoke_pix %} id="k-cobra-txt"{% endif %}>{% if karaoke_pix %}{{ karaoke_cobra_txt }}{% else %}Por enquanto é grátis pro cliente.{% endif %}</div>
+        <div class="sub">Ligado: aparece o botão 🎤 Cante sua música (R$ 3) no celular. A TV vira palco na vez de cada um e volta sozinha.</div>
+        <div class="sub"{% if karaoke_pix %} id="k-cobra-txt"{% endif %}>{% if karaoke_pix %}{{ karaoke_cobra_txt }}{% else %}O botão 🎤 fica cinza no celular até a cobrança ser liberada pra este bar.{% endif %}</div>
       </div>
       <label class="sw"><input type="checkbox" id="karaoke-sw" aria-label="Ligar o modo karaokê"{% if karaoke_on %} checked{% endif %} onchange="trocarKaraoke(this)"><span class="sw-t"></span></label>
     </div>{% if karaoke_cobrar_ok %}
     <div class="linha-chave k-cobrar" id="k-cobrar-linha" style="padding-bottom:0">
       <div>
-        <div class="rot">💰 Cobrar R$ 3 pela vez no palco <span class="salvo" aria-live="polite"></span></div>
-        <div class="sub">Desligado: quem pedir agora canta de graça. Quem já pagou segue na fila e canta.</div>
+        <div class="rot">🎤 Karaokê aberto hoje (R$ 3 a vez no palco) <span class="salvo" aria-live="polite"></span></div>
+        <div class="sub">Desligado: pausa o karaokê e o botão 🎤 fica cinza no celular. Quem já pagou segue na fila e canta.</div>
       </div>
-      <label class="sw"><input type="checkbox" id="k-cobrar-sw" aria-label="Cobrar R$ 3 pela vez no palco"{% if karaoke_cobrar_on %} checked{% endif %} onchange="karaokeCobrar(this.checked, this)"><span class="sw-t"></span></label>
+      <label class="sw"><input type="checkbox" id="k-cobrar-sw" aria-label="Karaokê aberto hoje"{% if karaoke_cobrar_on %} checked{% endif %} onchange="karaokeCobrar(this.checked, this)"><span class="sw-t"></span></label>
     </div>
     <div class="k-falha" id="k-falha" role="alert"{% if not karaoke_falha %} hidden{% endif %}>
       ⚠️ O PIX não está abrindo agora. Quem pede vê o aviso e não entra na fila.
-      <button type="button" class="btn-sm" onclick="karaokeCobrar(false, this)">Desligar a cobrança hoje</button>
+      <button type="button" class="btn-sm" onclick="karaokeCobrar(false, this)">Pausar o karaokê hoje</button>
     </div>
     <div class="sub" style="margin-top:10px">Fechando? Desliga o karaokê: quem pagou e não cantou recebe de volta.</div>{% endif %}{% if karaoke_pix %}
     <div class="k-aceite" id="karaoke-desligar" hidden>
@@ -718,7 +718,6 @@
       </div>
     </div>
     <div class="k-aviso" id="karaoke-esporte" hidden>Com o ⚽ Esporte ligado a letra fica pequena na TV. Pro karaokê, desliga o Esporte.</div>
-    <div class="k-aviso" id="karaoke-recarregar" hidden>Quem já está com a página aberta vê o karaokê quando recarregar.</div>
   </div>
   <div class="card" id="sec-karaoke-rank"{% if not karaoke_on %} hidden{% endif %}>
     <div class="card-title">{% if karaoke_pix %}<span id="k-rank-tit">{% if karaoke_cobrando %}🎤 Quem cantou hoje{% else %}🏆 Ranking da noite{% endif %}</span>{% else %}🏆 Ranking da noite{% endif %} <span class="salvo" aria-live="polite"></span></div>{% if karaoke_pix %}
@@ -1278,6 +1277,9 @@
     <form method="POST" action="/pubshow/painel/config" id="f-config">
       {#- as 2 linhas de música grátis não aparecem na tela: seguem como estão salvas #}
       {% for _k in ('musica', 'musica_especifica') if _k not in bloqueados_parsed %}<input type="hidden" name="tipos_ativos" value="{{ _k }}">{% endfor %}
+      {#- 09/11/26 (revisão V2b): a versão do formulário. Sem ela (painel aberto desde antes da subida), o painel_config
+          não mexe no "Pedir qualquer música" de bar com o modo karaokê ligado #}
+      <input type="hidden" name="cfg_v2b" value="1">
       <div class="linha-chave" style="padding-top:0">
         <div>
           <div class="rot">⏰ Sempre aberto <span class="salvo" aria-live="polite"></span></div>
@@ -1445,17 +1447,6 @@ const _kJ = {'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpReq
 function _kEsc(t) {
   return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-function _kTravaPedir(on) {
-  // "Pedir qualquer música" marcado e travado com o modo (onclick, não disabled: disabled não vai no POST)
-  const cb = document.querySelector('#sec-youtube input[value="musica_externa"]');
-  const dica = document.getElementById('yt-trava');
-  if (cb) {
-    if (on) cb.checked = true;
-    cb.onclick = on ? () => false : null;
-    const sw = cb.closest('.sw'); if (sw) sw.classList.toggle('k-trava', on);
-  }
-  if (dica) dica.hidden = !on;
-}
 function _kEsporte() {
   const av = document.getElementById('karaoke-esporte');
   if (av) av.hidden = !(_kOn && document.querySelector('.estilo-btn[data-estilo="esporte"].ativo'));
@@ -1463,7 +1454,6 @@ function _kEsporte() {
 function _kPintar() {
   const sw = document.getElementById('karaoke-sw'); if (sw) sw.checked = _kOn;
   const rk = document.getElementById('sec-karaoke-rank'); if (rk) rk.hidden = !_kOn{% if karaoke_pix %} && !_kCantouHoje{% endif %};
-  _kTravaPedir(_kOn);
   _kEsporte();
   clearInterval(_kRankT);
   if (_kOn) { karaokeRanking(); _kRankT = setInterval(() => { if (!document.hidden) karaokeRanking(); }, 30000); }{% if karaoke_pix %} else karaokeRanking();{% endif %}
@@ -1493,13 +1483,8 @@ async function _kSalvar(ligado, aceite, alvo) {
     if (!d.ok) throw new Error();
     _kOn = !!d.ligado;
     _kPintar();
-    // revisão 29/10 noite (tela-4): desligar devolve o bloqueio do "Pedir qualquer música" de quem tinha fechado; a
-    // chave mostra o que o servidor gravou (senão o próximo autosave do f-config abria de novo)
-    if (!_kOn && typeof d.yt_bloqueado === 'boolean') {
-      const cb = document.querySelector('#sec-youtube input[value="musica_externa"]');
-      if (cb) cb.checked = !d.yt_bloqueado;
-    }
-    document.getElementById('karaoke-recarregar').hidden = !_kOn;
+    // 09/11/26 (V2b): ligar e desligar não mexem mais no "Pedir qualquer música", e o celular não precisa recarregar
+    // (o cartão 🎤 acende no próximo carregamento do cardápio)
     _salvo(document.getElementById('karaoke-sw'), true);
   } catch (e) { _kPintar(); _salvo(document.getElementById('karaoke-sw'), false); }
 }

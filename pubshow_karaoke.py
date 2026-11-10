@@ -43,7 +43,10 @@ PIX_TOTAL_CENT = 300        # o que o cliente paga por vez no palco
 PIX_BAR_CENT = 150          # o que fica pro bar (quando canta)
 PIX_APP_CENT = 150          # o que fica pro app
 TETO_CELULAR_PADRAO = 5     # pagas por celular por noite (env PUBSHOW_KARAOKE_TETO_CELULAR); devolvido não conta
-PAGO_MAX_H = 4              # pago na fila há mais que isso: o bar fechou, vira "a devolver" (fila cheia = 100 min)
+PAGO_MAX_H = 4              # pago na fila há mais que isso: o bar fechou, vira "a devolver"
+# 10/11/26 (crítica da D2, achado 2): com a fila D2 (👑 → ⚡ → cantor pago → grátis) todo ⚡ novo passa na frente do
+# cantor que já pagou, então a espera dele não tem teto pela fila (o antigo "fila cheia = 100 min" deixou de valer).
+# O único limite é este: passou de PAGO_MAX_H horas na fila, o PIX volta
 
 # 03/11/26 (V2a): karaoke_pulado. 1 e 2 são do V1; os outros só nascem em linha paga. 7 a 9 são os PIX que caem fora de
 # hora (a tabela 2.3 do desenho tem um texto pra cada, e o código é o que o celular lê)
@@ -74,6 +77,9 @@ MSG_PIX_FALHOU = 'Não consegui gerar o PIX agora. Tenta de novo em instantes.'
 MSG_TETO_CELULAR = 'Hoje tu já cantou {n}. Agora é a vez da galera. Amanhã tem mais!'
 MSG_FILA_CHEIA = 'A fila tá cheia agora. Espera uma música passar e tenta de novo.'
 MSG_TETO_FIM = 'Agora é a vez da galera. Amanhã tem mais!'   # 04/11/26 (M3): no lugar do botão, com o teto batido
+# 09/11/26 (V2b): o pedido veio do cartão 🎤 com o karaokê sem cobrança agora (freio, Efí fora, env vazia, modo desligado).
+# Na V2b não existe karaokê grátis: o cartão fica cinza e o POST antigo recebe este texto
+MSG_PAUSADO = '🎤 O karaokê está pausado agora. Pede tua música no cardápio, ou tenta mais tarde.'
 
 # 04/11/26 (B1 e B2): os textos da promessa, num lugar só
 PRECO_TXT = 'R$ 3'
@@ -247,16 +253,17 @@ def cobra(b, rota):
 
 
 def motivo_gratis(b, rota):
-    """Por que o karaokê deste bar está grátis, na língua do dono. '' = não há o que dizer (cobra, ou a env PIX está
-    vazia e o painel fica com a frase de sempre)."""
+    """Por que o karaokê deste bar não cobra, na língua do dono. '' = não há o que dizer (cobra, ou a env PIX está
+    vazia e o painel fica com a frase de sempre).
+    09/11/26 (V2b, decisão D2 do Diogo): sem cobrança não existe karaokê grátis: o botão 🎤 do celular fica cinza."""
     if not pix_bares():
         return ''
     if not pix_permitido(b):
-        return 'Por enquanto é grátis: este bar não está na lista da cobrança.'
+        return 'O botão 🎤 fica cinza no celular: este bar ainda não está na lista da cobrança.'
     if rota not in ('ponte', 'split'):
-        return 'Por enquanto é grátis: falta ligar o PIX da Efí neste bar.'
+        return 'O botão 🎤 fica cinza no celular: falta ligar o PIX da Efí neste bar.'
     if not cobrar_aceso(b):
-        return 'Por enquanto é grátis: tu desligou a cobrança.'
+        return 'O botão 🎤 fica cinza no celular: tu pausou o karaokê hoje.'
     return ''
 
 
@@ -401,6 +408,19 @@ def acabou(exibido_at, agora_br, dur_seg=None, tem_depois=False, folga=PALCO_FOL
     return agora >= ini + timedelta(seconds=limite)
 
 
+def _int0(v):
+    try:
+        return int(v or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _e_cantor(linha):
+    """09/11/26 (V2b): a linha da fila é de karaokê (karaoke=1). Sem a chave = cantor (as contas de antes passavam só
+    linhas de karaokê)."""
+    return bool(_int0(linha.get('karaoke', 1)))
+
+
 def bloco(palco, fila, rank, votacao=False, pago=False, sem_rei=False, cantaram=0, voltou=None):
     """O bloco 'karaoke' do /api/status e das telas do celular.
     palco: a linha do pedido que está no palco (ou None); fila: as linhas pendentes de karaokê NA ORDEM REAL da TV;
@@ -409,8 +429,15 @@ def bloco(palco, fila, rank, votacao=False, pago=False, sem_rei=False, cantaram=
     (Rei fora e "Hoje já cantaram" no lugar: nunca um ranking que some música paga). cantaram = PESSOAS, não músicas.
     voltou = ids que o "Não veio" pôs de volta na fila (a TV precisa esquecer que já tocou). Sem pago e sem sem_rei, o
     dicionário é o de sempre, chave por chave."""
-    nomes = [nome_exibido(f, votacao) for f in (fila or [])]
+    # 09/11/26 (V2b): a fila do bar é misturada (cantor, ⚡ e grátis). Os nomes e o fila_n são só dos cantores (linha
+    # karaoke=1; linha sem a chave = cantor, como antes); a espera conta o que toca antes de um cantor novo: 👑, ⚡ e os
+    # cantores (o grupo pago, _ordem_fila_musica do pubshow.py). Fila só de cantores = a conta de antes, igualzinha
+    # 09/11/26 (V2b, D2): com o cantor depois do ⚡ (👑 → ⚡ → cantor → grátis) a conta não muda: um cantor novo espera
+    # 👑, ⚡ e os cantores que já esperam; as grátis vão atrás dele
+    fila = list(fila or [])
+    nomes = [nome_exibido(f, votacao) for f in fila if _e_cantor(f)]
     n = len(nomes)
+    frente = sum(1 for f in fila if _e_cantor(f) or f.get('tipo') in ('vip', 'flash') or _int0(f.get('karaoke_pago')))
     b = {
         'ligado': True,
         'palco': ({'id': palco.get('id'), 'nome': nome_exibido(palco, votacao),
@@ -418,7 +445,7 @@ def bloco(palco, fila, rank, votacao=False, pago=False, sem_rei=False, cantaram=
                   if palco else None),
         'fila': nomes[:FILA_MAX],
         'fila_n': n,
-        'espera_min': n * MUSICA_MIN + (2 if (palco or n) else 0),
+        'espera_min': frente * MUSICA_MIN + (2 if (palco or frente) else 0),
         'rei': None if votacao else rei(rank),
         'gratis': True,   # V1: o karaokê é grátis
     }

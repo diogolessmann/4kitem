@@ -264,12 +264,24 @@
   .cardapio-grade .item-furar .card-nome{display:block;font-size:21px}
   .cardapio-grade .item-furar .sub{display:block;font-size:13px;font-weight:800;opacity:.9;margin-top:3px}
   .cardapio-grade .item-furar .card-preco{position:relative;top:auto;right:auto;margin-left:auto;flex-shrink:0;font-size:22px}
-  /* ⏩ Pular a espera (20/10/26): larga como o furar, mais baixa e na cor dela */
-  .cardapio-grade .item-pular{grid-column:1/-1;flex-direction:row;align-items:center;gap:14px;min-height:76px}
-  .cardapio-grade .item-pular .card-emoji{margin:0;font-size:32px}
-  .cardapio-grade .item-pular .card-nome{font-size:19px}
-  .cardapio-grade .item-pular .sub{display:block;font-size:13px;font-weight:800;color:#99f6e4;margin-top:3px}
-  .cardapio-grade .item-pular .card-preco{position:relative;top:auto;right:auto;margin-left:auto;flex-shrink:0;font-size:20px}
+  /* 🎤 09/11/26 (V2b, Diogo: "Botao laranja mais escuro que o furar fila"): o lugar do ⏩ Pular a espera (saiu da
+     oferta). Aceso = laranja mais escuro que o ⚡ (#f59e0b→#ea580c) e leva à tela de cantar (?k=1); apagado = cinza,
+     sem link. O preço fica em .k-preco, nunca .card-preco (os testes leem .card-preco como preço de momento) */
+  .cardapio-grade .item-karaoke{grid-column:1/-1;flex-direction:row;align-items:center;gap:14px;min-height:84px;
+    background:linear-gradient(135deg,#c2410c,#7c2d12);border-color:#ea580c;text-decoration:none}
+  .cardapio-grade .item-karaoke::before{display:none}
+  .cardapio-grade .item-karaoke .card-emoji{margin:0;font-size:36px}
+  .cardapio-grade .item-karaoke .card-nome{display:block;font-size:20px}
+  .cardapio-grade .item-karaoke .sub{display:block;font-size:13px;font-weight:800;color:#fed7aa;margin-top:3px}
+  .cardapio-grade .item-karaoke .k-preco{margin-left:auto;flex-shrink:0;font-size:21px;font-weight:900;color:#fff;
+    background:rgba(0,0,0,.35);padding:4px 9px;border-radius:10px}
+  .cardapio-grade .item-karaoke.off{background:#24242e;border-color:#3a3a46;filter:grayscale(1);opacity:.55;cursor:default}
+  .cardapio-grade .item-karaoke.off:active{transform:none}
+  .cardapio-grade .item-karaoke.off .card-nome,.cardapio-grade .item-karaoke.off .sub,
+  .cardapio-grade .item-karaoke.off .k-preco{color:#8888aa}
+  /* 🎤 09/11/26 (V2b): quem saiu da tela do karaokê pra pedir outra coisa acha a vez dele de volta */
+  .k-volta{display:flex;align-items:center;justify-content:center;min-height:48px;margin:10px 0 0;padding:10px 14px;
+    border-radius:14px;background:#7c2d12;border:1px solid #ea580c;color:#fff;font-size:16px;font-weight:900;text-decoration:none}
   .aviso-curto{margin:0 0 10px;padding:10px 12px;border-radius:12px;background:rgba(251,191,36,.08);
     border:1px solid rgba(251,191,36,.35);font-size:13px;color:#fde68a}
   #ini-fila{margin-top:16px}
@@ -915,6 +927,42 @@ async function jaPaguei() {
                        'cantada': 'Cantada', 'salve': 'Salve pra mesa', 'casamento': 'Pedido de namoro',
                        'donate_bar': 'Donate para o bar'} %}
 <div class="aba on" id="aba-cardapio">
+  {%- if karaoke_card %}
+  {#- 🎤 09/11/26 (V2b): quem voltou ao cardápio (pra pedir um Parabéns, um ⚡) acha a vez dele no palco. O pedido vem do
+      jk_kara que a tela de cantar grava (vale 12 h); 1 pergunta só, na abertura, e a faixa só aparece se a vez ainda
+      está viva (PIX aberto, na fila ou cantando agora) #}
+  <a class="k-volta" id="k-volta" href="/pubshow/jukebox/{{ b.jukebox_token or b.code }}?k=1" style="display:none">🎤 Tua vez no palco → ver</a>
+  <script>
+  (function () {
+    const TK = {{ (b.jukebox_token or b.code)|tojson }};
+    let m = null, cid = '';
+    try { m = JSON.parse(localStorage.getItem('jk_kara') || 'null'); cid = localStorage.getItem('jk_cid') || ''; } catch (e) {}
+    if (!m || !m.id || Date.now() - (Number(m.t) || 0) > 12 * 3600 * 1000) return;
+    const id = parseInt(m.id, 10);
+    if (!(id > 0)) return;
+    fetch(`/pubshow/api/pedido-status/${encodeURIComponent(TK)}/${id}`, {cache: 'no-store'})
+      .then(r => r.ok ? r.json() : null)
+      .then(st => {
+        if (!st) return;
+        const pix = st.status === 'aguardando_pix';
+        // 09/11/26 (revisão V2b): fora o PIX ainda aberto (que tem link próprio), a faixa só aparece com o cartão aceso:
+        // com o modo desligado o ?k=1 abria o mesmo cardápio (C5). PIX vencido nunca diz "aberto" (C4)
+        const ON = {{ (karaoke_card == 'on')|tojson }};
+        const viva = (pix && (ON || !st.pix_venceu))
+                     || (ON && (st.status === 'pendente' || st.status === 'aguardando_ok'
+                                || (st.status === 'exibido' && !st.acabou && !st.pulado)));
+        const a = document.getElementById('k-volta');
+        if (!viva || !a) return;
+        if (pix) {   // o PIX ainda aberto: direto pra tela dele (vale mesmo se o bar desligou o karaokê no meio)
+          a.href = `/pubshow/jukebox/${encodeURIComponent(TK)}/pix/${id}` + (cid ? `?c=${encodeURIComponent(cid)}` : '');
+          a.textContent = st.pix_venceu ? '🎤 Teu PIX do palco venceu → gerar outro' : '🎤 Teu PIX do palco está aberto → ver';
+        }
+        a.style.display = '';
+      })
+      .catch(() => {});
+  })();
+  </script>
+  {%- endif %}
   {%- if 'musica_externa' in tipos or 'musica_especifica' in tipos %}
   <div class="sec-tit" id="sec-musica">🎵 Pedir música <small>GRÁTIS{% if gratis_min %} · 1 a cada {{ gratis_min }} min{% endif %}</small></div>
   <button type="button" class="btn-tocar-gratis" id="btn-tocar-gratis" onclick="irBusca('gratis')">
@@ -949,7 +997,7 @@ async function jaPaguei() {
   </div>
   {%- endif %}
 
-  {%- if 'flash' in tipos or momentos %}
+  {%- if 'flash' in tipos or momentos or karaoke_card %}{#- 🎤 09/11/26 (V2b): o cartão do karaokê também abre a seção #}
   <div class="sec-tit" id="sec-tv">💥 Na TV do bar <small class="pedidos-sub">{% if asaas_ativo %}pago no PIX{% elif pix_direto %}PIX · o bar confere{% else %}pago no caixa{% endif %}</small></div>
   {%- if efi_sem_conta %}
   {# Lote C, fatia b (16/10/26): Efí ligada e o bar sem a conta Efí conectada — o POST já recusa (MSG_EFI_SEM_CONTA) #}
@@ -963,13 +1011,23 @@ async function jaPaguei() {
       <div class="card-preco">{{ brl(tipos.flash.preco + pix_conv) }}</div>
     </div>
     {%- endif %}
-    {%- if 'pular_espera' in tipos %}
-    {#- 20/10/26 (Diogo): ⏩ Pular a espera, só na Efí — a música entra na fila agora, sem esperar a grátis (não na frente) #}
-    <div class="item pedido-card item-pular" role="button" tabindex="0" id="item-pular_espera" style="--card-cor:{{ tipos.pular_espera.cor }}" onclick="irBusca('pular')">
-      <div class="card-emoji">⏩</div>
-      <div class="txt"><div class="card-nome">Pular a espera</div><div class="sub">entra na fila, sem esperar</div></div>
-      <div class="card-preco">{{ brl(tipos.pular_espera.preco + pix_conv) }}</div>
+    {%- if karaoke_card %}
+    {#- 🎤 09/11/26 (V2b, Diogo: "Remove espera vai virar, Cante sua Musica Karaoke"): o cartão do karaokê no lugar do ⏩.
+        karaoke_card vem da rota: 'on' = o bar liberou e cobra (leva à tela de cantar, ?k=1); 'off' = cinza, sem link;
+        None = bar fora do piloto, nada aparece. Sem id="item-..." e sem .card-preco: não é momento #}
+    {%- if karaoke_card == 'on' %}
+    <a class="item item-karaoke" id="k-cartao" href="/pubshow/jukebox/{{ b.jukebox_token or b.code }}?k=1">
+    {%- else %}
+    <div class="item item-karaoke off" id="k-cartao" aria-disabled="true">
+    {%- endif %}
+      <div class="card-emoji">🎤</div>
+      <div class="txt"><div class="card-nome">Cante sua música</div><div class="sub">Escolhe a tua e canta no palco, com a letra na TV</div></div>
+      {%- if karaoke_preco_txt %}<div class="k-preco">{{ karaoke_preco_txt }}</div>{% endif %}
+    {%- if karaoke_card == 'on' %}
+    </a>
+    {%- else %}
     </div>
+    {%- endif %}
     {%- endif %}
     {%- for key in momentos %}{% set t = tipos[key] %}
     {#- o total grande no canto e, embaixo, o que o botão faz (28/10/26; a divisão saiu do cardápio) #}
@@ -996,7 +1054,8 @@ async function jaPaguei() {
   <div class="ini-fila" id="ini-fila">
     <div class="t">🎶 NA FILA AGORA</div>
     {%- for p in fila_musicas[:3] %}
-    <div class="m"><span>{% if p.tipo in ('flash', 'vip') %}⚡{% else %}{{ loop.index }}º{% endif %}</span><span>{{ (p.titulo_pedido or 'Música')[:40] }} <span class="n">· {{ p.nome_cliente }}</span></span></div>
+    {#- 🎤 09/11/26 (V2b): a vez paga no palco aparece com o 🎤 (o título já vem limpo da busca de karaokê) #}
+    <div class="m"><span>{% if p.karaoke %}🎤{% elif p.tipo in ('flash', 'vip') %}⚡{% else %}{{ loop.index }}º{% endif %}</span><span>{{ (p.titulo_pedido or 'Música')[:40] }} <span class="n">· {{ p.nome_cliente }}</span></span></div>
     {%- else %}
     <div class="m n">Fila vazia: a tua toca já já 🎶</div>
     {%- endfor %}
@@ -2406,6 +2465,6 @@ function copiarPix() {
 {% endif %}{# fim aberto #}
 {% endif %}{# fim {% else %} pix_pendente #}
 
-{% include 'pubshow/_cartao_tv.html' %}
+{% if cartao_tv_ligado %}{% include 'pubshow/_cartao_tv.html' %}{% endif %}{# 09/11/26: faixa do cartão desligada por padrão #}
 </body>
 </html>

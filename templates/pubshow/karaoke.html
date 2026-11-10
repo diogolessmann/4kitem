@@ -13,7 +13,10 @@
     Donate, "Mais pedidas", lista do bar e divisão do dinheiro. Polling leve (o servidor tem 1 worker): tela 1 a cada
     15 s, telas 3 e 4 a cada 5 s com UM GET só (o pedido-status já traz o palco), nada com a aba escondida e 1 consulta
     na hora em que ela volta (visibilitychange).
-    Texto que vem de fora (nome, título) entra sempre por textContent. #}
+    Texto que vem de fora (nome, título) entra sempre por textContent.
+    🎤 09/11/26 (V2b, Diogo: "o sistema fica engessado e só toca karaoke"): esta tela deixou de ser o celular do bar
+    inteiro. Ela abre só pelo cartão "🎤 Cante sua música" do cardápio (?k=1) ou pelo PIX de karaokê aberto; o pedido
+    leva karaoke=1, a busca leva &karaoke=1, a URL de base é ?k=1 e o "← Voltar pro cardápio" volta ao jukebox. #}
 <style>
   :root{--bg:#0b0b14;--card:#161624;--card2:#1f1f33;--borda:rgba(255,255,255,.12);--txt:#fff;--txt2:#b4b4cc;
         --lar:#f97316;--lar2:#fb923c;--verde:#4ade80;--ouro:#fde68a;--erro:#fca5a5}
@@ -34,6 +37,7 @@
        font-size:16px}
   /* tela 1: busca */
   .busca{display:flex;gap:8px}
+  #f-busca[hidden]{display:none}   /* 09/11/26 (revisão V2b, C2): sem cobrança a busca some (o display:flex acima ganharia do hidden) */
   .busca input{flex:1;min-width:0;height:56px;padding:0 14px;border-radius:14px;border:2px solid var(--borda);
        background:var(--card);color:var(--txt);font:inherit;font-size:18px}
   .busca input:focus{outline:none;border-color:var(--lar)}
@@ -68,6 +72,11 @@
   .pequeno{font-size:14px;color:var(--txt2);margin:4px 0 18px}
   .voltar{display:block;margin:16px auto 0;background:none;border:0;color:var(--txt2);font:inherit;font-size:16px;
        text-decoration:underline;min-height:44px;cursor:pointer}
+  /* 🎤 09/11/26 (V2b): "← Voltar pro cardápio" (o jukebox continua sendo a página do bar; a tela de cantar é um desvio) */
+  a.cardapio{display:inline-flex;align-items:center;min-height:44px;color:var(--txt2);font-size:16px;font-weight:700;
+       text-decoration:underline}
+  a.cardapio.embaixo{display:flex;justify-content:center;margin-top:12px}
+  body.laranja a.cardapio{color:rgba(0,0,0,.75)}
   /* tela 3: esperar */
   .grande{font-size:30px;font-weight:900;line-height:1.2;margin:4px 0 14px}
   .destaque{background:var(--lar);color:#000;font-weight:900;font-size:20px;border-radius:14px;padding:14px;margin-bottom:14px}
@@ -120,8 +129,10 @@
 
   <!-- TELA 1: escolher -->
   <section class="tela" id="t1">
+    <a class="cardapio" id="t1-cardapio" href="/pubshow/jukebox/{{ b.jukebox_token or b.code }}">← Voltar pro cardápio</a>
     <h1>🎤 Qual música tu vai cantar?</h1>
-    <form class="busca" id="f-busca" role="search" onsubmit="buscar(event)">
+    {#- 09/11/26 (revisão V2b, C2): sem cobrança não tem busca nem clássicos; fica o aviso de pausado e o "← Voltar" #}
+    <form class="busca" id="f-busca" role="search" onsubmit="buscar(event)"{% if not karaoke_cobra %} hidden{% endif %}>
       <input type="search" id="q" maxlength="80" autocomplete="off" enterkeyhint="search"
              placeholder="Música ou cantor" aria-label="Nome da música ou do cantor">
       <button type="submit" class="btn" id="btn-buscar">Buscar</button>
@@ -136,7 +147,8 @@
       <p class="msg forte" id="mais-tit">Clássicos do karaokê</p>
       <ul class="lista" id="mais"></ul>
     </div>
-    <p class="linha" id="linha-fila">{% if karaoke_cobra %}Tua vez no palco: {{ karaoke_preco }}{% else %}Hoje é grátis · teu nome no telão{% endif %}</p>
+    {#- 🎤 09/11/26 (V2b, D2): sem cobrança não existe karaokê grátis: a linha diz que pausou #}
+    <p class="linha" id="linha-fila">{% if karaoke_cobra %}Tua vez no palco: {{ karaoke_preco }}{% else %}🎤 O karaokê está pausado agora. Volta pro cardápio e pede tua música.{% endif %}</p>
   </section>
 
   <!-- TELA 2: confirmar (nome na TV) -->
@@ -145,6 +157,8 @@
     <p class="musica" id="t2-musica"></p>
     <form method="POST" id="f-pedido"{% if karaoke_pix %} action="/pubshow/jukebox/{{ b.jukebox_token or b.code }}"{% endif %} onsubmit="return entrarNaFila()" novalidate>
       <input type="hidden" name="tipo" value="musica_externa">
+      {#- 🎤 09/11/26 (V2b): só o pedido que sai daqui é karaokê (o servidor olha este campo, não mais o modo do bar) #}
+      <input type="hidden" name="karaoke" value="1">
       <input type="hidden" name="youtube_id" id="f-vid" value="">
       <input type="hidden" name="titulo_pedido" id="f-tit" value="">
       <input type="hidden" name="client_id" id="f-cid" value="">
@@ -153,7 +167,7 @@
              enterkeyhint="done" placeholder="Primeiro nome ou apelido">
       <p class="erro" id="nome-erro" role="alert" hidden></p>
       {% if karaoke_pix %}<p class="msg forte" id="t2-pos" hidden></p>
-      {% endif %}<button type="submit" class="btn cheio" id="btn-entrar" style="margin-top:16px">{% if karaoke_cobra %}{{ karaoke_txt.botao }}{% else %}Entrar na fila{% endif %}</button>
+      {% endif %}<button type="submit" class="btn cheio" id="btn-entrar" style="margin-top:16px"{% if not karaoke_cobra %} disabled data-kp="1"{% endif %}>{% if karaoke_cobra %}{{ karaoke_txt.botao }}{% else %}Karaokê pausado{% endif %}</button>
       {% if karaoke_pix %}<p class="pequeno" id="t2-peq-pago" style="margin-top:10px;margin-bottom:0"{% if not karaoke_cobra %} hidden{% endif %}>{{ karaoke_txt.t2_pago }}</p>
       <p class="pequeno" id="t2-recebe" style="margin-top:6px;margin-bottom:0"{% if not karaoke_cobra %} hidden{% endif %}>{{ karaoke_txt.quem_recebe }}</p>
       {% endif %}<label class="marca miuda"{% if karaoke_pix %} id="lbl-rank"{% if karaoke_cobra %} hidden{% endif %}{% endif %}><input type="checkbox" name="sem_rank" value="1" id="sem-rank"> Não aparecer no ranking</label>
@@ -199,6 +213,8 @@
     <p class="pequeno" id="t3-regra" hidden>{{ karaoke_txt.t3_regra }}</p>
     <p class="destaque" id="t3-faltou" hidden></p>
     <button type="button" class="voltar" id="btn-nao-vou" hidden onclick="_kSairPergunta(KTXT.sair_pago)">Não vou poder cantar</button>{% endif %}
+    {#- 🎤 09/11/26 (V2b): esperando a vez dá pra pedir um Parabéns ou um ⚡; a faixa do cardápio traz de volta pra cá #}
+    <a class="cardapio embaixo" id="t3-cardapio" href="/pubshow/jukebox/{{ b.jukebox_token or b.code }}">← Voltar pro cardápio (tua vez continua guardada)</a>
   </section>
 
   <!-- TELA 4: tua vez (laranja) / mandou bem / tua vez passou -->
@@ -213,12 +229,14 @@
       <p class="sub4" id="t4-rank" hidden></p>
       <button type="button" class="btn cheio"{% if karaoke_pix %} id="btn-de-novo"{% endif %} onclick="cantarDeNovo()">Cantar de novo</button>{% if karaoke_pix %}
       <p class="sub4" id="t4-nao-cantou" style="font-size:15px;font-weight:700;margin-top:14px" hidden>{{ karaoke_txt.mandou_bem }}</p>{% endif %}
+      <a class="cardapio embaixo" id="t4-cardapio" href="/pubshow/jukebox/{{ b.jukebox_token or b.code }}">← Voltar pro cardápio</a>
     </div>
     <div id="t4-pulado" hidden>
       <h1 id="t4-pul-tit">Tua vez passou.</h1>
       <p class="sub4" id="t4-pul-sub">Pede de novo quando estiver perto do microfone.</p>
       <button type="button" class="btn cheio"{% if karaoke_pix %} id="btn-pul"{% endif %} onclick="cantarDeNovo()">Escolher música</button>{% if karaoke_pix %}
       <p class="pequeno" id="t4-pul-prazo" hidden></p>{% endif %}
+      <a class="cardapio embaixo" id="t4-pul-cardapio" href="/pubshow/jukebox/{{ b.jukebox_token or b.code }}">← Voltar pro cardápio</a>
     </div>
   </section>{% if karaoke_pix %}
 
@@ -258,6 +276,7 @@ const PIX = {{ ({'id': pix_pendente.pedido_id, 'payload': pix_pendente.payload, 
   muita: 'Muita gente buscando agora. Tenta de novo em uns segundos.',
   curta: 'Escreve pelo menos 2 letras.',
 };
+const KARAOKE_PAUSADO = '🎤 O karaokê está pausado agora. Volta pro cardápio e pede tua música.';   // 09/11/26 (V2b, D2)
 const VALE_MS = 12 * 3600 * 1000;   // o pedido lembrado vale a noite (a janela da fila do servidor também é 12 h)
 
 // ── guardado no celular (try/catch: aba anônima ou armazenamento bloqueado não quebram a tela) ──────────────
@@ -303,7 +322,7 @@ let _buscando = false;
 function _mais(mostrar) {   // "As mais cantadas": aparece quando a busca não está mostrando nada
   const box = $('mais-box');
   if (!box) return;
-  const ok = mostrar && KMAIS.length > 0;
+  const ok = mostrar && KMAIS.length > 0 && !$('f-busca').hidden;   // 09/11/26 (revisão V2b, C2): sem busca, sem clássicos
   if (ok && !$('mais').children.length) _cards(KMAIS, 'mais');
   box.hidden = !ok;
 }
@@ -338,11 +357,17 @@ async function buscar(ev) {
   const bt = $('btn-buscar'); bt.disabled = true; bt.textContent = '…';
   _msg(''); _cards([]); _mais(false);
   try {
-    const r = await fetch(`/pubshow/api/buscar?q=${encodeURIComponent(q)}&bar=${encodeURIComponent(BAR_TOKEN)}&cid=${encodeURIComponent(CID)}`,
+    // 🎤 09/11/26 (V2b): &karaoke=1 = a busca de karaokê (só ela leva " karaoke" e conta no teto do palco)
+    const r = await fetch(`/pubshow/api/buscar?q=${encodeURIComponent(q)}&bar=${encodeURIComponent(BAR_TOKEN)}&cid=${encodeURIComponent(CID)}&karaoke=1`,
                           {cache: 'no-store'});
     if (r.status === 429) { _msg(T.muita); _mais(true); return; }
     let j = {};
     try { j = await r.json(); } catch (e) { j = {}; }
+    if (j.pausado) {   // 09/11/26 (revisão V2b, 2ª rodada, C2): o dono pausou com a tela aberta: sem busca e sem clássicos
+      {% if karaoke_pix %}_kCobraAgora = false; {% endif %}$('f-busca').hidden = true; $('resultados').hidden = true; _mais(false);
+      _txt('linha-fila', KARAOKE_PAUSADO);
+      return;
+    }
     if (j.lotou) { _msg(T.lotou, true); _cards(j.acervo || []); if (!(j.acervo || []).length) { _msg(T.semBusca); _mais(true); } return; }
     if (Array.isArray(j.resultados) && j.resultados.length) { _cards(j.resultados); return; }
     _msg(r.ok ? T.nada : T.semBusca);
@@ -406,6 +431,7 @@ function _pintarEspera(st) {
   if (st.status === 'pendente' && st.posicao) {
     const p = Number(st.posicao) || 1, falta = p - 1;
     _ultPos = p;
+    if (p > 1) _avisouProxima = false;   // 10/11/26 (D2-fila): um ⚡ novo tirou ele do 1º; quando voltar, vibra de novo
     if (p === 1) {
       // a próxima é a dele: só a caixa laranja (sem repetir a posição em 2 linhas)
       $('t3-pos').hidden = true; $('t3-min').hidden = true;
@@ -507,24 +533,64 @@ function _pintarVez(st) {
 // Vende "tua vez no palco". A posição e a espera são as reais, antes do PIX. Quem manda é o servidor: o POST decide se
 // cobra, e o polling só acerta o texto (o dono pode apertar o freio com a tela aberta).
 let _kCobraAgora = KARA_PIX, _kEsperaPix = 0, _kPediuConferir = false, _kSaindo = false, _kMsgSaiu = '', _kPrazoSaiu = '';
-function _kBase() { try { history.replaceState(null, '', '/pubshow/jukebox/' + encodeURIComponent(BAR_TOKEN)); } catch (e) {} }
+// 🎤 09/11/26 (V2b): a URL de base da tela de cantar é ?k=1 (sem ele, recarregar abre o cardápio do bar)
+function _kBase() { try { history.replaceState(null, '', '/pubshow/jukebox/' + encodeURIComponent(BAR_TOKEN) + '?k=1'); } catch (e) {} }
 function _kAplicar(k) {
   const cobra = k ? !k.gratis : KARA_PIX;
   const semRei = k ? k.cantaram !== undefined : KARA_PIX;
   _kCobraAgora = cobra;
-  if (!$('btn-entrar').disabled) _txt('btn-entrar', cobra ? KTXT.botao : 'Entrar na fila');
+  // 09/11/26 (revisão V2b, C2): o dono pausou (ou voltou a cobrar) com esta tela aberta: a busca e os clássicos acompanham
+  if ($('f-busca').hidden === cobra) {
+    $('f-busca').hidden = !cobra; $('resultados').hidden = !cobra;
+    _mais(!$('resultados').children.length);
+  }
+  // 10/11/26 (V2b, ajuste): pausado = o botão diz e fica travado (o servidor recusa o pedido); voltou a cobrar = destrava.
+  // data-kp marca a trava do pausado (a outra trava é a do envio, "Abrindo o PIX…", que não se mexe)
+  const bt = $('btn-entrar');
+  if (!cobra && (!bt.disabled || bt.dataset.kp)) { bt.dataset.kp = '1'; bt.disabled = true; _txt('btn-entrar', 'Karaokê pausado'); }
+  else if (cobra && bt.dataset.kp) { delete bt.dataset.kp; bt.disabled = false; _txt('btn-entrar', KTXT.botao); }
+  else if (cobra && !bt.disabled) _txt('btn-entrar', KTXT.botao);
   $('t2-peq-pago').hidden = !cobra;
   $('t2-recebe').hidden = !cobra;
   $('lbl-rank').hidden = semRei;
   if (semRei) $('sem-rank').checked = false;
   _txt('t2-peq', semRei ? 'Teu nome aparece na TV do bar hoje.' : 'Teu nome aparece na TV do bar hoje. O ranking zera no fim da noite.');
-  if (!k) return;
-  const n = Number(k.fila_n) || 0, min = Number(k.espera_min) || 0;
-  const pos = cobra ? `Entra em ${_ord(n + 1)}` + (min ? ` · uns ${min} min` : '') : '';
+  if (!k && !_kFI) return;
+  const e = _kPos(k), n = e.pos - 1, min = e.min;
+  const pos = (cobra && e.pos) ? `Entra em ${_ord(e.pos)}` + (min ? ` · uns ${min} min` : '') : '';
   _txt('t2-pos', pos); $('t2-pos').hidden = !pos;
   if (cobra) {
-    _txt('linha-fila', n > 0 ? `Tua vez no palco: ${KTXT.preco} · ${n} na fila · uns ${min} min` : `Tua vez no palco: ${KTXT.preco} · Fila vazia. A próxima é tua!`);
+    // 09/11/26 (revisão V2b, F1): a t1 promete pela mesma estimativa da t2 (a fila misturada, do /api/fila-info), não
+    // pelo fila_n (só os cantores). Sem a estimativa ainda carregada, só o preço: nada de "A próxima é tua!"
+    // 09/11/26 (revisão V2b, 2ª rodada): só a estimativa do bloco que acabou de chegar (o _kFI pode ser velho)
+    const est = _kEstOk(k);
+    if (est) _kLinhaEm = Date.now();
+    _txt('linha-fila', !est ? `Tua vez no palco: ${KTXT.preco}` : n > 0 ? `Tua vez no palco: ${KTXT.preco} · ${n} na fila · uns ${min} min` : `Tua vez no palco: ${KTXT.preco} · Fila vazia. A próxima é tua!`);
   }
+}
+// 🎤 09/11/26 (V2b): a fila agora é misturada (⚡, grátis e quem canta). "Entra em Nº" vem da estimativa 'karaoke' do
+// /api/fila-info (a mesma ordem da TV), e não mais do fila_n (que só conta quem canta). Pergunta só na confirmação e no
+// PIX, no máximo 1 vez a cada 15 s (o servidor tem 1 worker); se o bloco do palco já trouxer a chave, usa ela
+let _kFI = null, _kFIem = 0;
+// 09/11/26 (revisão V2b, 2ª rodada): a estimativa 'karaoke' vem no bloco do palco (cache de 5 s no servidor); a t1 não
+// chama mais o fila-info. _kLinhaEm = quando a t1 prometeu posição pela última vez (passou de 45 s sem bloco: só o preço)
+let _kLinhaEm = 0;
+function _kEstOk(k) { return !!(k && k.karaoke && Number(k.karaoke.posicao) > 0); }
+async function _kFilaInfo(forcar) {
+  if (!forcar && Date.now() - _kFIem < 15000) return;
+  _kFIem = Date.now();
+  try {
+    const r = await fetch(`/pubshow/api/fila-info/${encodeURIComponent(BAR_TOKEN)}?cid=${encodeURIComponent(CID)}`, {cache: 'no-store'});
+    const j = r.ok ? await r.json() : null;
+    if (j && j.karaoke && Number(j.karaoke.posicao) > 0) _kFI = j.karaoke;
+  } catch (e) {}
+}
+function _kPos(k) {   // {pos, min}: em que lugar entra quem pagar agora
+  const e = (k && k.karaoke && Number(k.karaoke.posicao) > 0) ? k.karaoke : _kFI;
+  if (e) return {pos: Number(e.posicao), min: Number(e.min) || 0};
+  // 10/11/26 (crítica da D2, achado 6): sem a estimativa, nada de chute. O fila_n conta só os cantores e ignora 👑 e ⚡
+  // (com a D2 todo ⚡ passa o cantor): pos 0 = esconder o "Entra em Nº"
+  return {pos: 0, min: 0};
 }
 function _kEspera(st) {
   $('btn-nao-vou').hidden = !(st.karaoke_pago && st.status === 'pendente');
@@ -613,11 +679,12 @@ async function _kTickPix() {
   if (r.status === 404) { cantarDeNovo(); return; }
   const st = r.ok ? await r.json() : null;
   if (!st) return;
-  if (st.k) {
-    _ultBloco = st.k;
-    const n = Number(st.k.fila_n) || 0, min = Number(st.k.espera_min) || 0;
-    _txt('pix-pos', `Se pagar agora, entra em ${_ord(n + 1)}` + (min ? ` · uns ${min} min` : ''));
-    $('pix-pos').hidden = false;
+  if (st.k) _ultBloco = st.k;
+  if (st.status === 'aguardando_pix' && !_kEstOk(st.k)) await _kFilaInfo();   // 09/11/26 (V2b): a posição na fila misturada (2ª rodada: só se o bloco não trouxe)
+  if (st.k || _kFI) {
+    const e = _kPos(st.k);
+    if (e.pos) _txt('pix-pos', `Se pagar agora, entra em ${_ord(e.pos)}` + (e.min ? ` · uns ${e.min} min` : ''));
+    $('pix-pos').hidden = !e.pos;
   }
   if (st.status !== 'aguardando_pix') {
     _kBase();
@@ -633,17 +700,25 @@ async function _kTickPix() {
 
 {% endif %}// ── polling leve: tela 1 a cada 10 s, telas 3 e 4 a cada 5 s; nada com a aba escondida ───────────────────────
 let _timer = null, _emVoo = false;
+// 🎤 09/11/26 (V2b): o bar desligou o karaokê: vai pro cardápio (antes era location.reload(), que com ?k=1 ou na URL
+// do POST abria esta tela de novo)
+function _kCardapio() { location.replace('/pubshow/jukebox/' + encodeURIComponent(BAR_TOKEN)); }
 function agendar(ms) {
   clearTimeout(_timer);
   _timer = setTimeout(tick, ms);
 }
 async function _palco() {
+  // 09/11/26 (revisão V2b, 3ª rodada): limite de 10 s; um GET pendurado (Wi-Fi sem dado) não segura os ticks nem a
+  // regra dos 45 s sem posição
+  const ac = window.AbortController ? new AbortController() : null;
+  const limite = ac ? setTimeout(() => ac.abort(), 10000) : 0;
   try {
-    const r = await fetch(`/pubshow/api/karaoke/palco/${encodeURIComponent(BAR_TOKEN)}`, {cache: 'no-store'});
-    if (r.status === 404) { location.reload(); return null; }   // o bar desligou o karaokê: volta o cardápio de sempre
+    const r = await fetch(`/pubshow/api/karaoke/palco/${encodeURIComponent(BAR_TOKEN)}`,
+                          ac ? {cache: 'no-store', signal: ac.signal} : {cache: 'no-store'});
+    if (r.status === 404) { _kCardapio(); return null; }   // o bar desligou o karaokê: volta o cardápio de sempre
     if (!r.ok) return null;
     return await r.json();
-  } catch (e) { return null; }
+  } catch (e) { return null; } finally { clearTimeout(limite); }
 }
 async function tick() {
   const proximo = (TELA === 't3' || TELA === 't4'{% if karaoke_pix %} || TELA === 'tpix'{% endif %}) ? 5000 : 15000;
@@ -655,10 +730,16 @@ async function tick() {
       const k = await _palco();
       if (k) {
         _ultBloco = k;
-        const n = Number(k.fila_n) || 0;
-        _txt('linha-fila', n > 0 ? `Hoje é grátis · ${n} na fila · teu nome no telão`
-                                 : 'Hoje é grátis · Fila vazia. A próxima é tua!');{% if karaoke_pix %}
-        _kAplicar(k);{% endif %}
+        // 🎤 09/11/26 (V2b, decisão D2): não existe karaokê grátis; sem cobrança o cartão do cardápio fica cinza e o
+        // servidor recusa o pedido. Quem ficou com esta tela aberta vê que pausou{% if karaoke_pix %} (cobrando, o _kAplicar troca a linha){% endif %}
+        // 09/11/26 (revisão V2b, 2ª rodada): o pausado só quando o bloco diz que não cobra (cobrando, nunca pisca)
+        {% if karaoke_pix %}if (k.gratis) {% endif %}_txt('linha-fila', KARAOKE_PAUSADO);{% if karaoke_pix %}
+        // 09/11/26 (revisão V2b, 2ª rodada): a t1 não chama o fila-info (a estimativa vem no bloco); a t2 só se faltar
+        if (TELA === 't2' && !_kEstOk(k)) await _kFilaInfo();
+        _kAplicar(k);
+      } else if ((TELA === 't1' || TELA === 't2') && _kCobraAgora && Date.now() - _kLinhaEm > 45000) {
+        // 2ª rodada: sem bloco há mais de 45 s, nada de posição velha; 3ª rodada: nem o "Entra em Nº" da t2, ao lado do pagar
+        _txt('linha-fila', `Tua vez no palco: ${KTXT.preco}`); $('t2-pos').hidden = true;{% endif %}
       }{% if karaoke_pix %}
     } else if (TELA === 'tpix') {
       await _kTickPix();{% endif %}
@@ -674,7 +755,7 @@ async function tick() {
           location.replace(`/pubshow/jukebox/${encodeURIComponent(BAR_TOKEN)}/pix/${m.id}?c=${encodeURIComponent(CID)}`);
           return;
         }
-        {% endif %}if (st.karaoke && st.ligado === false{% if karaoke_pix %} && !st.karaoke_pago{% endif %}) { location.reload(); return; }   // o bar desligou o karaokê
+        {% endif %}if (st.karaoke && st.ligado === false{% if karaoke_pix %} && !st.karaoke_pago{% endif %}) { _kCardapio(); return; }   // o bar desligou o karaokê
         if (st.status === 'exibido' || st.status === 'recusado' || st.status === 'dispensado'
             || st.status === 'cancelado' || st.pulado) {
           _pintarVez(st);
@@ -721,7 +802,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) agen
     // o servidor ACEITOU: guarda o pedido e o nome, e a URL deixa de ser a do POST (recarregar não pede de novo)
     _gravar('jk_kara', JSON.stringify({id: SUCESSO_ID, nome: NOME_ACEITO, t: Date.now(), tit: (FORM_TIT || '').slice(0, 80)}));
     if (NOME_ACEITO) _gravar('jk_nome', NOME_ACEITO);
-    try { history.replaceState(null, '', location.pathname); } catch (e) {}
+    try { history.replaceState(null, '', location.pathname + '?k=1'); } catch (e) {}   // 09/11/26 (V2b): ?k=1
     irPara('t3');
     return;
   }
@@ -744,6 +825,6 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) agen
 })();
 </script>
 {% endif %}
-{% include 'pubshow/_cartao_tv.html' %}
+{% if cartao_tv_ligado %}{% include 'pubshow/_cartao_tv.html' %}{% endif %}{# 09/11/26: faixa do cartão desligada por padrão #}
 </body>
 </html>
