@@ -499,6 +499,34 @@
     overflow-wrap:anywhere;animation:pcSobe .5s ease-out 1.4s forwards}
   #pcf-musica small{display:block;font-size:2.6vh;color:#e9d5ff;font-weight:600;margin-top:.6vh}
   #pcf-musica:empty{display:none}
+  #palco[data-modelo]{background:radial-gradient(ellipse at 50% 120%,var(--mf1) 0%,var(--mf2) 55%,#000 100%)}
+  #pc-luz{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+  #pc-luz>*{position:absolute}
+  #palco[data-modelo] .pc-feixe,#palco[data-modelo] #pcf-raio{visibility:hidden}
+  #palco[data-modelo] #pcf-traco{background:linear-gradient(90deg,transparent,var(--n2),transparent)}
+  .pc-cometa{left:0;top:var(--y);width:46vw;height:var(--h,.6vw);border-radius:1vw;background:linear-gradient(90deg,transparent,var(--lc),#fff);
+    transform:translateX(-50vw);animation:pcCometa var(--t) cubic-bezier(.6,0,.9,.5) var(--d) infinite}
+  @keyframes pcCometa{0%{transform:translateX(-50vw)}40%,100%{transform:translateX(110vw)}}
+  .pc-gb{left:0;right:0;top:var(--y);height:var(--h);background:var(--c);opacity:0;animation:pcGb 1.6s steps(1) var(--d) infinite}
+  @keyframes pcGb{0%{opacity:0;transform:none}8%{opacity:.32;transform:translateX(-6vw)}14%{opacity:.2;transform:translateX(4vw)}20%,100%{opacity:0;transform:none}}
+  #palco[data-modelo] #pcp-nome,#palco[data-modelo] #pcb-nome,#palco[data-modelo] #pcb-saude{--n1:inherit;--n2:inherit;--n3:inherit;--brilho:inherit;--sombra:inherit}
+  #palco[data-modelo] #pcf-rotulo,#palco[data-modelo] #pcp-topo,#palco[data-modelo] #pcb-topo{color:var(--n2);text-shadow:0 0 18px var(--brilho)}
+  .pc-holo{top:-6vw;width:24vw;height:72vw;transform-origin:50% 0;background:linear-gradient(var(--lc),transparent 85%);
+    clip-path:polygon(44% 0,56% 0,100% 100%,0 100%);animation:pcHolo 3s ease-in-out infinite alternate}
+  @keyframes pcHolo{from{transform:rotate(var(--a1))}to{transform:rotate(var(--a2))}}
+  .pc-est{width:.45vw;height:.45vw;border-radius:50%;background:#fff;box-shadow:0 0 .8vw #fff;animation:pcPisca var(--t) ease-in-out var(--d) infinite alternate}
+  @keyframes pcPisca{from{opacity:.12}to{opacity:1}}
+  .pc-espuma{left:-5%;right:-5%;bottom:0;height:20vw;transform-origin:50% 100%;transform:scaleY(0);
+    background:linear-gradient(to top,rgba(245,158,11,.6),rgba(253,230,138,.35) 70%,rgba(255,255,255,.55) 73%,transparent 78%);
+    animation:pcCresce 2.5s cubic-bezier(.3,.6,.4,1) forwards}
+  @keyframes pcCresce{to{transform:none}}
+  .pc-anel{left:50%;top:50%;width:24vw;height:24vw;margin:-12vw;border-radius:50%;border:.5vw solid var(--lc);opacity:0;
+    animation:pcAnel 1.8s ease-out var(--d) infinite}
+  @keyframes pcAnel{0%{opacity:.9;transform:scale(.2)}100%{opacity:0;transform:scale(3.2)}}
+  .pc-i-flutua{animation:pcIFlutua 2.4s ease-in-out infinite}
+  @keyframes pcIFlutua{0%,100%{transform:translateY(0)}50%{transform:translateY(-1vw)}}
+  .pc-i-treme{animation:pcITreme 2.2s steps(1) infinite}
+  @keyframes pcITreme{0%,84%,100%{transform:none}86%{transform:translate(-.7vw,.2vw) skewX(10deg)}90%{transform:translate(.6vw,-.2vw)}94%{transform:skewX(-6deg)}}
   /* 🍻 brinde (brinde.html, 8 s): as canecas vêm dos cantos no 3·2·1 e batem em 2,5 s */
   #pcb-topo{color:#fcd34d;text-shadow:0 0 18px rgba(252,211,77,.7)}
   .pcb-canecas{display:flex;justify-content:center;height:20vh;margin:1vh 0}
@@ -1832,6 +1860,7 @@ function _momentoAtualizar(p) {
   if (p && _somLigado() && !_consumidos.has(p.id)) {
     if (!_momentoPend || _momentoPend.id !== p.id) _momentoDesde = Date.now();
     _momentoPend = p;
+    _somBaixar((SOM_DA_CENA[p.tipo] || [])[0]);
   } else {
     _momentoPend = null;
   }
@@ -1935,9 +1964,75 @@ function _pcMontar(cena) {
   _pcFixas = [];
   _pcNomes = [];
   alvo.textContent = '';
+  delete pc.dataset.modelo;
+  ['--mf1', '--mf2', '--n1', '--n2', '--n3', '--brilho', '--sombra', '--lc'].forEach(v => pc.style.removeProperty(v));
   const tpl = cena ? document.getElementById('tpl-' + cena) : null;
   if (tpl) alvo.appendChild(tpl.content.cloneNode(true));
   pc.dataset.cena = tpl ? cena : '';
+}
+
+// 11/11/26: rodízio fixo 1→2→3→1 por tipo, guardado no aparelho. Nunca aleatório, nunca pelo valor pago; só muda
+// cor, luz e partícula (duração, nome, som e volume iguais). Modelo 1 = a cena de hoje.
+const MODELOS_CENA = {
+  flash: [
+    {n: 'Raio neon'},
+    {n: 'Cometa', f: ['#0c4a6e', '#020617'], c: ['#ecfeff', '#67e8f9', '#0e7490'], g: 'rgba(103,232,249,.6)', s: '#082f49',
+     lc: '#22d3ee', luz: 'cometa', idle: 'flutua', bc: ['#a5f3fc', '#fff', '#22d3ee']},
+    {n: 'Pane elétrica', f: ['#4a044e', '#09000d'], c: ['#fff', '#f0abfc', '#a21caf'], g: 'rgba(232,121,249,.6)', s: '#3b0764',
+     lc: '#e879f9', luz: 'glitch', idle: 'treme', bc: ['#f0abfc', '#22d3ee', '#fff']}],
+  parabens: [
+    {n: 'Chuva de balões'},
+    {n: 'Confete dourado', f: ['#713f12', '#1c0a00'], c: ['#fffbeb', '#fde68a', '#d97706'], g: 'rgba(251,191,36,.65)', s: '#451a03',
+     lc: 'rgba(253,230,138,.35)', luz: 'holofotes', chuva: 'confete', bc: ['#fbbf24', '#fde68a', '#fff', '#f59e0b']},
+    {n: 'Fogos no céu', f: ['#1e1b4b', '#020014'], c: ['#fff', '#c4b5fd', '#7c3aed'], g: 'rgba(167,139,250,.7)', s: '#1e1b4b',
+     luz: 'estrelas', fogos: true, bc: ['#c4b5fd', '#fbbf24', '#f472b6', '#67e8f9', '#fff']}],
+  brinde: [
+    {n: 'Canecas no ar'},
+    {n: 'Espuma subindo', f: ['#78350f', '#1a0d00'], c: ['#fff', '#fde68a', '#f59e0b'], g: 'rgba(253,230,138,.6)', s: '#451a03',
+     luz: 'espuma', bc: ['#fff', '#fde68a']},
+    {n: 'Anel de luz', f: ['#7c2d12', '#1c0700'], c: ['#fff7ed', '#fdba74', '#ea580c'], g: 'rgba(251,146,60,.6)', s: '#431407',
+     lc: '#fdba74', luz: 'aneis', bc: ['#fed7aa', '#fff', '#fb923c']}],
+};
+const MODELO_LUZ = {
+  cometa: () => '<i class="pc-cometa" style="--y:27vw;--h:1vw;--t:1.4s;--d:.35s"></i><i class="pc-cometa" style="--y:12vw;--t:1.9s;--d:1s"></i>' +
+                '<i class="pc-cometa" style="--y:44vw;--t:2.1s;--d:1.4s"></i>',
+  glitch: () => [[8, 3, '#e879f9', .9], [20, 1.5, '#22d3ee', 1.3], [33, 4, '#e879f9', 1.7], [41, 1, '#fff', 2.1], [49, 2.5, '#22d3ee', 2.5]]
+    .map(([y, h, c, d]) => `<i class="pc-gb" style="--y:${y}vw;--h:${h}vw;--c:${c};--d:${d}s"></i>`).join(''),
+  holofotes: () => '<i class="pc-holo" style="left:0;--a1:-38deg;--a2:8deg"></i><i class="pc-holo" style="right:0;--a1:38deg;--a2:-8deg"></i>',
+  // nada aleatório
+  estrelas: () => Array.from({length: 36}, (_, i) => `<i class="pc-est" style="left:${(i * 37 + 7) % 96 + 2}%;top:${(i * 53 + 11) % 68 + 2}%;` +
+    `--t:${(.8 + (i * 7 % 12) / 10).toFixed(2)}s;--d:${((i * 5 % 15) / 10).toFixed(2)}s"></i>`).join(''),
+  espuma: () => '<i class="pc-espuma"></i>',
+  aneis: () => [.75, 1.35, 1.95].map(d => `<i class="pc-anel" style="--d:${d}s"></i>`).join(''),
+};
+let _modeloVez = {};
+try { _modeloVez = JSON.parse(localStorage.getItem('ps_modelo_vez') || '{}') || {}; } catch(e) { _modeloVez = {}; }
+function _modeloProximo(tipo) {
+  const n = (MODELOS_CENA[tipo] || []).length;
+  return n ? ((Math.max(1, Math.floor(+_modeloVez[tipo] || 1)) - 1) % n) + 1 : 0;
+}
+function _modeloDaVez(tipo) {
+  const m = _modeloProximo(tipo);
+  if (m) {
+    _modeloVez[tipo] = m % MODELOS_CENA[tipo].length + 1;
+    try { localStorage.setItem('ps_modelo_vez', JSON.stringify(_modeloVez)); } catch(e) {}
+  }
+  return m;
+}
+function _modeloForcar(tipo, m) { if (MODELOS_CENA[tipo]) _modeloVez[tipo] = m; }
+function _modeloAplicar(tipo) {
+  const m = _modeloDaVez(tipo), M = m ? MODELOS_CENA[tipo][m - 1] : null, pc = document.getElementById('palco');
+  if (!M || !M.f) return M ? Object.assign({m}, M) : {m: 0};
+  pc.dataset.modelo = m;
+  Object.entries({mf1: M.f[0], mf2: M.f[1], n1: M.c[0], n2: M.c[1], n3: M.c[2], brilho: M.g, sombra: M.s || '#000',
+    lc: M.lc || M.c[1]}).forEach(([k, v]) => pc.style.setProperty('--' + k, v));
+  if (M.luz && MODELO_LUZ[M.luz]) {
+    const luz = document.createElement('div');
+    luz.id = 'pc-luz';
+    luz.innerHTML = MODELO_LUZ[M.luz]();   // só desenho nosso
+    document.getElementById('pc-cena').prepend(luz);
+  }
+  return Object.assign({m}, M);
 }
 // como o M.classe do template: tira, força o reflow e põe (a animação recomeça do zero)
 function _pcClasse(ms, el, cls) {
@@ -2094,8 +2189,8 @@ function _fxChuva(n, o) {
   o = o || {};
   const cores = o.cores || ['#fbbf24'];
   for (let i = 0; i < n; i++) {
-    _fxPoe({x: Math.random() * _fx.W, y: _fx.H + 20 + Math.random() * 200,
-            vx: (Math.random() - .5) * (o.vento || 1.5), vy: -(o.v || 2) * (.6 + Math.random() * .8),
+    _fxPoe({x: Math.random() * _fx.W, y: o.cai ? -20 - Math.random() * 200 : _fx.H + 20 + Math.random() * 200,
+            vx: (Math.random() - .5) * (o.vento || 1.5), vy: (o.cai ? 1 : -1) * (o.v || 2) * (.6 + Math.random() * .8),
             tipo: o.tipo || 'bolha', cor: cores[(Math.random() * cores.length) | 0], tam: (o.tam || 8) * (.6 + Math.random() * .8),
             rot: Math.random() * 6.28, vr: (Math.random() - .5) * .2, g: o.g ?? 0, ar: 1, dv: o.dv ?? .002, balanca: Math.random() * 6.28});
   }
@@ -2162,6 +2257,7 @@ function mostrarCena(p, depois) {
   // 09/11/26: a intro dos pagos abre o cartão; na cantada, o assobio entra quando a intro acaba (3 s)
   _somArquivo('intro');
   if (p.tipo === 'cantada') _somArquivo('cantada', 3000);
+  _somDaCena(p.tipo, (TIPO_CONFIG[p.tipo] || TIPO_CONFIG['brinde']).duracao);
 }
 
 // 🎂 parabéns (16 s, parabens.html; SEM 3·2·1): fanfarra (nossa, ≤ 1,5 s) em 0 s → "🎂 hoje é dia de" → 0,8 s o NOME (o
@@ -2183,10 +2279,20 @@ function _cenaParabens(p, fim) {
   _pcAjusta();
   _pcClasse(0, $('palco'), 'pc-zoom7');
   if (!_somArquivo('intro')) _somCena('fanfarra');   // 09/11/26: a intro dos pagos abre a cena
-  const cores = ['#f472b6', '#facc15', '#38bdf8', '#a78bfa', '#4ade80', '#fb7185'];
+  const mod = _modeloAplicar('parabens');
+  const cores = mod.bc || ['#f472b6', '#facc15', '#38bdf8', '#a78bfa', '#4ade80', '#fb7185'];
   // balões subindo o tempo todo
   for (let t = 0; t < 14200; t += 700) {
-    _palcoPasso(t, () => _fxChuva(_fxN(2), {tipo: 'balao', cores, v: 2.4, tam: 28, vento: .6, dv: 0}));
+    _palcoPasso(t, () => {
+      if (mod.fogos) {
+        if (t >= 1300) _fxEstoura(_fx.W * (.15 + (t * 7 % 70) / 100), _fx.H * (.12 + (t * 3 % 28) / 100), _fxN(28),
+                                  {cores: [cores[(t / 700) % cores.length], '#fff'], vmin: 1, vmax: 5, sobe: 0, g: .05, dv: .018});
+      } else if (mod.chuva === 'confete') {
+        _fxChuva(_fxN(3), {tipo: 'confete', cores, v: 2.2, tam: 12, vento: .8, cai: true, dv: 0});
+      } else {
+        _fxChuva(_fxN(2), {tipo: 'balao', cores, v: 2.4, tam: 28, vento: .6, dv: 0});
+      }
+    });
   }
   _pcClasse(300, $('pcp-topo'), 'pc-sobe');
   _pcClasse(800, $('pcp-nome'), 'pc-bate');
@@ -2216,6 +2322,7 @@ function _cenaParabens(p, fim) {
   ['pcp-fu0', 'pcp-fu1', 'pcp-fu2'].forEach((id, i) => _pcClasse(13750 + i * 90, $(id), 'pc-sobefumaca'));
   _palcoPasso(13600, () => faz.classList.add('pc-some'));
   _pcFase('parabens:velas', 13600);
+  _somDaCena('parabens', 16000);
   _palcoPasso(13900, () => {
     _fxEstoura(0, _fx.H, _fxN(160), {tipo: 'confete', cores, ang: -Math.PI / 3, abre: .7, vmin: 14, vmax: 30, tam: 14,
                                      g: .4, dv: .006, ar: .975});
@@ -2236,12 +2343,14 @@ function _cenaParabens(p, fim) {
 // _dur é 8,3 s). "saúde", nunca "vira" nem "bebe"; nunca "por conta de" (soaria como rodada paga); sem placar.
 function _cenaBrinde(p, fim) {
   const $ = id => document.getElementById(id);
+  const mod = _modeloAplicar('brinde');
   const nome = _pcNome($('pcb-nome'), p.nome_cliente);
   if (!nome) { $('pcb-por').style.display = 'none'; $('pcb-nome').style.display = 'none'; }
   $('pcb-msg').textContent = String(p.mensagem || '').trim();
   _pcAjusta();
   _pcClasse(0, $('palco'), 'pc-zoom7');
   _somArquivo('intro');   // 09/11/26: a intro dos pagos na contagem; o tilintar dos copos continua em 2,5 s
+  _somDaCena('brinde', 8000, 'tilintar');
   for (let t = 0; t < 7000; t += 350) {
     _palcoPasso(t, () => _fxChuva(_fxN(4), {tipo: 'bolha', v: 2.2, tam: 7, cores: ['#fde68a', '#fff'], dv: .003}));
   }
@@ -2249,9 +2358,8 @@ function _cenaBrinde(p, fim) {
   ['pcb-n3', 'pcb-n2', 'pcb-n1'].forEach((id, i) => _pcClasse(400 + i * 700, $(id), 'pc-pulso'));
   _pcFase('brinde:conta', 400);
   _palcoPasso(2500, () => {
-    _fxEstoura(_fx.W / 2, _fx.H * .2, _fxN(160), {cores: ['#fff', '#fef3c7', '#fde68a'], vmin: 3, vmax: 14, tam: 5});
+    _fxEstoura(_fx.W / 2, _fx.H * .2, _fxN(160), {cores: mod.bc || ['#fff', '#fef3c7', '#fde68a'], vmin: 3, vmax: 14, tam: 5});
     _fxEstoura(_fx.W / 2, _fx.H * .2, _fxN(40), {tipo: 'bolha', cores: ['#fff'], vmin: 2, vmax: 8, tam: 9, g: .15});
-    _somCena('tilintar');
   });
   _pcClasse(2500, $('pc-flash'), 'pc-flash');
   _pcClasse(2500, $('pcb-saude'), 'pc-bate');
@@ -2260,7 +2368,7 @@ function _cenaBrinde(p, fim) {
   _pcClasse(3300, $('pcb-por'), 'pc-sobe');
   _pcClasse(3500, $('pcb-nome'), 'pc-bate');
   _pcFase('brinde:nome', 3500);
-  _palcoPasso(3550, () => _fxEstoura(_fx.W / 2, _fx.H * .64, _fxN(140), {cores: ['#fbbf24', '#fff'], vmin: 3, vmax: 13}));
+  _palcoPasso(3550, () => _fxEstoura(_fx.W / 2, _fx.H * .64, _fxN(140), {cores: mod.bc || ['#fbbf24', '#fff'], vmin: 3, vmax: 13}));
   _pcClasse(4200, $('pcb-msg'), 'pc-sobe');
   _pcCanto('brinde', 4600);
   _pcLivraCanto($('pcb-msg'));   // revisão F2: o recado de 80 letras não entra embaixo do convite do canto
@@ -2294,6 +2402,7 @@ function _vinhetaFurar(p, depois) {
   _palcoAbrir('cena-furar', 'furar');
   pedidoAtual = p;
   const $ = id => document.getElementById(id);
+  const mod = _modeloAplicar('flash');
   _pcNome($('pcf-nome'), p.nome_cliente);
   const m = _pcMusica(p.titulo_pedido), mu = $('pcf-musica');
   if (m.musica) {
@@ -2311,7 +2420,8 @@ function _vinhetaFurar(p, depois) {
   });
   _pcClasse(250, $('pc-flash'), 'pc-flash-f');
   _pcFase('furar:nome', 750);
-  _palcoPasso(800, () => _fxEstoura(_fx.W / 2, _fx.H / 2, _fxN(260), {cores: ['#fbbf24', '#fbbf24', '#fff'], vmin: 4, vmax: 20}));
+  _palcoPasso(800, () => _fxEstoura(_fx.W / 2, _fx.H / 2, _fxN(260), {cores: mod.bc || ['#fbbf24', '#fbbf24', '#fff'], vmin: 4, vmax: 20}));
+  if (mod.idle) _pcClasse(1600, document.querySelector('#pc-cena .pc-centro'), 'pc-i-' + mod.idle);
   _pcFase('furar:musica', 1400);
   _pcCanto('flash', 1800);
   _pcFase('furar:canto', 1800);
@@ -2395,6 +2505,13 @@ function _pararSom() {
 // pronto (1ª vez, rede ruim, navegador antigo), quem chamou usa o som sintetizado de antes.
 const SONS_URL = {intro: '/static/pubshow/sons/intro_pedidos.mp3?v=1', cantada: '/static/pubshow/sons/cantada.mp3?v=1'};
 for (let n = 1; n <= TORCIDAS; n++) SONS_URL['torcida' + n] = '/static/pubshow/sons/torcida_' + n + '.mp3?v=1';   // 10/11/26
+// 11/11/26: faixa de banco por cena [arquivo, ms]
+const SOM_DA_CENA = {
+  parabens: ['parabens_fim', 13900], brinde: ['brinde', 2500], dedicatoria: ['dedicatoria', 2900],
+  chegada: ['chegada', 3000], cantada: ['cantada_sax', 3000], salve: ['salve', 3000], casamento: ['namoro', 3000],
+  gorjeta: ['aplauso', 3000], donate_bar: ['aplauso', 3000],
+};
+for (const [k] of Object.values(SOM_DA_CENA)) SONS_URL[k] = '/static/pubshow/sons/' + k + '.mp3?v=1';
 const _sonsBuf = {}, _sonsBaixando = {};
 function _somBaixar(qual) {
   if (_sonsBuf[qual] || _sonsBaixando[qual] || !SONS_URL[qual] || !window.fetch) return;
@@ -2409,7 +2526,7 @@ function _somBaixar(qual) {
   }).catch(() => { _sonsBaixando[qual] = false; });
 }
 // true = o arquivo está pronto (tocou, ou ficou mudo pela regra); false = ainda não baixou: use o som de antes
-function _somArquivo(qual, aposMs) {
+function _somArquivo(qual, aposMs, ateMs) {
   const buf = _sonsBuf[qual];
   if (!buf) { _somBaixar(qual); return false; }
   if (_isMuted || !_palcoAtivo || _clipeTocando()) return true;
@@ -2420,15 +2537,32 @@ function _somArquivo(qual, aposMs) {
     if (!AC) return false;
     if (!_ac) _ac = new AC();
     if (_ac.state === 'suspended' && _ac.resume) _ac.resume().catch(() => {});
+    const t0 = _ac.currentTime + 0.02 + (aposMs || 0) / 1000;
+    let t1 = t0 + buf.duration;
+    const teto = typeof ateMs === 'number' ? _ac.currentTime + (ateMs - 60) / 1000 : Infinity;
+    if (teto - t0 < 0.1) return true;
     const s = _ac.createBufferSource(), g = _ac.createGain();
     g.gain.value = 0.9 * vol;
+    if (t1 > teto) {
+      g.gain.setValueAtTime(0.9 * vol, Math.max(t0, teto - 0.25));
+      g.gain.linearRampToValueAtTime(0.0001, teto);
+      t1 = teto;
+    }
     s.buffer = buf; s.connect(g); g.connect(_ac.destination);
-    const t0 = _ac.currentTime + 0.02 + (aposMs || 0) / 1000;
     s.start(t0);
-    s.stop(t0 + buf.duration);   // o fim marcado, como os sons sintetizados (o _pararSom ainda corta antes, se o palco fechar)
+    s.stop(t1);   // o fim marcado, como os sons sintetizados (o _pararSom ainda corta antes, se o palco fechar)
     _somNos.push(s);
     return true;
   } catch(e) { return false; }
+}
+function _somDaCena(tipo, durMs, reserva) {
+  const s = SOM_DA_CENA[tipo];
+  if (!s) return;
+  if (!_isMuted) _somBaixar(s[0]);
+  const fimEm = performance.now() + durMs;
+  _palcoPasso(s[1], () => {
+    if (!_somArquivo(s[0], 0, fimEm - performance.now()) && reserva) _somCena(reserva);
+  });
 }
 // ~90 KB, uma vez por carga da TV, e só depois que ela ganha som: a TV muda não baixa nada (a carga dela fica < 200 KB)
 const _sonsPre = setInterval(() => {
