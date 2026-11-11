@@ -1126,6 +1126,7 @@ function atualizarPromo(promo) {
 function aplicarVolumeTV(v) {
   v = Math.max(0, Math.min(100, Number(v) || 0));
   window._tvVolume = v;
+  if (v === 0) _pararSom();   // 11/11/26: volume 0 no meio da cena cala a faixa que já toca
   try {
     if (!player || !player.setVolume) return;
     if (v === 0) { player.mute(); }
@@ -1322,6 +1323,7 @@ function _pausaAplicar(pausada, restaS) {
     _pausaAteLocal = Date.now() + (Math.max(0, +restaS || 0) + 5) * 1000;
     if (_pausaBar) return;
     _pausaBar = true;
+    _pararSom();   // 11/11/26: pausa no meio da cena cala o som dela (os passos seguintes ficam mudos até voltar)
     clearTimeout(stallTimer);
     clearTimeout(proximoTimer);
     try { const st = player && player.getPlayerState ? player.getPlayerState() : 0; if (st === 1 || st === 3) player.pauseVideo(); } catch(e) {}
@@ -2455,7 +2457,7 @@ function _pausarEDepois(fn) {
 let _ac = null, _somNos = [];
 function _somCena(qual) {
   // 24/10/26 (momentos no telão, visual; revisão P3): clipe ainda tocando = nenhum som do app por cima dele
-  if (_isMuted || !_palcoAtivo || _clipeTocando()) return;
+  if (_isMuted || _pausaBar || !_palcoAtivo || _clipeTocando()) return;
   const vol = volumeAtualTV() / 100;
   if (!(vol > 0)) return;
   try {
@@ -2529,7 +2531,7 @@ function _somBaixar(qual) {
 function _somArquivo(qual, aposMs, ateMs) {
   const buf = _sonsBuf[qual];
   if (!buf) { _somBaixar(qual); return false; }
-  if (_isMuted || !_palcoAtivo || _clipeTocando()) return true;
+  if (_isMuted || _pausaBar || !_palcoAtivo || _clipeTocando()) return true;
   const vol = volumeAtualTV() / 100;
   if (!(vol > 0)) return true;
   try {
