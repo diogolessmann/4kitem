@@ -313,7 +313,7 @@
   #qr-fixo{transition:opacity .6s}
   body.fila-on #fila-badge{display:none!important}
   body.com-fila #proximo-card{display:none!important}
-  /* fila vazia (ou TV muda): só o QR grande, legível no projetor */
+  /* fila vazia: só o QR grande, legível no projetor */
   body.fila-on:not(.com-fila) #qr-fixo{flex-direction:column;align-items:center;gap:1vh;padding:1.4vh;max-width:none;
     background:rgba(0,0,0,.8);border:2px solid rgba(74,222,128,.6);text-align:center;animation:ftEntra .6s ease}
   body.fila-on:not(.com-fila) #qr-fixo img{width:18vh!important;height:18vh!important}
@@ -1563,11 +1563,11 @@ function _filaAtualizar(data, doPoll) {
   const frGr = (fr && typeof fr.gratis === 'number') ? Math.max(0, fr.gratis - ja) : Math.max(0, n);
   const frFu = (fr && typeof fr.flash === 'number') ? Math.max(0, fr.flash - ja) : Math.max(0, pagos);
   _fila = {itens, n: Math.max(0, n), pagos: Math.max(0, pagos), preco: data.furar_preco || null, frGr, frFu};
-  if (_fila.n > 0 && _somLigado()) {
+  if (_fila.n > 0) {   // 11/11/26 (Diogo): a fila nunca some, nem com a TV sem som; é ela que vende o furar
     _filaZeros = 0;
     body.classList.add('com-fila');
-  } else if (!_somLigado() || (doPoll && ++_filaZeros >= 2)) {
-    body.classList.remove('com-fila');   // TV muda: na hora; fila vazia: 2 polls seguidos (~5 s), o QR não pisca
+  } else if (doPoll && ++_filaZeros >= 2) {
+    body.classList.remove('com-fila');   // fila vazia: 2 polls seguidos (~5 s), o QR não pisca
   }
   _filaRender();
 }
