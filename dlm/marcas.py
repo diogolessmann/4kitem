@@ -801,7 +801,12 @@ def slide_cta(t, outdir, n=3, item=None):
     sw = d.textlength(seal, font=fs)
     gi.pill(d, (W - sw) // 2 - 30, cy, seal, fs, t["accent"], (10, 10, 10))
     big = item.get("cta_big") or t.get("cta_big", ["RESOLVEMOS", "PRA VOCÊ"])
-    fbig = _font(84 if max(len(x) for x in big) > 14 else 92, impact=True)
+    tam = 84 if max(len(x) for x in big) > 14 else 92
+    fbig = _font(tam, impact=True)
+    # 13/11: em DejaVu Bold "PERGUNTA PRA GENTE" ia de x=10 a 1070; encolhe até respeitar a margem de 56 px
+    while tam > 56 and max(d.textlength(x, font=fbig) for x in big) > W - 2 * 64:
+        tam -= 4
+        fbig = _font(tam, impact=True)
     y = cy + 110
     for ln in big:
         w = d.textlength(ln, font=fbig)
