@@ -33,6 +33,17 @@ FORA_FOTO = {"WhatsApp Image 2026-09-14 at 12.11.58 2.jpg"}
 # "CONFERIR" no nome é recado do próprio dono ("5 Kay 200 por mes 100 km - CONFERIR PARCELA ANTES": a Kay
 # em 48x com juro passa de R$ 200). Só vai para a fila depois que ele conferir e renomear.
 _CONFERIR = re.compile(r"conferir", re.I)
+# 13/11 noite, o dono: "não quero pôr preço no insta, deixa o povo me enviar mensagem". Nenhum R$ de
+# produto ou de parcela sai no Instagram. Conferido quadro a quadro em 13/11: estes mostram "R$ 200/mês"
+# na tela (o nome não diz). Nome com cara de preço também fica fora.
+COM_PRECO = {"DLMOB_kay-anuncio18s_100km_13nov.mp4", "WhatsApp Video 2026-09-03 at 18.32.45.mp4",
+             "WhatsApp Video 2026-09-03 at 18.33.42.mp4", "WhatsApp Video 2026-09-03 at 18.33.42 1.mp4",
+             "arte-48x-loja.jpg", "arte-parcelas-200.jpg"}
+_PRECO_NOME = re.compile(r"r\$|reais|por ?m[eê]s|parcela|pre[cç]o", re.I)
+
+
+def sem_preco(arquivo):
+    return arquivo not in COM_PRECO and not _PRECO_NOME.search(arquivo) and not _CONFERIR.search(arquivo)
 
 # Os dois primeiros da fila (legenda conferida na checagem de lei de 13/11; banner 48x: risco assumido)
 PRIORIDADE = ["DLMOB_AKASHA_A_visual_reel.mp4", "DLMOB_VZERO_1_divertida_reel.mp4"]
@@ -65,7 +76,8 @@ LEGENDAS = {
 
 # ─────────────────────────────────────────────────────────────── fotos
 def foto_ok(arquivo):
-    return not CICLOMOTOR.search(arquivo) and arquivo not in FORA_FOTO   # card diz "sem CNH": ciclomotor fora
+    # card diz "sem CNH": ciclomotor fora; arte com preço fora (13/11 noite)
+    return not CICLOMOTOR.search(arquivo) and arquivo not in FORA_FOTO and sem_preco(arquivo)
 
 
 def fotos_central():
@@ -104,7 +116,7 @@ def escolher(itens, tamanho=None):
     """itens = dlcentral.listar('dlmob'). Devolve o arquivo do reel da vez, ou None.
     tamanho(arquivo) → bytes: o mesmo vídeo subido 2x com nomes diferentes (13/11: "1 Kay preta 100 km.mp4"
     e "DLMOB_kay-preta_100km_13nov.mp4") não sai de novo depois que um deles foi publicado."""
-    vids = [i for i in itens if i.get("tipo") == "video" and not _CONFERIR.search(i["arquivo"])]
+    vids = [i for i in itens if i.get("tipo") == "video" and sem_preco(i["arquivo"])]
     if tamanho:
         ja = {tamanho(i["arquivo"]) for i in itens if i.get("tipo") == "video" and _publicado(i)} - {None}
         vids = [i for i in vids if _publicado(i) or tamanho(i["arquivo"]) not in ja]
@@ -134,9 +146,8 @@ def _legenda_fixa(modelo, ciclomotor=False):
 def _inventou(txt):
     """O que a IA da Central pode inventar e engana: autonomia, outro nº de parcelas, preço que não é do dono."""
     from dlm import marcas
-    # só "a partir de R$ 200" é dado do dono (mostruário p. 8); "Kay por R$ 200" engana (crítica 13/11)
-    limpo = re.sub(r"a partir de R\$\s?200\b", "", txt or "", flags=re.I)
-    return marcas._dl_viola(limpo)
+    # 13/11 noite: nenhum R$ no Instagram, nem "a partir de R$ 200" ("deixa o povo me enviar mensagem")
+    return marcas._dl_viola(txt or "")
 
 
 def legenda(arquivo):

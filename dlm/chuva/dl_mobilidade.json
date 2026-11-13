@@ -230,6 +230,29 @@
   "foto_modelo": ""
  },
  {
+  "id": "DLM-ESP-11",
+  "marca": "dlmob",
+  "linha": "especificacao",
+  "formato": "numero",
+  "tipo": "informar",
+  "cat": "SEM CNH: O TAMANHO",
+  "titulo": "Sem CNH também é questão de tamanho: largura e entre-eixos",
+  "bullets": [
+   "Além de 1.000 W e 32 km/h, a Res. 996 pede até 70 cm de largura e até 130 cm entre os eixos.",
+   "Na loja, a largura vai de 68 cm (Pancho) a 70 cm (Kay, Akasha, V-Zero e outras).",
+   "Entre-eixos: 100 cm na Zilla, 115 na Akasha, 125 na V-Zero e 130 na Kay e na Gataka."
+  ],
+  "fecho": "Salva pra lembrar",
+  "fonte": "Resolução CONTRAN 996/2023, art. 2º, II, e; fichas técnicas do Catálogo NXT 2026",
+  "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao9962023.pdf",
+  "trecho": "largura não superior a 70 cm (setenta centímetros) e distância entre eixos de até 130 cm",
+  "conferido_em": "2026-11-13",
+  "validade": "permanente",
+  "obs": "[L] Catálogo NXT 2026 (atacado-digital.pdf, rev. 19/09), entre-eixos / C x L x A em cm: Zilla 100 / 155x70x110; Vega 110 / 140x70x105; V-Zero 125 / 160x70x110; Gataka 130 / 175x70x115; Akasha 115 / 164,5x70x109; Luna 107; Jay 130; Shaka 110; Juna 125 / 170x69x109; Pancho 115 / 160x68x105; Kay 130 / 170x70x105; Hyphen 129 / 170x70x110. Pedido do dono em 13/11 ('Sim sem cnh'). O catálogo traz preço de REVENDA: nunca citar.",
+  "status": "pronta",
+  "foto_modelo": ""
+ },
+ {
   "id": "DLM-CON-01",
   "marca": "dlmob",
   "linha": "consumo",
