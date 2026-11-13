@@ -11,7 +11,10 @@ BG = (17, 18, 24)
 BLACK = (0, 0, 0)
 WHITE = (245, 245, 247)
 
-FONTS = os.environ.get("FONTS_DIR", "C:/Windows/Fonts" if os.name == "nt" else "")
+# 13/11: prévia = produção. Antes, no Windows o padrão era C:/Windows/Fonts (Impact, estreita) e no
+# Railway a DejaVu empacotada (bem mais larga): a prévia escondia o título que estourava a borda no ar.
+# Agora a fonte empacotada vale nos dois lados; FONTS_DIR só se for definido de propósito.
+FONTS = os.environ.get("FONTS_DIR", "")
 _BUNDLED = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")
 _FONT_FALLBACK = {
     "regular": [os.path.join(_BUNDLED, "DejaVuSans.ttf"), "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"],
@@ -56,8 +59,19 @@ def _semoji(s):
     return re.sub(r"\s{2,}", " ", _EMOJI.sub("", s)).strip()
 
 
+_UNIDADES = {"V", "Ah", "W", "kW", "kWh", "km/h", "km", "kg", "h", "cm", "PSI", "%"}
+
+
 def wrap(draw, text, fnt, max_w):
-    words = _semoji(text).split()
+    words = []
+    for wd in _semoji(text).split():
+        # 13/11: "R$" e "nº" nunca ficam sozinhos no fim da linha ("por R$" / "39"), e a unidade
+        # não se separa do número ("72 V 35" / "Ah")
+        if words and (words[-1] in ("R$", "nº") or
+                      (words[-1][-1:].isdigit() and wd.rstrip(".,;:!?)") in _UNIDADES)):
+            words[-1] += " " + wd
+        else:
+            words.append(wd)
     lines, cur = [], ""
     for wd in words:
         test = (cur + " " + wd).strip()

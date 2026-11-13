@@ -77,7 +77,8 @@ pagamento do IPVA, Seguro Obrigatório (DPVAT — extinto em 31/12/2019 pela MP 
 taxas e multas, e após a vistoria do veículo quando exigida.
 
 Art. 232 — Conduzir veículo sem os documentos de porte obrigatório (CNH, CRLV):
-Infração gravíssima | Multa | Medida administrativa: retenção do veículo.
+Infração leve | Multa | Medida administrativa: retenção do veículo até a apresentação do documento.
+Não soma pontos na CNH (art. 259, § 4º, II — vale também para os arts. 233 e 240).
 
 Art. 160 — O órgão executivo de trânsito exigirá a vistoria do veículo:
 I - por ocasião do primeiro licenciamento;
@@ -89,9 +90,9 @@ Art. 261 — A pontuação no prontuário do condutor e as penalidades previstas
 serão aplicadas de forma cumulativa.
 
 INFRAÇÕES RELEVANTES PARA CLIENTES:
-- Conduzir sem CNH: Art. 162, I — gravíssima, 7 pontos + apreensão do veículo
-- CRLV vencido: Art. 230, V — grave, 5 pontos + retenção
-- Velocidade acima 50%: gravíssima, 7 pontos + cassação se reincidente
+- Conduzir sem CNH: Art. 162, I — gravíssima, multa x3, 7 pontos + retenção do veículo até chegar condutor habilitado
+- Veículo não licenciado (CRLV vencido): Art. 230, V — gravíssima, 7 pontos, multa + remoção do veículo ao pátio
+- Velocidade acima de 50% do limite: Art. 218, III — gravíssima, multa x3 + suspensão do direito de dirigir (não soma pontos: art. 259, § 4º, III)
 - Falta de habilitação para categoria: Art. 162, III — gravíssima, 7 pontos
 """),
 

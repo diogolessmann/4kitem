@@ -7,8 +7,11 @@ código portado 1:1 do repo da Rádio. Este arquivo só decide QUANDO rodar o qu
 (A versão anterior deste arquivo — foto da Central DL 1x/dia — está no git, commit 7ca9560.)
 
 Grade (America/Sao_Paulo):
-  10:00       despachante · manhã   (série "1 post = 1 página", alterna documentalista/defesa) — ÚNICO post de feed/dia
+  10:00       despachante · manhã   (série "1 post = 1 página", alterna documentalista/defesa) — post de VENDA do dia
   16:00       DL Mobilidade · oferta de scooter com FOTO REAL no IG PRÓPRIO (tokens DLMOB_*) — 1x/dia
+              (ter/qui/sáb vira REEL da Central: dlm/dl_material.py)
+  11:00 19:15 DL Mobilidade · CHUVA DE INFORMAÇÃO (13/11, dlm/chuva.py) — CHUVA_ON=0 desliga
+  13:00 19:00 despachante · CHUVA DE INFORMAÇÃO (13/11, dlm/chuva.py)
   17:30 48h   DL Defesas · dia sim, dia não, IG PRÓPRIO @dldefesas.multas (tokens DEFESAS_*)
   12:30       story da FILA de peças prontas (CONTEUDO_21) — FILA_PRONTA_ON=0 desliga
   (19:00 despachante · noite saiu em 27/10: era o MESMO tema da manhã, de novo, em story)
@@ -81,6 +84,17 @@ def _dlmob():
     token, ig_id, _ = marcas._brand_tokens(t)
     if not (token and ig_id):
         return "sem tokens DLMOB_* — pulado (scooter não posta mais no IG do Despachante)"
+    # 13/11: ter/qui/sáb a vaga vira REEL real da loja, tirado da Central DL (dlm/dl_material.py).
+    # Sem reel disponível ou se a publicação falhar → segue o carrossel de sempre.
+    from dlm import dl_material
+    if dl_material.dia_de_reel():
+        try:
+            r = dl_material.postar_reel(ao_vivo())
+        except Exception as e:
+            r = None
+            print(f"[dlmotor] reel da DL falhou, vai o carrossel: {e}")
+        if r is not None:
+            return r
     if not ao_vivo():
         paths, cap, _ = marcas.generate("dl_mobilidade")
         return f"PREVIEW: {paths[0]}"
@@ -153,7 +167,18 @@ def _defesas():
     if not ao_vivo():
         return f"PREVIEW defesas: {arquivo}"
     dlc.publicar("defesas", arquivo, legenda, destino="defesas")
-    return "POSTADO"
+    # 13/11: publicar() só dispara a thread — o resultado real (✅/❌) aparece depois no log da Central.
+    # Antes dizia "POSTADO" mesmo quando a thread falhava (sem CRDD, vacina, Meta recusou).
+    return f"DISPARADO defesas: {arquivo} (resultado no log: ✅ ou ❌)"
+
+
+def _chuva(marca):
+    """13/11: CHUVA DE INFORMAÇÃO (dlm/chuva.py) — pauta checada que informa, com a fonte na legenda.
+    2 vagas por perfil; só sai a pauta 'pronta' e sem valor do dia. CHUVA_ON=0 desliga."""
+    from dlm import chuva
+    if not chuva.ligado():
+        return "chuva desligada (CHUVA_ON!=1)"
+    return chuva.postar(marca, ao_vivo())
 
 
 def _mob_horas():
@@ -170,6 +195,11 @@ def agenda():
         ("dlmob", 16, 0, None, _dlmob),
         ("defesas", 17, 30, None, _defesas),     # dia sim, dia nao (48h) — a paridade esta dentro de _defesas()
         ("insights", 23, 30, None, _insights),
+        # 13/11: chuva de informação — informar ~2/3 do feed (série das 10h e oferta das 16h seguem)
+        ("chuva_dlmob_11", 11, 0, None, lambda: _chuva("dl_mobilidade")),
+        ("chuva_desp_13", 13, 0, None, lambda: _chuva("despachante")),
+        ("chuva_desp_19", 19, 0, None, lambda: _chuva("despachante")),
+        ("chuva_dlmob_19", 19, 15, None, lambda: _chuva("dl_mobilidade")),
     ]
     for i, h in enumerate(_mob_horas()):
         a.append((f"mob_{i}", h, 20, None, (lambda i=i: _mob(i))))

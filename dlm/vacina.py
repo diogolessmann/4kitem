@@ -51,7 +51,12 @@ REGRAS = [
      "promete reverter multa/decisao (CDC art. 35)", _T),
     # ── erros de lei conferidos no CTB (24/set) — ver memória reference_regras_transito_sc_conferidas
     (r"\b233\b[^.\n]{0,80}\bgrave\b|\bgrave\b[^.\n]{0,80}\b233\b",
-     "art. 233 é MÉDIA (4 pontos, remoção), não grave", _T),
+     "art. 233 é MÉDIA (multa e remoção; não soma pontos: art. 259 §4º II), não grave", _T),
+    # 13/11: arts. 232, 233 e 240 NÃO somam pontos (CTB art. 259, §4º, II; Lei 14.071/2020). O motor dizia
+    # "média, 4 pontos" para o 233 desde 24/set: conferido no Planalto pela crítica de 13/11.
+    (r"\b(232|233|240)\b[^.\n]{0,80}\b\d+ pontos\b|\b\d+ pontos\b[^.\n]{0,80}\b(232|233|240)\b"
+     r"|\btransferi\w*[^.\n]{0,80}\b\d+ pontos\b",
+     "arts. 232, 233 e 240 não somam pontos na CNH (CTB art. 259, §4º, II)", _T),
     (r"165-?c\b[^.\n]{0,100}venc|venc[^.\n]{0,100}165-?c\b",
      "toxicológico vencido é art. 165-D (o 165-C é resultado positivo)", _T),
     (r"vencid[ao][^.\n]{0,100}recolhimento|recolhimento[^.\n]{0,100}vencid[ao]",
@@ -66,6 +71,17 @@ REGRAS = [
      "IPVA em SC não tem desconto à vista", _D),
     (r"\bisen[^.\n]{0,60}\bipva\b[^.\n]{0,80}\b(20|30) anos\b|\b(20|30) anos\b[^.\n]{0,80}\bisen[^.\n]{0,60}\bipva\b",
      "isenção por idade está em conflito (EC 137 × lei de SC) — não publicar", _D),
+    # ── 13/11 (motor afiado, F0): regras de 06/10 da defesa, que só a Central conferia, agora valem no motor
+    (r"\banalise (gratis|gratuita)\b", "diga 'conferência gratuita', não 'análise' (regra de 06/10)", _D),
+    (r"\bacompanhamos\b[^.\n]{0,40}\b(processo|decisao|julgamento|recurso|defesa)\b|\bacompanhamos ate\b",
+     "'acompanhamos o processo' é proibido (regra de 06/10)", _D),
+    (r"\bdefesa\b[^.\n]{0,40}\b24 ?(h|horas)\b|\b24 ?(h|horas)\b[^.\n]{0,40}\bdefesa\b",
+     "prazo de entrega de defesa é proibido (regra de 06/10)", _D),
+    (r"\b(ainda|segue|continua) (dirige|dirigindo)\b|\bcnh (continua|segue) valida\b",
+     "'segue dirigindo' só com 'em regra' (CTB art. 285: há exceções, ex. álcool)", _D, r"em regra"),
+    # ── 13/11: afirmação sem prova / regra de marca (auditoria do motor da DL Mobilidade)
+    (r"\bso a dl tem\b|\bexclusiv[oa]s? (da|na) dl\b", "exclusividade sem prova (CDC art. 37)", _D),
+    (r"\bgrupo dl\b", "nada de 'Grupo DL' em texto público (regra da casa)", _D),
 ]
 # 4º item opcional = EXCEÇÃO: se aparecer na mesma frase, a regra não vale (contexto em que o termo é certo)
 _COMPILADAS = [(re.compile(r[0]), r[1], r[2], re.compile(r[3]) if len(r) > 3 else None) for r in REGRAS]

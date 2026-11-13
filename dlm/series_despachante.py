@@ -57,7 +57,7 @@ SERIES = {
             {"cat": "PASSO 4 · ATPV-e",
              "titulo": "Fechou negócio? Você tem 30 dias pra transferir",
              "bullets": ["O CTB (art. 123) dá 30 dias pra transferir após a compra.",
-                         "Passou do prazo: infração média, 4 pontos e remoção do veículo (art. 233).",
+                         "Passou do prazo: infração média, multa e remoção do veículo (art. 233). Não soma pontos.",
                          "ATPV-e, vistoria e transferência: a gente faz por você."],
              "fonte": "https://www.planalto.gov.br/ccivil_03/leis/l9503compilado.htm"},
             {"cat": "VENDEU? · COMUNICAÇÃO DE VENDA",
@@ -156,7 +156,7 @@ SERIES = {
         "nome": "MULTA E DEFESA",
         "link": "/defesas",
         "pagina": "Defesa de multa e CNH suspensa em SC",
-        "cta_seal": "ANÁLISE GRÁTIS",
+        "cta_seal": "CONFERÊNCIA GRÁTIS",
         "cta_big": ["MANDA A FOTO", "DA MULTA"],
         "passos": [
             {"cat": "DICA",
@@ -174,8 +174,8 @@ SERIES = {
             {"cat": "MITO OU VERDADE", "formato": "mito",
              "titulo": "\"Recorrer é perda de tempo.\" MITO.",
              "bullets": ["Erro no auto, radar sem aferição e notificação fora do prazo anulam multa.",
-                         "Enquanto o recurso corre, a penalidade fica suspensa.",
-                         "Análise da multa é grátis. Se não tiver chance, a gente fala."],
+                         "Com recurso no prazo, em regra a penalidade fica suspensa.",
+                         "Conferência da multa é grátis. Se não tiver chance, a gente fala."],
              "fonte": "https://www.planalto.gov.br/ccivil_03/leis/l9503compilado.htm"},
             {"cat": "CONSEQUÊNCIA", "formato": "consequencia",
              "titulo": "20, 30 ou 40 pontos? O limite depende do seu histórico",
@@ -187,7 +187,7 @@ SERIES = {
              "titulo": "Desconto de 40% na multa: quando vale e quando não vale",
              "bullets": ["Pelo SNE, quem não recorre pode pagar com desconto.",
                          "Mas pagar reconhece a infração — os pontos vêm junto.",
-                         "Multa leve? Talvez pague. Gravíssima? Antes, manda pra análise."],
+                         "Multa leve? Talvez pague. Gravíssima? Antes, manda pra gente conferir."],
              "fonte": "https://www.gov.br/pt-br/servicos/aderir-ao-sistema-de-notificacao-eletronica-sne"},
         ],
     },
@@ -243,37 +243,44 @@ SERIES = {
         "passos": [
             {"cat": "DICA DE LEI",
              "titulo": "Sem CNH. Sem placa. Sem IPVA. É sério.",
-             "bullets": ["Autopropelido (CONTRAN 996): até 1000 W e 32 km/h.",
+             # 13/11: a 996 (art. 2º, II) exige as 4 medidas; só potência e velocidade deixava de fora
+             # a scooter larga ou comprida, que é ciclomotor mesmo a 32 km/h.
+             "bullets": ["Autopropelido (CONTRAN 996): até 1.000 W, 32 km/h, 70 cm de largura e 130 cm entre eixos.",
                          "Não exige habilitação, emplacamento nem licenciamento.",
                          "Vem conhecer na loja — Mal. Castelo Branco, 2838, Schroeder."],
              "fonte": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao9962023.pdf"},
             {"cat": "DICA DE LEI",
              "titulo": "Onde a scooter elétrica PODE andar?",
-             "bullets": ["Ciclovia e ciclofaixa: pode, até 20 km/h.",
-                         "Rua urbana com limite de até 40 km/h: pode.",
-                         "Calçada e rodovia: NÃO pode. Anda certo, anda tranquilo."],
+             # 13/11: "ciclovia até 20 km/h" e "calçada NÃO pode" eram regra de Joinville (decreto municipal),
+             # não da 996. Federal (art. 9º): onde o órgão de trânsito autorizar; calçada a até 6 km/h.
+             "bullets": ["Rua de até 40 km/h, ciclovia e ciclofaixa: onde o órgão de trânsito autorizar.",
+                         "Calçada e área de pedestres: só se autorizado, a até 6 km/h.",
+                         "A tua cidade pode ter regra a mais: confere antes de sair."],
              "fonte": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao9962023.pdf"},
             {"cat": "MITO OU VERDADE", "formato": "mito",
              "titulo": "\"Scooter elétrica a blitz apreende.\" Depende da scooter.",
-             "bullets": ["Dentro da 996 (1000 W, 32 km/h, equipamentos): circula em paz.",
-                         "Acima disso vira ciclomotor: precisa CNH e placa.",
+             "bullets": ["Autopropelido (1.000 W, 32 km/h, 70 cm de largura, 130 cm entre eixos): circula em paz.",
+                         "Passou disso: é ciclomotor ou moto, e precisa CNH e placa.",
                          "Modelo do Paraguai sem nota: apreensão e descaminho."],
              "fonte": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao9962023.pdf"},
             {"cat": "NOVIDADE 2026", "formato": "consequencia",
-             "titulo": "Sua scooter passa de 32 km/h? Desde 1º/1/2026 é ciclomotor: precisa de placa",
-             "bullets": ["Acima de 1000 W ou 32 km/h não é autopropelido: é ciclomotor.",
+             # 13/11: acima de 4 kW/50 km/h não é ciclomotor, é moto/motoneta (art. 2º, §7º); título encurtado
+             # (5 linhas na fonte do Railway entravam na foto)
+             "titulo": "Passa de 32 km/h? Desde 2026, ciclomotor sem placa não circula",
+             "bullets": ["Passou de 1.000 W ou 32 km/h: é ciclomotor (até 4 kW e 50 km/h) ou moto.",
                          "Ciclomotor exige CNH A ou ACC, placa e registro — o prazo de adaptação acabou em 31/12/2025.",
                          "Não sabe em qual caixa a sua cai? Manda modelo e foto no WhatsApp."],
              "fonte": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao9962023.pdf"},
             {"cat": "DICA DE LEI",
              "titulo": "Os equipamentos obrigatórios da scooter elétrica",
-             "bullets": ["Campainha, farol dianteiro e lanterna traseira.",
-                         "Faixas refletivas, retrovisor e velocímetro.",
-                         "As nossas já vêm completas de fábrica — é ligar e andar."],
+             # 13/11: a 996, art. 3º, pede só estes 3 itens; retrovisor é do art. 4º (bicicleta elétrica)
+             "bullets": ["Indicador ou limitador eletrônico de velocidade.",
+                         "Campainha e sinalização noturna na frente, atrás e nas laterais.",
+                         "Retrovisor não está na lista do autopropelido, mas ajuda no trânsito."],
              "fonte": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao9962023.pdf"},
             {"cat": "CURIOSIDADE",
              "titulo": "Quanto custa 'abastecer' uma scooter elétrica?",
-             "bullets": ["Recarga em tomada comum de casa, em 4 a 6 horas.",
+             "bullets": ["Recarga em tomada comum de casa, em 5 a 6 horas (manual da loja).",
                          "Custo por km muitas vezes menor que gasolina.",
                          "Sem óleo, sem vela, sem filtro — manutenção mínima."],
              "fonte": SITE + "/mobilidade"},
@@ -281,7 +288,7 @@ SERIES = {
              "titulo": "O perigo da scooter 'baratinha' do Paraguai",
              "bullets": ["Na blitz, nota paraguaia = veículo apreendido + descaminho.",
                          "Sem garantia, sem peça, sem assistência — fica na mão.",
-                         "Aqui: nota fiscal brasileira e 2 anos de garantia. Durma em paz."],
+                         "Aqui: nota fiscal brasileira e 2 anos de garantia no motor e no quadro."],
              "fonte": SITE + "/mobilidade"},
         ],
     },
@@ -337,7 +344,8 @@ CURTA = {"/defesa-de-multa": "/multa", "/suspensao-cnh": "/suspensao", "/cassaca
 
 # Travas que saíram do MiroFish (15/set): tom de utilidade, nunca terrorismo; fonte + número em todo
 # post; defesa com o rodapé "despachante credenciado, não escritório de advocacia; quem julga é o órgão".
-RODAPE_DEFESA = "Despachante credenciado DETRAN/SC 2095 · não é escritório de advocacia · quem julga é o órgão"
+# 13/11: a credencial e o CRDD passaram para o rodapé legal de TODA legenda (marcas.BRANDS["despachante"]).
+RODAPE_DEFESA = "Defesa administrativa · não é escritório de advocacia · quem julga é o órgão de trânsito"
 
 # Itens das 7 páginas novas (cada um = 1 página):
 SERIES["trocar_carro"]["passos"] += [
@@ -367,23 +375,25 @@ SERIES["trocar_carro"]["passos"] += [
      "fonte": "https://www.sef.sc.gov.br/"},
 ]
 SERIES["multa"]["passos"] += [
-    {"cat": "R$ 39 · 24 H", "link": "/defesa-de-multa",
-     "titulo": "Recebeu multa? Defesa pronta em 24 horas por R$ 39",
+    # 13/11: alinhado às regras de 06/10 da Central (dlcentral.py:403-413): sem prazo de entrega, "em regra"
+    # no "segue dirigindo", "conferência" (não "análise") grátis, sem "acompanhamos".
+    {"cat": "R$ 39", "link": "/defesa-de-multa",
+     "titulo": "Recebeu multa? Defesa administrativa por R$ 39",
      "bullets": ["Radar, celular, cinto, estacionamento: defesa administrativa em PDF.",
                  "Você recebe pronta com o passo a passo pra protocolar. Todo o Brasil.",
-                 "Quem julga é o órgão; a gente faz a defesa tecnicamente certa."],
+                 "Quem julga é o órgão; a gente monta a defesa com o que a lei permite."],
      "fonte": "https://www.planalto.gov.br/ccivil_03/leis/l9503compilado.htm"},
     {"cat": "SUSPENSÃO", "link": "/suspensao-cnh",
-     "titulo": "Recebeu a notificação de suspensão da CNH? Você ainda dirige",
-     "bullets": ["Enquanto a defesa e o recurso correm, a CNH continua válida.",
-                 "Por pontos (20/30/40 em 12 meses) ou por infração direta.",
+     "titulo": "Recebeu a notificação de suspensão da CNH? Em regra, você ainda dirige",
+     "bullets": ["Com defesa e recurso no prazo, em regra a CNH segue válida enquanto julgam.",
+                 "Há exceções, como álcool. Recurso fora do prazo não suspende.",
                  "Defesa + recurso: valor combinado antes, metade no início."],
      "fonte": "https://www.planalto.gov.br/ccivil_03/leis/l9503compilado.htm"},
     {"cat": "CASSAÇÃO", "link": "/cassacao-cnh",
      "titulo": "CNH cassada ou a JARI negou? Ainda existe o CETRAN",
      "bullets": ["Dirigiu suspenso, reincidência ou condenação: cabe recurso em 2ª instância.",
-                 "Acompanhamos até a decisão final do órgão.",
-                 "Manda a notificação: análise grátis do que ainda cabe."],
+                 "Quem decide é o órgão; a gente prepara cada etapa dentro do prazo.",
+                 "Manda a notificação: conferência grátis do prazo e do que ainda cabe."],
      "fonte": "https://www.planalto.gov.br/ccivil_03/leis/l9503compilado.htm"},
 ]
 # Um post = UMA página: os passos antigos ganham a página específica (antes apontavam pra série).
@@ -417,8 +427,8 @@ SERIES["trocar_carro"]["passos"][0]["bullets"] = [
     "Manda a placa: a gente puxa o histórico completo antes de você fechar."]
 
 
-PAGINA = {"/defesa-de-multa": "Defesa de multa pronta em 24 h por R$ 39",
-          "/suspensao-cnh": "CNH suspensa: defesa e recurso, você segue dirigindo",
+PAGINA = {"/defesa-de-multa": "Defesa de multa por R$ 39",
+          "/suspensao-cnh": "CNH suspensa: defesa e recurso no prazo",
           "/cassacao-cnh": "CNH cassada ou JARI negou: recurso ao CETRAN",
           "/transferencia-de-veiculo-assinatura": "Transferência de veículo: ATPV-e, vistoria, comunicação de venda",
           "/emplacamento-0km": "Emplacamento de 0 km em SC em 2 horas",
@@ -532,5 +542,9 @@ TRAVAS = (
     "Despachante NÃO renova CNH, NÃO emite habilitação e NÃO dá curso: ele ORIENTA o cidadão no "
     "gov.br/DETRAN e REPRESENTA cursos homologados. Nunca escreva 'renovamos', 'fazemos sua CNH', "
     "'nosso curso', 'garantimos', 'sem pôr o pé no DETRAN'. Nunca se passe pelo DETRAN. "
-    "Não invente número, prazo, artigo de lei ou valor além dos que estão nos PONTOS."
+    "Não invente número, prazo, artigo de lei ou valor além dos que estão nos PONTOS. "
+    # 13/11: regras de 06/10 da defesa (as mesmas da Central)
+    "Em defesa de multa ou CNH: diga 'conferência grátis' (nunca 'análise grátis'), nunca 'acompanhamos o "
+    "processo', nunca prazo de entrega, e 'segue dirigindo' só com 'em regra'. "
+    "Não escreva razão social, credencial nem CRDD: o sistema acrescenta o rodapé legal."
 )

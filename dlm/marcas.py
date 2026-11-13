@@ -22,7 +22,9 @@ USO real (posta):
 """
 import argparse
 import glob
+import hashlib
 import os
+import re
 from datetime import datetime
 
 from dlm import gen_instagram as gi
@@ -256,6 +258,11 @@ BRANDS = {
                 "um especialista amigo que DESCOMPLICA o trânsito: claro, confiável e "
                 "acolhedor. NUNCA se passe por Detran/governo — a DL AJUDA o cliente. "
                 "Sem juridiquês, sem sensacionalismo."),
+        # 13/11 (Lei 14.282/2021, art. 6º, IX): toda publicidade do despachante leva a denominação do
+        # escritório e a inscrição no conselho regional. Colado pelo CÓDIGO no fim de toda legenda
+        # (série, fallback e IA) — nunca pedido ao modelo. Mesmo texto da Central (dlcentral._DEFESAS_RAZAO).
+        "rodape_legal": ("Despachante Lessmann Schroeder Ltda · CNPJ 28.858.795/0001-92\n"
+                         "Diogo Kauê Lessmann, despachante credenciado DETRAN/SC nº 2095 · CRDD/SC nº 1038"),
     },
 
     "dl_mobilidade": {
@@ -315,25 +322,34 @@ BRANDS = {
 DL_PHOTOS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "dl_scooters")
 
 # Angulos que rotacionam por dia (a foto tambem rotaciona).
+# 13/11 (F0 do motor afiado). Régua do dono (13/11: "detalhe pequeno não trava"): só sai o que ENGANA.
+#   · fica: "48x pela Viacredi" (condição real; o dono assume o risco de não trazer o custo efetivo total)
+#     e "sem CNH, sem emplacamento" (o dono confirmou: todo modelo da foto é autopropelido, CONTRAN 996).
+#     ⚠️ Foto de ciclomotor (XE-30 e afins, acima de 1000 W) NUNCA na pasta de cima de dl_scooters: o selo
+#     e o ângulo dizem "sem CNH". Guardar em subpasta (_fora_*), que o sorteio ignora.
+#   · sai: "a partir de R$ 4.990" (preço velho: a V0 hoje é R$ 6.900), "EXCLUSIVO · SÓ A DL TEM" (sem prova),
+#     "50 a 140 km" (a ficha diverge: 70, 90, 100, 150) e "Grupo DL" (regra da casa).
 DL_ANGLES = [
-    {"badge": "EXCLUSIVO · SÓ A DL TEM", "h1": "ATÉ 48x", "h2": "pela Viacredi",
-     "sub": "Scooters NXT a partir de R$ 4.990"},
+    {"badge": "FINANCIAMENTO VIACREDI", "h1": "ATÉ 48x", "h2": "pela Viacredi",
+     "sub": "Simula sem compromisso no WhatsApp",
+     "nota": "*Financiamento sujeito a análise de crédito."},
     {"badge": "SEM BUROCRACIA · CONTRAN 996", "h1": "SEM CNH,", "h2": "SEM EMPLACAMENTO",
      "sub": "Liberdade pra rodar sem dor de cabeça"},
     {"badge": "ECONOMIA DE VERDADE", "h1": "ZERO", "h2": "GASOLINA",
-     "sub": "Recarrega na tomada · economiza todo mês"},
-    {"badge": "VÁRIOS MODELOS NXT", "h1": "A PARTIR DE", "h2": "R$ 4.990",
-     "sub": "Do urbano ao premium — tem o seu aqui"},
+     "sub": "Recarrega na tomada de casa"},
+    {"badge": "VEM DAR UMA VOLTA", "h1": "SENTA,", "h2": "LIGA E ANDA",
+     "sub": "Test-drive na loja, sem compromisso"},
+    {"badge": "VÁRIOS MODELOS NXT", "h1": "QUAL É", "h2": "A TUA?",
+     "sub": "Pergunta o preço da tua no WhatsApp"},
 ]
 
 # Bullets do slide (SEM emoji — a fonte do slide nao renderiza emoji).
 DL_BENEFITS = [
-    "Scooters elétricas NXT — vários modelos",
-    "Sem CNH e sem emplacamento (CONTRAN 996)",
-    "Autonomia de 50 a 140 km por carga",
+    "Scooters elétricas NXT: vários modelos na loja",
+    "Scooters sem CNH e sem emplacamento (CONTRAN 996)",
     "Até 24x no cartão ou 48x pela Viacredi",
-    "Zero gasolina — economia de verdade",
-    "Respaldo do Grupo DL",
+    "Recarga na tomada de casa, sem posto",
+    "Loja em Schroeder: R. Mal. Castelo Branco, 2838",
 ]
 
 
@@ -355,19 +371,25 @@ def _dl_photo_card(angle, photo_path, t, outdir, n=1):
     OR, GO, WH = t["accent"], t["accent2"], t["white"]
     gi.pill(d, 56, 56, t["brand_tag"], _font(40), OR, WH)
     gi.pill(d, 56, H - 560, angle["badge"], _font(34), GO, (10, 10, 10))
-    d.text((50, H - 500), angle["h1"], font=_font(140, impact=True), fill=WH,
-           stroke_width=3, stroke_fill=(0, 0, 0))
-    d.text((56, H - 350), angle["h2"], font=_font(62, impact=True), fill=OR)
+    # 13/11: o título encolhe de degrau até caber (antes era 140 fixo e estourava a borda no Railway)
+    maxw = W - 112
+    f1 = next((_font(px, impact=True) for px in (140, 130, 92)
+               if d.textlength(angle["h1"], font=_font(px, impact=True)) <= maxw), _font(92, impact=True))
+    d.text((50, H - 500), angle["h1"], font=f1, fill=WH, stroke_width=3, stroke_fill=(0, 0, 0))
+    f2 = next((_font(px, impact=True) for px in (62, 46)
+               if d.textlength(angle["h2"], font=_font(px, impact=True)) <= maxw), _font(46, impact=True))
+    d.text((56, H - 350), angle["h2"], font=f2, fill=OR)
     d.text((56, H - 262), angle["sub"], font=_font(38), fill=WH)
-    d.text((56, H - 200), "Sem CNH · Sem emplacamento · até 32 km/h",
-           font=_font(34, bold=False), fill=(195, 200, 210))
+    if "CNH" not in angle["h1"]:              # selo verdadeiro: toda foto da pasta de cima é autopropelido
+        d.text((56, H - 200), "Sem CNH · Sem emplacamento · até 32 km/h",
+               font=_font(34, bold=False), fill=(195, 200, 210))
     wtxt = f"WhatsApp {t['whats']}"
     fw = _font(40)
     tw = d.textlength(wtxt, font=fw)
     d.rounded_rectangle([56, H - 135, 56 + tw + 60, H - 65], radius=18, fill=(37, 211, 102))
     d.text((86, H - 125), wtxt, font=fw, fill=(5, 50, 30))
-    d.text((56, H - 44), "*Financiamento sujeito a análise de crédito.",
-           font=_font(26, bold=False), fill=(150, 155, 165))
+    if angle.get("nota"):
+        d.text((56, H - 44), angle["nota"], font=_font(26, bold=False), fill=(150, 155, 165))
     p = os.path.join(outdir, f"slide_{n}.png")
     ph.save(p, quality=90)
     return p
@@ -437,12 +459,26 @@ def _hashtags_do_dia(t):
 
 
 # Legendas-base ROTATIVAS (fallback se a IA nao responder) — nunca a mesma 2 posts seguidos.
-_DL_CAP_FALLBACK = [
-    "🛴⚡ Liberdade de rodar sem CNH e sem gasolina.\nScooter elétrica NXT, do lado do despachante de 8 anos em Schroeder.",
-    "🛴 Cansou do posto? A recarga é na tomada de casa.\nScooter elétrica NXT — a economia fica no teu bolso todo mês.",
-    "⚡ Sem CNH, sem placa, sem IPVA (CONTRAN 996).\nVem conhecer a linha NXT aqui na loja, sem compromisso.",
+_DL_CAP_FALLBACK = [   # 13/11: sem preço em R$ e sem exclusividade (ver DL_ANGLES)
+    "⚡ Sem CNH e sem placa (CONTRAN 996), e sem IPVA.\nVem conhecer a linha NXT aqui na loja, sem compromisso.",
     "🛴 A parcela que cabe no lugar da gasolina.\nScooter elétrica NXT, até 48x pela Viacredi da nossa região.",
+    "🛴 Cansou do posto? A recarga é na tomada de casa.\nScooter elétrica NXT: a economia fica no teu bolso todo mês.",
+    "⚡ Senta, liga e anda: vem fazer o test-drive na loja, sem compromisso.\nVários modelos NXT em Schroeder.",
 ]
+
+# 13/11: só trava o que ENGANA (régua do dono). A IA erra número: inventa preço, parcela e autonomia.
+_DL_PROIBIDO = [
+    (r"\b(?!(?:24|48) ?x\b)\d{1,2} ?x\b", "número de parcelas que não é o real (24x cartão, 48x Viacredi)"),
+    (r"r\$ ?\d", "preço ou parcela em R$ inventado pela IA (regra de 11/10: DE real, POR em %)"),
+    (r"\b\d{2,3} ?km\b(?!/h)", "autonomia inventada (a ficha diverge por modelo)"),
+    (r"\bexclusiv|\bso a dl\b|\bgrupo\b", "exclusividade sem prova ou 'Grupo' (regra da casa)"),
+]
+
+
+def _dl_viola(txt):
+    import unicodedata
+    n = unicodedata.normalize("NFKD", txt or "").encode("ascii", "ignore").decode("ascii").lower()
+    return [m for rx, m in _DL_PROIBIDO if re.search(rx, n)]
 
 
 def _dl_caption(t, angle):
@@ -450,11 +486,14 @@ def _dl_caption(t, angle):
     (Antes era FIXA: a mesma legenda em todo post = sinal de spam / perde alcance.)
     Fallback: rotação de legendas-base (nunca idêntica 2 posts seguidos)."""
     ig = f"Siga {t['instagram']}\n" if t.get("instagram") else ""
-    rodape = (f"\n📍 Schroeder/SC · a partir de R$ 4.990\n"
-              f"📲 Simule no WhatsApp: {t['whats']}\n"
-              f"🌐 Acesse e veja mais informações: {t['site']}/mobilidade\n{ig}"
-              "*Financiamento sujeito a análise de crédito (com juros).\n\n"
-              + _hashtags_do_dia(t))
+    def rodape(txt):
+        # a nota de crédito vai sempre que o post falar em parcela/financiamento (do ângulo ou do texto)
+        fin = ("*Financiamento sujeito a análise de crédito.\n"
+               if angle.get("nota") or re.search(r"48 ?x|parcela|financ", txt, re.I) else "")
+        return (f"\n📍 R. Mal. Castelo Branco, 2838 · Schroeder/SC\n"
+                f"📲 Chama no WhatsApp: {t['whats']}\n"
+                f"🌐 Acesse e veja mais informações: {t['site']}/mobilidade\n{ig}"
+                + fin + "\n" + _hashtags_do_dia(t))
     try:
         from dlm import cerebro
         prompt = (
@@ -464,33 +503,48 @@ def _dl_caption(t, angle):
             f"ANGULO DE HOJE: {angle['badge']} — {angle['h1']} {angle['h2']} ({angle['sub']}).\n"
             "Regras: 1a linha e um gancho curto (no max 1 emoji). Depois 3-4 linhas curtas. "
             "Bata no angulo do dia. Termine convidando a CHAMAR NO WHATSAPP. "
-            "NAO invente preco nem modelo alem do citado. NAO use hashtags (eu adiciono depois)."
+            "Pode dizer 'sem CNH e sem placa (CONTRAN 996)' e 'ate 48x pela Viacredi'. "
+            "NAO cite preco nem valor de parcela em R$, outro numero de parcelas, autonomia em km nem "
+            "'exclusivo'. NAO invente modelo. NAO use hashtags (eu adiciono depois)."
         )
         txt = cerebro.completar(prompt)
         if txt:
             from dlm import vacina
-            v = vacina.checar(txt)
+            v = vacina.checar(txt) + [(m, "") for m in _dl_viola(txt)]
             if v:
                 vacina.registrar("legenda IA · DL scooter", v, {"texto": txt[:400]})
             else:
-                return txt.strip().strip('"') + "\n" + rodape
+                txt = txt.strip().strip('"')
+                return txt + "\n" + rodape(txt)
     except Exception:
         pass
     base = _DL_CAP_FALLBACK[datetime.now().timetuple().tm_yday % len(_DL_CAP_FALLBACK)]
-    return base + "\n" + rodape
+    return base + "\n" + rodape(base)
 
 
 def generate_dl(brand_key, outdir=None):
     t = BRANDS[brand_key]
     yday = datetime.now().timetuple().tm_yday
     angle = DL_ANGLES[yday % len(DL_ANGLES)]
-    photos = sorted(glob.glob(os.path.join(DL_PHOTOS_DIR, "*.jpg")))
+    # 13/11: ordem embaralhada fixa (hash do nome) em vez da alfabética — na alfabética as fotos vizinhas
+    # (mesmo modelo, ângulos diferentes) saíam em dias seguidos: a mesma scooter cinza 6 dias no feed.
+    # 13/11 (dono: "use todas as imagens"): + as fotos da Central DL (aba dlmob), menos a lista de fora
+    # de dlm/dl_material.py. Fora do Railway a Central vem vazia e fica só o repositório.
+    photos = glob.glob(os.path.join(DL_PHOTOS_DIR, "*.jpg"))
+    try:
+        from dlm import dl_material
+        photos += dl_material.fotos_central()
+    except Exception as e:
+        print(f"[marcas] fotos da Central fora do sorteio hoje: {e}")
+    photos = sorted(set(photos), key=lambda p: hashlib.md5(os.path.basename(p).encode("utf-8")).hexdigest())
     if not photos:
         raise RuntimeError("Sem fotos em assets/dl_scooters.")
     ph1 = photos[yday % len(photos)]
     ph2 = photos[(yday + 7) % len(photos)]   # foto diferente no CTA
     from dlm import vacina
     vacina.exigir("DL scooter · ângulo do dia", angle, extra={"brand": brand_key})
+    if _dl_viola(" ".join(str(v) for v in angle.values())):
+        raise vacina.Bloqueado("DL scooter: ângulo do dia com afirmação sem prova (%s)" % angle["h1"])
     if outdir is None:
         outdir = os.path.join(OUT_BASE, datetime.now().strftime("%Y-%m-%d") + f"_{brand_key}")
     os.makedirs(outdir, exist_ok=True)
@@ -540,18 +594,25 @@ def _foto_fundo(img, t, item, y0):
     card, com degradê do navy por cima (texto fica no navy, foto fica embaixo). Sem foto → card
     liso, como antes. É o que mata o 'card escuro genérico' sem custo por post."""
     from PIL import Image
-    key = item.get("serie") if isinstance(item, dict) else None
-    if not key:
+    if not isinstance(item, dict):
         return None
-    # 15/set: POOL por série (assets/series/<serie>/*.jpg — fotos reais da loja/site) girando por
-    # dia + passo; sem pool, cai na foto única <serie>.webp. Sem nada, card liso.
-    pool = sorted(glob.glob(os.path.join(SERIES_IMG_DIR, key, "*.jp*g")) +
-                  glob.glob(os.path.join(SERIES_IMG_DIR, key, "*.webp")))
-    if pool:
-        idx = (datetime.now().timetuple().tm_yday * 7 + int(item.get("passo") or 0)) % len(pool)
-        fp = pool[idx]
+    if "foto_path" in item:                  # 13/11: a chuva (dlm/chuva.py) já escolheu a foto; None = card liso
+        fp = item["foto_path"]
+        if not fp:
+            return None
     else:
-        fp = os.path.join(SERIES_IMG_DIR, f"{key}.webp")
+        key = item.get("serie")
+        if not key:
+            return None
+        # 15/set: POOL por série (assets/series/<serie>/*.jpg — fotos reais da loja/site) girando por
+        # dia + passo; sem pool, cai na foto única <serie>.webp. Sem nada, card liso.
+        pool = sorted(glob.glob(os.path.join(SERIES_IMG_DIR, key, "*.jp*g")) +
+                      glob.glob(os.path.join(SERIES_IMG_DIR, key, "*.webp")))
+        if pool:
+            idx = (datetime.now().timetuple().tm_yday * 7 + int(item.get("passo") or 0)) % len(pool)
+            fp = pool[idx]
+        else:
+            fp = os.path.join(SERIES_IMG_DIR, f"{key}.webp")
     if not os.path.exists(fp):
         return None
     try:
@@ -649,8 +710,13 @@ def slide_capa(t, item, outdir, n=1):
     else:
         gi.pill(d, 56, 200, badge, fb, t["accent"], (10, 10, 10))
     # titulo grande
-    ft = _font(82, impact=True)
-    lines = gi.wrap(d, item["titulo"], ft, W - 120)[:5]
+    # 13/11: encolhe de degrau até caber em 4 linhas (5 linhas invadiam a foto); antes cortava na 5ª calado
+    for px in (82, 64):                      # 64 = degrau "subtítulo" da escala de 7 (skill motor)
+        ft = _font(px, impact=True)
+        lines = gi.wrap(d, item["titulo"], ft, W - 120)
+        if len(lines) <= 4:
+            break
+    # título enorme não trava o post (régua do dono): sai inteiro em 64 px; o smoke avisa antes de subir
     for ln in lines:
         d.text((56, y), ln, font=ft, fill=t["white"], stroke_width=2, stroke_fill=(0, 0, 0))
         y += int(ft.size * 1.02)
@@ -665,7 +731,7 @@ def slide_conteudo(t, item, outdir, n=2):
     img, d = _canvas(t)
     _brand_header(d, t)
     ft = _font(50, impact=True)
-    gi.pill(d, 56, 200, "COMO FUNCIONA", ft, t["accent2"], t["white"])
+    gi.pill(d, 56, 200, item.get("rotulo_conteudo") or "COMO FUNCIONA", ft, t["accent2"], t["white"])
     y = 360
     fb = _font(46, bold=False)
     for b in item["bullets"]:
@@ -773,12 +839,19 @@ def _rodape_serie(t, item):
             f"\n📲 Fala com a gente no WhatsApp: {t['whats']}\n\n")
 
 
+def _rodape_legal(t):
+    """13/11: rodapé legal da marca (Despachante: razão social + credencial + CRDD). Vazio nas outras."""
+    r = (t.get("rodape_legal") or "").strip()
+    return (r + "\n\n") if r else ""
+
+
 def build_caption(t, item):
     base = f"{item['titulo']}\n\n"
     base += "\n".join(f"✅ {b}" for b in item["bullets"])
     base += _rodape_serie(t, item)
     if t.get("instagram"):
         base += f"Siga {t['instagram']}\n\n"
+    base += _rodape_legal(t)
     base += _hashtags_do_dia(t)
     return base
 
@@ -819,7 +892,8 @@ def groq_caption(t, item):
                 txt = ""                         # legenda da IA barrada → fallback fixo (já vacinado)
         if txt:
             txt = txt.strip().strip('"')
-            return f"{txt}\n\n📲 WhatsApp: {t['whats']}  ·  🌐 {t['site']}\n\n" + _hashtags_do_dia(t)
+            return (f"{txt}\n\n📲 WhatsApp: {t['whats']}  ·  🌐 {t['site']}\n\n"
+                    + _rodape_legal(t) + _hashtags_do_dia(t))
     except Exception:
         pass
     return build_caption(t, item)
@@ -936,6 +1010,8 @@ def generate(brand_key, outdir=None, item=None, slot=None):
                  slide_conteudo(t, item, outdir, 2),
                  slide_cta(t, outdir, 3)]
     caption = groq_caption(t, item)
+    if t.get("rodape_legal") and "CRDD" not in caption:   # 13/11: sem CRDD, o Despachante não publica
+        raise vacina.Bloqueado("legenda do %s sem o rodapé legal (Lei 14.282, art. 6º, IX)" % t["nome"])
     with open(os.path.join(outdir, "legenda.txt"), "w", encoding="utf-8") as f:
         f.write(caption)
     return paths, caption, item
