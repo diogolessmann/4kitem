@@ -10298,7 +10298,7 @@ def _musica_nao_abriu(conn, bid, pid):
     r = conn.execute(
         "SELECT pago_em FROM pubshow_pedidos WHERE id=? AND business_id=? AND COALESCE(karaoke,0)=0 AND status='exibido' "
         "AND COALESCE(karaoke_pulado,0)=0 AND TRIM(COALESCE(youtube_id,''))<>'' AND exibido_at >= datetime('now','-3 hours',?)",
-        (pid, bid, f'-{120 + PAUSA_MUSICA_MIN * 60} seconds')).fetchone()
+        (pid, bid, f'-{120 + _pausa_janela_seg(conn, bid)} seconds')).fetchone()   # 15/11/26: 7 min, ou + a pausa longa
     if not r:
         return None
     if not str(r['pago_em'] or '').strip():
@@ -10378,6 +10378,13 @@ def _pausa_seg_desde(conn, bid, ini_brt):
         return 0
 
 
+def _pausa_janela_seg(conn, bid):
+    """15/11/26 (⏸️ sem relógio): a folga da pausa nas janelas do ⏭️ Pular da paga e do 'vídeo pago não abriu'. Era a
+    pausa máxima fixa (5 min); agora é 5 min, ou a última pausa inteira se ela durou mais (até a trava de 6 h)."""
+    agora_brt = datetime.utcnow() - timedelta(hours=3)
+    return max(300, _pausa_seg_desde(conn, bid, agora_brt - timedelta(minutes=PAUSA_MUSICA_MIN)))
+
+
 def _pago_tocando(conn, bid):
     """⏭️ Pular (25/10/26): o pedido de música PAGA (PIX na conta do PubShow) que a TV deste bar toca agora, ou None.
     A TV não conta ao servidor o que toca: só avisa quando COMEÇA um pedido (/api/pedido-exibido grava exibido_at).
@@ -10393,7 +10400,7 @@ def _pago_tocando(conn, bid):
         f"SELECT id, status, tipo, youtube_id, titulo_pedido, valor, valor_cobrado, exibido_at, {_volta} "
         "FROM pubshow_pedidos WHERE business_id=? AND exibido_at >= datetime('now','-3 hours',?) "
         "ORDER BY exibido_at DESC, id DESC LIMIT 1",
-        (bid, f'-{int(_PULAR_TETO_TV_SEG + PAUSA_MUSICA_MIN * 60)} seconds')).fetchone()
+        (bid, f'-{int(_PULAR_TETO_TV_SEG + _pausa_janela_seg(conn, bid))} seconds')).fetchone()   # 15/11/26
     if not r or r['status'] != 'exibido' or not r['volta'] or not (r['youtube_id'] or '').strip():
         return None
     try:
@@ -10493,8 +10500,12 @@ def painel_pular_musica():
 
 # ⏸️ 25/10/26 (Garage: "cantaram parabéns e não tem pause"): o dono pausa a música da TV pelo painel. O estado mora no
 # banco (pausa_ate, vale com mais de um processo); a TV lê no polling do /api/status (~2,5 s), pausa o player e a fila,
-# a cena e o slide esperam. Volta SOZINHA em PAUSA_MUSICA_MIN (ninguém esquece o bar mudo a noite toda).
-PAUSA_MUSICA_MIN = 5
+# a cena e o slide esperam.
+# 15/11/26 (Diogo: "ele precisa ficar parado até o dono do bar liberar"): sem o relógio de 5 min. A pausa fica até o
+# ▶️ Voltar do painel. Trava escondida: PAUSA_MUSICA_MIN (6 h). A pausa esquecida no fechamento não amanhece na abertura
+# do dia seguinte. As janelas do ⏭️ Pular da paga e do "vídeo não abriu" seguem com 5 min de folga e só crescem com
+# uma pausa mais longa (_pausa_janela_seg); a TV volta no prazo do servidor (pausa_resta_s), sem mudança nela.
+PAUSA_MUSICA_MIN = 6 * 60
 
 
 def _pausa_resta_s(b) -> int:

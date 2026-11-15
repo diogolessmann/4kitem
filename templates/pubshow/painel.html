@@ -482,7 +482,7 @@
       <div class="controles-tv">
         <button type="button" id="btn-pular-musica" class="ctl-btn" onclick="pularMusica(this)" style="background:linear-gradient(135deg,#8b5cf6,#6366f1)">⏭️ Pular</button>
         <button type="button" id="btn-mudo" class="ctl-btn" onclick="alternarMudo()" style="background:rgba(239,68,68,.2);color:#fecaca">{% if _vol == 0 %}🔊 Tirar do mudo{% else %}🔇 Mudo{% endif %}</button>
-        {#- ⏸️ 25/10/26 (Garage: "cantaram parabéns e não tem pause"): pausa a música da TV; volta sozinha em 5 min #}
+        {#- ⏸️ 25/10/26 (Garage: "cantaram parabéns e não tem pause"): pausa a música da TV. 15/11/26 (Diogo): fica parada até o ▶️ (sem o relógio de 5 min) #}
         <button type="button" id="btn-pausar-musica" class="ctl-btn" onclick="pausarMusica(this)" data-resta="{{ pausa_resta_s or 0 }}" style="grid-column:1/-1;background:rgba(245,158,11,.2);color:#fde68a">⏸️ Pausar a música</button>
       </div>
       <div id="pausa-msg" role="status" style="display:none;font-size:15px;font-weight:800;color:#fde68a;margin-top:10px;text-align:center"></div>
@@ -1713,7 +1713,8 @@ function pularMusica(btn, pid) {
 }
 
 // ⏸️ 25/10/26 (Garage: "cantaram parabéns e não tem pause"): pausa a música da TV (a TV vê em ~3 s) e o botão vira
-// "▶️ Voltar a música". O servidor volta sozinho em 5 min; aqui o botão volta junto, na hora do celular
+// "▶️ Voltar a música". 15/11/26 (Diogo: "parado até o dono liberar"): só volta no ▶️ (a trava escondida de 6 h do
+// servidor é só pra pausa esquecida; aqui o botão volta junto, na hora do celular)
 let _pausaAte = 0, _pausaTimer = null;
 function _pausaPinta() {
   const btn = document.getElementById('btn-pausar-musica'), msg = document.getElementById('pausa-msg');
@@ -1726,8 +1727,7 @@ function _pausaPinta() {
   btn.style.color = pausada ? '#fff' : '#fde68a';
   if (msg) {
     if (pausada) {
-      const d = new Date(_pausaAte);
-      msg.textContent = `⏸️ Pausado · volta sozinho às ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      msg.textContent = '⏸️ Pausado · a música só volta quando você apertar ▶️';
       msg.style.display = 'block';
     } else {
       msg.textContent = '';
