@@ -66,6 +66,39 @@
   .prox-tipo{font-size:16px;font-weight:800;margin-bottom:2px}
   .prox-nome{font-size:13px;color:rgba(255,255,255,.65)}
 
+  {# 🙋 15/11/26 (Diogo): "EI! Garçom!" — faixa NA HORA por cima do clipe. Ele escolheu "Menor e 5 s": uma linha só,
+     até 15% da altura da tela, colada embaixo à esquerda, com o número da mesa como o maior elemento. Nunca cobre a
+     coluna da fila (body.fila-on: termina onde a coluna começa). A música abaixa no som + narração e volta sozinha. #}
+  #garcom{position:fixed;left:0;right:0;bottom:5vh;z-index:95;display:flex;justify-content:flex-start;padding-left:3vh;
+    pointer-events:none;opacity:0;transform:translateY(16vh);transition:opacity .3s,transform .45s cubic-bezier(.2,1.35,.4,1)}
+  body.fila-on:not(.modo-fundo) #garcom{right:var(--col-w)}
+  #garcom.on{opacity:1;transform:none}
+  #garcom .gc-box{display:flex;align-items:center;gap:2vh;padding:1.1vh 3.2vh 1.3vh 2vh;border-radius:2.2vh;max-width:70%;
+    max-height:15vh;background:linear-gradient(135deg,#fbbf24,#d97706);
+    box-shadow:0 0 0 .5vh rgba(0,0,0,.55),0 1.2vh 4vh rgba(0,0,0,.65)}
+  #garcom .gc-mao{font-size:7.5vh;line-height:1;transform-origin:70% 90%}
+  #garcom .gc-tit{font:4.8vh/1 Anton,Impact,sans-serif;color:#fff;letter-spacing:.3vh;white-space:nowrap;
+    text-shadow:0 .35vh 0 #78350f;transform-origin:0 60%}
+  #garcom .gc-mesa{font:900 2.8vh/1 Inter,Arial,sans-serif;color:#451a03;letter-spacing:.5vh;margin-top:.7vh;white-space:nowrap}
+  #garcom .gc-num{font:10vh/1 Anton,Impact,sans-serif;letter-spacing:.3vh;color:#fff;text-shadow:0 .5vh 0 #78350f;
+    white-space:nowrap}
+  #garcom.fiu .gc-box{animation:gcFiu .32s ease-out}
+  #garcom.fiu .gc-mao{animation:gcAceno .32s ease-in-out}
+  #garcom.grita .gc-tit{animation:gcGrita .6s ease-out}
+  @keyframes gcFiu{0%{transform:scale(1)}40%{transform:scale(1.07) rotate(-1.2deg)}100%{transform:scale(1)}}
+  @keyframes gcAceno{0%,100%{transform:rotate(0)}50%{transform:rotate(-24deg)}}
+  @keyframes gcGrita{0%{transform:scale(1)}35%{transform:scale(1.14)}100%{transform:scale(1)}}
+  {# 🔥 15/11/26 (Diogo): o Esquenta na faixa do 🙋 — embaixo à esquerda, por cima do clipe, até 15vh e 70% da área do
+     clipe, nunca na coluna da fila; abaixo do 🙋 (z 94) e some na hora que ele entra (#garcom.on+#esq). No modo fundo
+     o JS não mostra. Borda na cor do tipo (o JS põe a do TIPO_CONFIG). Anton (a da faixa do 🙋): a frase cabe numa
+     linha; se não couber, quebra em 2. Cores em rgba (TV antiga pode não ler #rgba). #}
+  #esq{position:fixed;left:0;right:0;bottom:5vh;z-index:94;display:flex;padding-left:3vh;pointer-events:none;opacity:0;
+    transform:translateY(16vh);transition:.4s cubic-bezier(.2,1.35,.4,1)}
+  body.fila-on:not(.modo-fundo) #esq{right:var(--col-w)}
+  #esq.on{opacity:1;transform:none}
+  #esq div{max-width:70%;max-height:15vh;overflow:hidden;padding:1vh 3vh;border-radius:2vh;background:rgba(0,0,0,.87);
+    border:.5vh solid #f59e0b;color:#fff;font:4.2vh/1.2 Anton,Impact,sans-serif;box-shadow:0 1vh 4vh rgba(0,0,0,.6)}
+  #garcom.on+#esq{display:none}
   /* Overlay especial (parabéns, dedicatória etc.) */
   #overlay{
     position:fixed;inset:0;z-index:100;
@@ -673,6 +706,12 @@
   <div class="prox-tipo" id="prox-tipo">🎵 Pedido de música</div>
   <div class="prox-nome" id="prox-nome">de alguém</div>
 </div>
+
+{# 🙋 15/11/26: "EI! Garçom!" (a faixa por cima do clipe, sem cobrir a fila; a mesa é texto do cliente: textContent) #}
+<div id="garcom" aria-hidden="true"><div class="gc-box"><div class="gc-mao">🙋</div><div><div class="gc-tit">EI, GARÇOM!</div><div class="gc-mesa">MESA</div></div><div class="gc-num" id="gc-mesa"></div></div></div>
+
+{# 🔥 15/11/26: o Esquenta (logo depois do #garcom: o #garcom.on+#esq depende disso; texto por textContent) #}
+<div id="esq" aria-hidden="true"><div></div></div>
 
 <!-- Overlay especial -->
 <div id="overlay">
@@ -1843,6 +1882,7 @@ function mostrarOverlay(pedido, depois) {
 let _paradoDesde = 0;
 function _intervalo(opts) {
   if (_palcoAtivo) return;
+  if (_garcomAtivo) { _garcomDepois = () => _intervalo(opts); return; }   {# 🙋 15/11/26: a faixa sai antes #}
   if (_pausaBar) { _pausaPend = () => _intervalo(opts); return; }   // ⏸️ 25/10/26: cena e próxima música esperam
   if (!_paradoDesde) _paradoDesde = performance.now();
   const p = _momentoPend;
@@ -1900,6 +1940,77 @@ const DEPOIS_DESTA = {
   cantada:     () => '😏 Depois desta: uma cantada',
   salve:       n => n ? `📣 Depois desta: salve de ${n}` : '📣 Depois desta: um salve',
 };
+{# ── 🔥 15/11/26 (Diogo): ESQUENTA ─────────────────────────────────────────────────────────────────────────────────
+Faixa de 7 s (Diogo, 15/11: "7 segundos tá bom e o depois também") por cima do clipe (a do 🙋 é o modelo), sem som e sem mexer no volume. Só parabens, dedicatoria, brinde e
+salve (ESQ: [2 suspenses, aí vem, homenagem(nome), convite]).
+- ANTES: momento desses esperando (_momentoPend, o mesmo do "Depois desta") e o clipe tocando há 8 s: suspense SEM nome,
+  1 vez por pedido, as 2 frases alternadas por contador. Só se faltar mais de 15 s (não come a hora do AÍ VEM).
+- AÍ VEM: faltando ≤ 9 s pro clipe acabar (a conta do _filaTick: getDuration − getCurrentTime; sem duração válida, nada),
+  1 vez por pedido.
+- DEPOIS: a cena acabou (mostrarCena → _esqDepois(p)); conta os segundos de clipe TOCANDO: aos 15 a homenagem (1º nome,
+  até 12 letras), aos 45 o convite. No máx. 4 pares por hora (guardados ao registrar).
+Nunca com 🙋 na tela, palco/cartão, pausa, TV muda ou modo fundo, nunca 2 faixas: a hora que cai num desses casos é
+PULADA (o id fica marcado; não entra em fila). Só o ANTES espera a própria faixa sair. Se um desses casos começa com a
+faixa na tela, ela sai no tick seguinte (≤ 1 s); o 🙋 a tira na hora pelo CSS. Bancada: _esqMostrar(texto, cor),
+_esqAntes(p), _esqAiVem(p), _esqDepois(p) (registra o par) e _esqDepois(p, 0|1) (homenagem|convite já). #}
+const ESQ_MS = 7000, ESQ = {
+  parabens: ['🎂 Fiquei sabendo que tem alguém de aniversário hoje…', '🎂 Tem aniversariante no bar… já já vocês sabem quem!',
+    '🎂 AÍ VEM O PARABÉNS!', n => n ? `🥳 Parabéns, ${n}! Que venham muitos!` : '🥳 Parabéns pro aniversariante!',
+    '🎂 Tem aniversário na tua mesa? Pede pelo QR 📱'],
+  dedicatoria: ['💌 Alguém aqui mandou um recado especial…', '💌 Tem dedicatória chegando…', '💌 AÍ VEM A DEDICATÓRIA!',
+    () => '💌 Teve dedicatória no telão. Quem é o próximo?', '💌 Quer dedicar pra alguém? É pelo QR 📱'],
+  brinde: ['🍻 Tem brinde chegando… avisa a mesa!', '🍻 Já já tem brinde no telão!', '🍻 AÍ VEM O BRINDE!',
+    n => n ? `🍻 Saúde! Brinde puxado por ${n}` : '🍻 Saúde, galera!', '🍻 Puxa o próximo brinde pelo QR 📱'],
+  salve: ['📣 Tem recado chegando pra uma mesa…', '📣 Já já tem salve no telão!', '📣 AÍ VEM O SALVE!',
+    () => '📣 Salve dado no telão!', '📣 Manda um salve também pelo QR 📱'],
+};
+let _esqT = 0, _esqDep = null, _esqHora = [];
+const _esqJa = new Set(), _esqEl = document.getElementById('esq');
+function _esqLivre() {
+  return !_garcomAtivo && !_palcoAtivo && !overlayAtivo && !_pausaBar && _somLigado() && !document.body.classList.contains('modo-fundo');
+}
+function _esqSai() { clearTimeout(_esqT); _esqT = 0; _esqEl.className = ''; }
+function _esqMostrar(texto, cor) {
+  if (_esqT || !_esqLivre()) return false;
+  _esqEl.firstChild.textContent = texto;
+  _esqEl.firstChild.style.borderColor = cor;
+  _esqEl.className = 'on';
+  _esqT = setTimeout(_esqSai, ESQ_MS);
+  return true;
+}
+{# i: 0 = suspense (o contador do tipo, e.n, alterna a frase 0 e a 1), 2 = aí vem, 3 = homenagem (1º nome, até 12 letras), 4 = convite #}
+function _esqVai(p, i) {
+  const e = ESQ[p.tipo];
+  if (!e) return false;
+  if (!i) e.n = (e.n || 0) + 1;
+  const x = i ? e[i] : e[(e.n + 1) % 2];
+  return _esqMostrar(i == 3 ? x(String(p.nome_cliente || '').trim().split(' ')[0].slice(0, 12)) : x, TIPO_CONFIG[p.tipo].cor);
+}
+function _esqAntes(p) { _esqJa.add('a' + p.id); return _esqVai(p, 0); }
+function _esqAiVem(p) { _esqJa.add('v' + p.id); return _esqVai(p, 2); }
+{# sem k: a cena acabou, registra o par (máx. 4 por hora); k = 0|1: mostra a homenagem|o convite já #}
+function _esqDepois(p, k) {
+  if (k >= 0) return _esqVai(p, 3 + k);
+  const agora = Date.now();
+  _esqHora = _esqHora.filter(t => agora - t < 36e5);
+  if (!ESQ[p.tipo] || _esqHora.length > 3) return false;
+  _esqHora.push(agora);
+  _esqDep = {p, s: 0};
+  return true;
+}
+setInterval(() => {
+  if (_esqT && !_esqLivre()) _esqSai();
+  let d, t, st;
+  try { d = player.getDuration(); t = player.getCurrentTime(); st = player.getPlayerState(); } catch(e) { return; }
+  if (st !== 1 || _palcoAtivo) return;
+  const rest = d > 0 && d <= 3600 ? d - t : 1e9, p = _momentoPend, q = _esqDep;
+  if (p && ESQ[p.tipo]) {
+    if (rest <= 9) { if (!_esqJa.has('v' + p.id)) _esqAiVem(p); }
+    else if (t >= 8 && !_esqT && !_esqJa.has('a' + p.id) && rest > 15) _esqAntes(p);
+  }
+  if (q && ++q.s == 15) _esqDepois(q.p, 0);
+  if (q && q.s == 45) { _esqDep = null; _esqDepois(q.p, 1); }
+}, 1000);
 let _avisosAssin = '';
 function _avisosAtualizar() {
   const body = document.body, p = _momentoPend;
@@ -2247,7 +2358,7 @@ function _fxAnda(t) {
 function mostrarCena(p, depois) {
   pedidoAtual = p;
   if (_momentoPend && _momentoPend.id === p.id) _momentoPend = null;
-  const fim = () => { _palcoFechar(); if (depois) depois(); };
+  const fim = () => { _palcoFechar(); _esqDepois(p); if (depois) depois(); };   {# 🔥 15/11/26: o DEPOIS do Esquenta #}
   if (p.tipo === 'parabens') { _palcoAbrir('', 'parabens'); _marcarExibido(p.id); _cenaParabens(p, fim); return; }
   if (p.tipo === 'brinde')   { _palcoAbrir('', 'brinde'); _marcarExibido(p.id); _cenaBrinde(p, fim); return; }
   // os outros 6: o cartão de hoje, no palco (player parado), com o convite + o preço + o QR no canto
@@ -2500,6 +2611,120 @@ function _pararSom() {
   _somNos = [];
 }
 
+{# ── 🙋 15/11/26 (Diogo): "EI! Garçom!" ───────────────────────────────────────────────────────────────────────────────
+Não espera a música acabar: a TV mostra NA HORA (o /api/status manda 'garcom', à parte do momento), numa faixa por cima
+do clipe que nunca cobre a coluna da fila. Som (Diogo: "usa esses 5 randomizados" + "5 modelos de narração"): a cada
+chamado, 1 som de chamada entre 5 (garcom_s1..5.mp3) e depois 1 narração entre 6 (garcom_v1..6.mp3: 5 femininas e 1
+masculina, todas com "gar-SOM", S surdo), em RODÍZIO de 30 pares (ordem fixa: a vez fica guardada no aparelho; nem o
+som nem a narração repetem os do chamado anterior).
+A mesa só na tela. Volume do painel, com a música abaixada a 20% enquanto toca. Os 2 arquivos do par (20 a 40 KB cada)
+só baixam quando chega o chamado (bar sem garçom não baixa nada) e a TV espera até 2,5 s por eles; sem eles (rede
+ruim), 3 assobios sintetizados aqui, sem a voz. Espera como todo pago: TV muda, pausa do bar e cena no palco. Com a
+faixa na tela, o intervalo (cena ou próxima música) espera ela sair (_garcomDepois). var: o _intervalo pode ler antes. #}
+var GARCOM_MS = 5000, GARCOM_ESPERA_MP3 = 2500, GARCOM_NS = 5, GARCOM_NV = 6, GARCOM_FOLGA_VOZ = 180;
+var _garcomPend = null, _garcomAtivo = false, _garcomDepois = null, _garcomDesde = 0, _garcomTimer = null, _garcomPar = null;
+function _garcomVez() {   // o par deste chamado: [som, narração, vez]; 5 sons e 6 vozes: 30 chamados passam pelos 30 pares
+  let n = 0;
+  try { n = parseInt(localStorage.getItem('ps_garcom_vez'), 10) || 0; } catch(e) {}
+  if (!(n >= 0 && n < GARCOM_NS * GARCOM_NV)) n = 0;
+  return ['garcom_s' + (1 + n % GARCOM_NS), 'garcom_v' + (1 + n % GARCOM_NV), n];
+}
+function _garcomBaixarPar() {
+  if (!_garcomPar) _garcomPar = _garcomVez();
+  _somBaixar(_garcomPar[0]);
+  _somBaixar(_garcomPar[1]);
+}
+function _garcomAtualizar(p) {
+  _garcomPend = (p && !_consumidos.has(p.id)) ? p : null;
+  if (_garcomPend && _somLigado()) _garcomBaixarPar();
+  _garcomTentar();
+}
+function _garcomTentar() {
+  const p = _garcomPend, el = document.getElementById('garcom');
+  if (!p || !el || _garcomAtivo || _palcoAtivo || _pausaBar || !_somLigado() || _consumidos.has(p.id)) return;
+  _garcomBaixarPar();
+  if (!(_sonsBuf[_garcomPar[0]] && _sonsBuf[_garcomPar[1]])) {   // o par ainda baixando: espera um pouco por ele
+    if (!_garcomDesde) _garcomDesde = Date.now();
+    if (Date.now() - _garcomDesde < GARCOM_ESPERA_MP3) {
+      clearTimeout(_garcomTimer);
+      _garcomTimer = setTimeout(_garcomTentar, 200);
+      return;
+    }
+  }
+  const par = _garcomPar;
+  _garcomPar = null;
+  _garcomDesde = 0;
+  _garcomPend = null;
+  _garcomAtivo = true;
+  try { localStorage.setItem('ps_garcom_vez', String((par[2] + 1) % (GARCOM_NS * GARCOM_NV))); } catch(e) {}
+  _marcarExibido(p.id);
+  document.getElementById('gc-mesa').textContent = String(p.nome_cliente || '').trim();
+  el.classList.remove('fiu', 'grita');
+  el.classList.add('on');
+  let abaixou = false;
+  try {
+    if (player && player.setVolume && volumeAtualTV() > 0 && !_videoSemSom()) {
+      player.setVolume(Math.max(1, Math.round(volumeAtualTV() * .2)));
+      abaixou = true;
+    }
+  } catch(e) {}
+  const som = _somGarcom(par);   // {dur: quanto dura tudo, voz: quando a narração entra} em ms
+  const pulsa = c => { el.classList.remove(c); void el.offsetWidth; el.classList.add(c); };
+  (som.voz ? [0] : [0, 560, 1120]).forEach(ms => setTimeout(() => pulsa('fiu'), ms));
+  if (som.voz) setTimeout(() => pulsa('grita'), som.voz);
+  setTimeout(() => {   // o som acabou: a música volta ao volume do painel (o de agora: o dono pode ter mexido no meio)
+    try { if (abaixou && player && player.setVolume && !_videoSemSom() && volumeAtualTV() > 0) player.setVolume(volumeAtualTV()); } catch(e) {}
+  }, Math.max(som.dur, 1700) + 250);
+  setTimeout(() => {
+    el.classList.remove('on', 'fiu', 'grita');
+    _garcomAtivo = false;
+    const f = _garcomDepois;
+    _garcomDepois = null;
+    if (f) f();
+  }, GARCOM_MS);
+}
+function _somGarcom(par) {   // dur 0 = sem som (TV muda, pausa, volume 0, navegador sem áudio); voz 0 = só os assobios
+  const nada = {dur: 0, voz: 0};
+  if (_isMuted || _pausaBar) return nada;
+  const vol = volumeAtualTV() / 100;
+  if (!(vol > 0)) return nada;
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return nada;
+    if (!_ac) _ac = new AC();
+    if (_ac.state === 'suspended' && _ac.resume) _ac.resume().catch(() => {});
+    const t0 = _ac.currentTime + 0.02, saida = _ac.createGain();
+    saida.gain.value = 0.9 * vol;
+    saida.connect(_ac.destination);
+    const b1 = par && _sonsBuf[par[0]], b2 = par && _sonsBuf[par[1]];
+    if (b1 && b2) {
+      const voz = Math.round(b1.duration * 1000) + GARCOM_FOLGA_VOZ;
+      [[b1, t0], [b2, t0 + voz / 1000]].forEach(([buf, quando]) => {
+        const s = _ac.createBufferSource();
+        s.buffer = buf; s.connect(saida); s.start(quando);
+        _somNos.push(s);
+      });
+      return {dur: voz + Math.round(b2.duration * 1000), voz: voz};
+    }
+    [[0, .34], [.56, .34], [1.12, .56]].forEach(([ini, d]) => {   // sem os arquivos: 3 assobios daqui, sem a voz
+      const o = _ac.createOscillator(), e = _ac.createGain(), a = t0 + ini;
+      o.type = 'sine';
+      o.frequency.setValueAtTime(2000, a);
+      o.frequency.exponentialRampToValueAtTime(2850, a + 0.07);
+      o.frequency.setValueAtTime(2850, a + d - 0.09);
+      o.frequency.linearRampToValueAtTime(2470, a + d);
+      e.gain.setValueAtTime(0.0001, a);
+      e.gain.exponentialRampToValueAtTime(0.35, a + 0.018);
+      e.gain.setValueAtTime(0.35, a + d - 0.06);
+      e.gain.exponentialRampToValueAtTime(0.0001, a + d);
+      o.connect(e); e.connect(saida);
+      o.start(a); o.stop(a + d + 0.01);
+      _somNos.push(o);
+    });
+    return {dur: 1700, voz: 0};
+  } catch(e) { return nada; }
+}
+
 // 🔊 09/11/26 (Diogo: "Furar fila e todos os demais pedidos pagos terão essa PRE INTRO" e "cantada esse"): os sons do
 // pedido pago viram arquivos nossos (static/pubshow/sons), no lugar do som sintetizado da abertura. Mesma regra do
 // _somCena: só com o palco aberto e o clipe parado, no volume do painel, e param junto com o palco (_pararSom). O
@@ -2514,6 +2739,7 @@ const SOM_DA_CENA = {
   gorjeta: ['aplauso', 3000], donate_bar: ['aplauso', 3000],
 };
 for (const [k] of Object.values(SOM_DA_CENA)) SONS_URL[k] = '/static/pubshow/sons/' + k + '.mp3?v=1';
+for (let k = 1; k <= 6; k++) for (const t of ['garcom_s', 'garcom_v']) SONS_URL[t + k] = '/static/pubshow/sons/' + t + k + '.mp3?v=1';   {# 🙋 15/11/26: 5 sons + 6 narrações, só baixam no chamado (o s6 não existe e nunca é pedido) #}
 const _sonsBuf = {}, _sonsBaixando = {};
 function _somBaixar(qual) {
   if (_sonsBuf[qual] || _sonsBaixando[qual] || !SONS_URL[qual] || !window.fetch) return;
@@ -2793,6 +3019,7 @@ async function pollStatus() {
     // (ninguém tocou em LIGAR / voltou de uma recarga) continua na fila e NÃO é marcado exibido (16/10/26, TV-03)
     _momentoAtualizar((data.pedido && (!pedidoAtual || data.pedido.id !== pedidoAtual.id)) ? data.pedido : null);
     _esperaMaxMomento();
+    _garcomAtualizar(data.garcom || null);   {# 🙋 15/11/26: na hora, por cima do clipe #}
 
     // Pedido de música — entra na fila, espera vídeo acabar
     if (data.pedido_musica && data.pedido_musica.id !== pedidoMusica?.id) {

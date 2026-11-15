@@ -339,9 +339,9 @@ PLANO = {
     'descricao': 'Um plano só. Tudo incluso.',
     'features': ['TV com clipes a noite toda, todos os estilos',
                  'Pedir música é grátis pelo QR, sem app',
-                 'Todos os momentos pagos no PIX (parabéns, recado, namoro…)',
+                 'Todos os momentos pagos no PIX (parabéns, recado, chamar o garçom…)',
                  'Donate para o bar: o cliente doa e o valor é do bar',
-                 'OK do gerente pra cantada e pedido de namoro',
+                 'OK do gerente pra cantada',
                  'Promoção relâmpago na TV',
                  '1 propaganda do bar na TV (texto ou imagem)',
                  'Relatório do que os momentos renderam',
@@ -414,7 +414,9 @@ _SLIDES_DIR = os.path.join(
 
 GORJETA_VALORES = (5.0, 10.0, 20.0, 50.0)   # opções de gorjeta no celular do cliente
 TIPOS_SEMPRE_GRATIS = ('musica', 'musica_especifica', 'musica_externa')   # nunca cobrados, mesmo com precos_custom (YouTube incluído — 12/09/26, Garage tinha 0,50)
-TIPOS_OCULTOS = ('vip', 'gorjeta', 'pular_espera')   # existem no banco/TV, mas o cliente não vê ("Tocar agora" saiu, YouTube entrou — 11/09/26)
+TIPOS_OCULTOS = ('vip', 'gorjeta', 'pular_espera', 'casamento')   # existem no banco/TV, mas o cliente não vê ("Tocar agora" saiu, YouTube entrou — 11/09/26)
+# 15/11/26 (Diogo): o Pedido de namoro ('casamento') saiu do celular e do painel; o 🙋 Ei, garçom! entrou no lugar. O
+# pedido antigo já pago continua passando na TV (a TV e o /api/status ainda conhecem o tipo)
 # 09/11/26 (Diogo: "remove o pular espera"): o ⏩ sai do celular, do painel e do site. O pedido ⏩ que já existe continua
 # na fila (TIPOS_MUSICA_FILA e os IN do SQL não mudam), é tocado e cobrado como antes. O lugar dele no celular vai para o
 # karaokê ("🎤 Cante sua música"), na próxima leva.
@@ -443,6 +445,11 @@ TIPOS_PEDIDO = {
     'salve':            {'nome': 'Salve pra outra mesa 📣', 'emoji': '📣', 'preco': 5.00,  'cor': '#0ea5e9'},
     # chave 'casamento' mantida por compatibilidade com o banco; rótulo agora é "Namoro"
     'casamento':        {'nome': 'Pedido de Namoro 💕',   'emoji': '💕', 'preco': 25.00, 'cor': '#a855f7', 'ok': True},
+    # 🙋 15/11/26 (Diogo): "EI! Garçom!" no lugar do namoro. 3 assobios + "Eiiii, garçom!" na TV NA HORA, numa faixa por
+    # cima do clipe (sem cobrir a fila; a música abaixa e volta), com a MESA (nome_cliente) grande. R$ 2 no TOTAL e só
+    # em bar que cobra pela Efí (_garcom_para), como o ⏩: ponte = PRECO_GARCOM_EFI + R$ 1 do app; split = R$ 2.
+    # A mesma mesa chama de novo só depois de GARCOM_INTERVALO_MIN (trote)
+    'garcom':           {'nome': 'Ei, garçom! 🙋',         'emoji': '🙋', 'preco': 2.00,  'cor': '#f59e0b'},
     # Gorjeta pra EQUIPE (11/09/26): valor escolhido pelo cliente entre GORJETA_VALORES; 5 é só o mínimo exibido.
     # É dinheiro dos funcionários, não do caixa — contado à parte no painel (TIPOS_EQUIPE).
     'gorjeta':          {'nome': 'Gorjeta pra equipe 🙏', 'emoji': '🙏', 'preco': 5.00,  'cor': '#22c55e'},
@@ -488,6 +495,7 @@ PIX_PISO_PRECO = float(os.environ.get('PUBSHOW_PISO_PRECO', '4.00'))   # 16/10/2
 PRECO_FLASH_EFI    = 4.00   # 27/10/26 (D1): R$ 4 + R$ 1 = R$ 5 no total, como no Asaas
 PIX_PISO_PRECO_EFI = 1.00   # a Efí não tem mínimo; o piso do preço customizado cai pra R$1 nos bares da Efí
 PRECO_PULAR_EFI    = 1.00   # ⏩ Pular a espera na ponte: R$1 + R$1 de taxa = R$2 no PIX (20/10/26)
+PRECO_GARCOM_EFI   = 1.00   # 🙋 Ei, garçom! na ponte: R$1 + R$1 de taxa = R$2 no PIX (15/11/26)
 
 
 def _efi_bares():
@@ -597,6 +605,15 @@ def _donate_sistema_para(b):
     _v = os.environ.get('PUBSHOW_DONATE_SISTEMA', '0').strip().lower()
     _desl = _v in ('false', 'off', 'no', 'nao', 'não') or (_v.isdigit() and int(_v) == 0)   # conserto 27/10/26
     return not _desl and _gateway_ativo(b) and not _efi_para(b)
+
+
+def _garcom_para(b):
+    """🙋 Ei, garçom! (15/11/26) existe neste bar? Só se ele cobra pela Efí (ponte ou split): no Asaas o mínimo do PIX
+    é R$ 5 e o garçom custa R$ 2."""
+    try:
+        return bool(_ponte_efi_para(b) or _efi_para(b))
+    except Exception:
+        return False
 
 
 def _pular_espera_para(b):
@@ -1482,7 +1499,7 @@ def _email_boas_vindas(nome: str, code: str, token: str, plano: str, trial_ends:
         <tr>
           <td style="padding:12px 16px;background:#1a1a2e;border-radius:8px;" valign="top">
             <div style="color:#4ade80;font-size:18px;font-weight:800;display:inline;">3.</div>
-            <span style="color:#e5e7eb;font-size:14px;"> O cliente pede pelo celular e aparece na TV sozinho. Só cantada e pedido de namoro esperam o seu OK no painel.</span>
+            <span style="color:#e5e7eb;font-size:14px;"> O cliente pede pelo celular e aparece na TV sozinho. Só a cantada espera o seu OK no painel.</span>
           </td>
         </tr>{passo_conta}
       </table>
@@ -1922,6 +1939,8 @@ def _tipos_disponiveis(b):
     if 'pular_espera' in tipos and not (('musica_externa' in tipos or 'musica_especifica' in tipos)
                                         and _pular_espera_para(b)):
         del tipos['pular_espera']
+    if 'garcom' in tipos and not _garcom_para(b):
+        del tipos['garcom']   # 🙋 15/11/26: só na Efí (R$ 2; no Asaas o mínimo é R$ 5)
     if 'donate_sistema' in tipos and not _donate_sistema_para(b):
         del tipos['donate_sistema']
     return tipos
@@ -2058,7 +2077,7 @@ def _validar_video_pedido(b, youtube_id, info=None, karaoke=False):
 
 
 def _precisa_ok(b, tipo):
-    """Texto livre de risco (cantada, pedido de namoro) espera o OK do gerente antes de ir pra TV —
+    """Texto livre de risco (a cantada; o pedido de namoro saiu em 15/11/26) espera o OK do gerente antes de ir pra TV —
     se o bar deixou a moderação ligada (moderar_ok, default 1).
     Trava eleitoral (18/10/26): na véspera e no dia da eleição TODO momento com texto espera o OK,
     mesmo com a moderação desligada (sem auto-OK). Música não muda: o nome dela passa pelo filtro."""
@@ -2372,6 +2391,7 @@ def _tipos_config(b=None):
     painel do bar que cobra pela Efí (sem o bar, fica de fora). 27/10/26 (D6): o Donate para o sistema nunca."""
     return {k: v for k, v in TIPOS_PEDIDO.items()
             if k not in TIPOS_OCULTOS and (k != 'pular_espera' or (b is not None and _pular_espera_para(b)))
+            and (k != 'garcom' or (b is not None and _garcom_para(b)))   # 🙋 15/11/26: idem, só na Efí
             and k != 'donate_sistema'}
 
 
@@ -2434,6 +2454,12 @@ def _precos_do_bar(b):
             # preço fixo (20/10/26): R$ 2 no total, sem preço do bar, teto ou happy hour ("só mantém os preços")
             if _ponte:
                 t['preco'] = PRECO_PULAR_EFI
+            tipos[k] = t
+            continue
+        if k == 'garcom':
+            # 🙋 15/11/26: R$ 2 no TOTAL, fixo como o ⏩ (sem preço do bar, teto ou happy hour)
+            if _ponte:
+                t['preco'] = PRECO_GARCOM_EFI
             tipos[k] = t
             continue
         if _ponte and k == 'flash':
@@ -3205,7 +3231,7 @@ def _texto_fundador(vagas: int) -> str:
 
 
 # ── 26/10/26 (site = sistema, pedido do Diogo): a tabela de preços do site é o celular de um bar NOVO ───────────────
-SITE_MOMENTOS = ('flash', 'parabens', 'dedicatoria', 'casamento', 'cantada', 'salve', 'brinde',
+SITE_MOMENTOS = ('flash', 'garcom', 'parabens', 'dedicatoria', 'cantada', 'salve', 'brinde',   # 15/11/26: 🙋 no lugar do namoro
                  'chegada')   # 09/11/26: sem o ⏩ Pular a espera (saiu da oferta)
 
 
@@ -3223,19 +3249,20 @@ def site_precos() -> dict:
     try:
         if _site_modelo_novo():
             taxa = _site_novo_regras()['taxa']
-            precos, tem_pular = TIPOS_PEDIDO, GRATIS_INTERVALO_MIN > 0
+            precos, tem_pular, tem_garcom = TIPOS_PEDIDO, GRATIS_INTERVALO_MIN > 0, True
         else:
             b = _site_bar_novo()
             precos, taxa, tem_pular = _precos_do_bar(b)[0], _taxa_pix_bar(b), _pular_espera_para(b)
+            tem_garcom = _garcom_para(b)   # 🙋 15/11/26: só na Efí
         gw = True if _site_modelo_novo() else _gateway_ativo(b)   # conserto 27/10/26: a parte do app vem do gateway
     except Exception as ex:   # nunca derruba o site: cai na tabela padrão do Asaas (a de antes)
         log.warning('[PUBSHOW] preços do site pelo bar novo falharam: %s', ex)
-        precos, tem_pular = TIPOS_PEDIDO, False
+        precos, tem_pular, tem_garcom = TIPOS_PEDIDO, False, False
         taxa = PIX_TAXA_CONVENIENCIA if os.environ.get('ASAAS_API_KEY') else 0.0
         gw = bool(os.environ.get('ASAAS_API_KEY'))
     momentos = []
     for k in SITE_MOMENTOS:
-        if k == 'pular_espera' and not tem_pular:
+        if (k == 'pular_espera' and not tem_pular) or (k == 'garcom' and not tem_garcom):
             continue
         t = precos[k]
         total = round(float(t['preco']) + taxa, 2)
@@ -3301,7 +3328,7 @@ def _site_faq(taxa_txt: str, modelo_novo: bool, fundador: str = '') -> list:
         ('Quanto custa pro bar?', f'{preco} por mês, plano único, tudo incluso. 7 dias grátis, sem cartão.'),
         ('Preciso comprar máquina de jukebox?', 'Não. Você usa a TV que já tem, com um notebook ligado nela.'),
         ('Posso controlar o que toca?', 'Sim. Você escolhe os estilos da casa, lista os artistas que não quer, pula e tira música da fila '
-                                        'pelo celular. Cantada e pedido de namoro sempre esperam o seu OK.'),
+                                        'pelo celular. A cantada sempre espera o seu OK.'),
         ('E se ninguém pedir música?', 'A TV segue tocando clipes do estilo da casa, sozinha.'),
         ('Como eu acompanho o dinheiro?',
          'No painel você vê, a qualquer hora, quanto os momentos e os donates renderam pro bar. Dúvida sobre '
@@ -3371,7 +3398,7 @@ def index():
          'applicationCategory': 'BusinessApplication', 'operatingSystem': 'Navegador (web)',
          'url': 'https://www.4kitem.com.br/pubshow/',
          'description': 'Jukebox digital para bar: a TV do bar vira jukebox, o cliente pede música de graça pelo QR Code, '
-                        'sem baixar app, e paga no PIX só pelos momentos na TV, como parabéns e pedido de namoro.',
+                        'sem baixar app, e paga no PIX só pelos momentos na TV, como parabéns e chamar o garçom.',
          'offers': {'@type': 'Offer', 'price': preco_str, 'priceCurrency': 'BRL',
                     'url': 'https://www.4kitem.com.br/pubshow/#preco',
                     'priceSpecification': {'@type': 'UnitPriceSpecification', 'price': preco_str,
@@ -4127,13 +4154,17 @@ def jukebox(token, pix_id=None):
             nome_cliente  = _nome_tv(_sem_invisiveis(request.form.get('nome_cliente', '')))
             if _kara:
                 nome_cliente = _K.nome_curto(nome_cliente)   # 🎤 "Teu nome na TV": até 14 letras (apelido)
+            if tipo == 'garcom':
+                nome_cliente = _mesa_garcom(request.form.get('nome_cliente', ''))   # 🙋 15/11/26: a MESA vai no nome
             mensagem      = _sem_invisiveis(request.form.get('mensagem', '')).strip()[:80]
+            if tipo == 'garcom':
+                mensagem = ''   # 🙋 15/11/26: só a mesa (a TV narra "Eiiii, garçom!", não a mesa)
             if tipo == 'donate_sistema':
                 mensagem = ' '.join(mensagem.split())   # conserto 27/10/26: sem quebra de linha no WhatsApp do Diogo
             # 16/10/26 (C2): no parabéns o nome GRANDE da TV é o do aniversariante; quem manda é opcional e
             # sai pequeno, junto do recado ("· de Zé")
             remetente     = _nome_tv(_sem_invisiveis(request.form.get('remetente', ''))) if tipo == 'parabens' else ''
-            _nome_lembrar = remetente if tipo == 'parabens' else nome_cliente
+            _nome_lembrar = remetente if tipo == 'parabens' else ('' if tipo == 'garcom' else nome_cliente)   # 🙋 a mesa não vira o nome
             categoria     = _categoria_do_bar(b)   # do servidor, não do formulário (16/10/26, D3V-03)
             youtube_id    = request.form.get('youtube_id', '').strip()
             titulo_pedido = _sem_invisiveis(request.form.get('titulo_pedido', '')).strip()[:80]
@@ -4142,6 +4173,9 @@ def jukebox(token, pix_id=None):
             if youtube_id and not re.fullmatch(r'[A-Za-z0-9_-]{11}', youtube_id):
                 # id do YouTube tem 11 letras (16/10/26, CEL-31): lixo virava pedido que a TV não toca
                 erro, status_http = 'Música inválida. Escolhe na lista. 🎵', 400
+            elif _pago_na_pausa(b, tipo, precos_bar, _kara_pix):
+                # ⏸️ 15/11/26 (travas): a pausa dura até o ▶️ do dono; pago criado agora esperaria a noite. Antes do PIX
+                erro, erro_tipo = MSG_PAUSA_PAGO, 'musica_pausada'
             elif _kara_pedido and not _kara_pix:
                 # 🎤 09/11/26 (V2b, D2): sem cobrança agora (freio, Efí fora, modo desligado) o karaokê não existe; nunca
                 # vira pedido grátis nem cai na fila comum
@@ -4165,7 +4199,10 @@ def jukebox(token, pix_id=None):
                 # 🎤 09/11/26 (V2b): o pedido do cartão 🎤 vale mesmo com o "Pedir qualquer música" fechado no bar
                 erro = 'Tipo de pedido inválido.'
             elif not nome_cliente:
-                erro = 'Informe o nome do aniversariante.' if tipo == 'parabens' else 'Informe seu nome.'
+                erro = ('Informe o nome do aniversariante.' if tipo == 'parabens'
+                        else 'Informe o número da tua mesa. 🙋' if tipo == 'garcom' else 'Informe seu nome.')
+            elif tipo == 'garcom' and not _mesa_garcom_ok(nome_cliente):
+                erro = 'Digite só o número da tua mesa.'   # 🙋 15/11/26 (travas): 1 a 3 dígitos
             elif _tem_palavrao(nome_cliente) or _tem_palavrao(mensagem) or _tem_palavrao(remetente):
                 erro = 'Sem palavrão, beleza? 😉 Troca o nome ou a mensagem, que aparecem na TV.'
             elif _texto_politico(nome_cliente, mensagem, remetente):
@@ -4180,6 +4217,14 @@ def jukebox(token, pix_id=None):
                 # 25/10/26 (leva 1 da fama): o nome do ⚡ é só o nome da pessoa, antes de qualquer pedido ou PIX
                 # (Asaas, split ou ponte Efí: todos nascem lá embaixo, depois desta lista)
                 erro, erro_tipo = MSG_NOME_FURAR, 'nome_furar'
+            elif tipo == 'garcom' and (_ge := _garcom_espera_min(b, nome_cliente)) > 0:
+                # 🙋 15/11/26 (Diogo): a mesma mesa chama de novo só depois de GARCOM_INTERVALO_MIN (antes do PIX)
+                erro, erro_tipo = (f'🙋 A mesa {nome_cliente} acabou de chamar o garçom. Dá pra chamar de novo em '
+                                   f'{_ge} min.'), 'garcom_espera'
+            elif tipo == 'garcom' and (_gb := _garcom_bar_espera_min(b)) > 0:
+                # 🙋 15/11/26 (travas): o bar inteiro, 1 a cada 2 min e 12 por hora (antes do PIX: nada a devolver)
+                erro, erro_tipo = (f'O garçom acabou de ser chamado por outra mesa. Chama no aceno ou tenta de novo '
+                                   f'em {_gb} min.'), 'garcom_espera'
             elif tipo in ('musica_especifica', 'musica_externa', 'flash', 'pular_espera') and not youtube_id:
                 erro = 'Selecione uma música antes de confirmar.'
             elif tipo == 'cantada' and not mensagem:
@@ -4855,6 +4900,76 @@ def _momentos_na_frente(b, ate_id=None):
         conn.close()
 
 
+# ── 🙋 15/11/26 (Diogo): Ei, garçom! ─────────────────────────────────────────────────────────────────────────────────
+GARCOM_INTERVALO_MIN = 5    # a mesma mesa chama de novo só depois disso (trote)
+GARCOM_TV_MAX_MIN = 30      # pago e não mostrado em 30 min (TV muda ou desligada): a TV não chama mais, garçom atrasado
+# 15/11/26 (travas, 40_PROPOSTA): tetos do BAR inteiro, contando os chamados PAGOS, conferidos ANTES do PIX
+GARCOM_BAR_INTERVALO_SEG = 120   # 1 chamado pago a cada 2 min no bar (a TV não vira sirene)
+GARCOM_BAR_HORA_MAX = 12         # no máximo 12 chamados pagos por hora no bar (janela corrida de 60 min)
+GARCOM_MESA_MAX_DIGITOS = 3      # a mesa é só número, de 1 a 3 dígitos
+_MESA_LIXO = re.compile(r'[^0-9A-Za-zÀ-ÖØ-öø-ÿ -]')
+
+
+def _mesa_garcom(txt):
+    """'mesa 12' / 'Mesa12' / ' 012 ' / 'Mesa b-3' → '12' / '12' / '12' / 'B-3': a mesa do Ei, garçom! (até 8 letras,
+    maiúsculas). '' = vazia. 15/11/26 (travas): o POST só aceita 1 a GARCOM_MESA_MAX_DIGITOS dígitos; o zero da frente
+    sai ('07' e '7' são a mesma mesa na trava de 5 min)."""
+    s = _sem_invisiveis(str(txt or '')).strip()
+    s = re.sub(r'(?i)^mesa(?:\b|(?=[0-9]))[\s:nº°#.-]*', '', s)
+    s = ' '.join(_MESA_LIXO.sub('', s).split())
+    if re.fullmatch(r'[0-9]+', s):
+        s = s.lstrip('0') or '0'
+    return s[:8].strip().upper()
+
+
+def _mesa_garcom_ok(mesa):
+    """15/11/26 (travas): a mesa do 🙋 é só número, de 1 a GARCOM_MESA_MAX_DIGITOS dígitos."""
+    return bool(re.fullmatch(r'[0-9]{1,%d}' % GARCOM_MESA_MAX_DIGITOS, mesa or ''))
+
+
+def _garcom_bar_espera_min(b):
+    """15/11/26 (travas): minutos até o BAR aceitar outro 🙋 (0 = pode). Conta os chamados PAGOS do bar (pago_em,
+    UTC), esperando a TV ou já mostrados: 1 a cada GARCOM_BAR_INTERVALO_SEG e até GARCOM_BAR_HORA_MAX por hora. PIX
+    gerado e não pago não conta. Nunca derruba o pedido (erro = 0)."""
+    conn = get_pubshow_db()
+    try:
+        pagos = [datetime.fromisoformat(str(r[0])[:19]) for r in conn.execute(
+            """SELECT pago_em FROM pubshow_pedidos WHERE business_id=? AND tipo='garcom'
+                 AND status IN ('pendente','exibido') AND pago_em >= datetime('now', '-60 minutes')
+               ORDER BY pago_em ASC""", (b['id'],)).fetchall()]
+        if not pagos:
+            return 0
+        agora = datetime.utcnow()
+        falta = GARCOM_BAR_INTERVALO_SEG - (agora - pagos[-1]).total_seconds()
+        if len(pagos) >= GARCOM_BAR_HORA_MAX:
+            # o chamado que tem de sair da janela de 60 min pra sobrar vaga
+            falta = max(falta, 3600 - (agora - pagos[len(pagos) - GARCOM_BAR_HORA_MAX]).total_seconds())
+        return max(1, int(-(-falta // 60))) if falta > 0 else 0
+    except Exception:
+        return 0
+    finally:
+        conn.close()
+
+
+def _garcom_espera_min(b, mesa):
+    """Minutos até esta mesa poder chamar o garçom de novo (0 = pode). Conta os PAGOS da mesa (pago_em, UTC) nos
+    últimos GARCOM_INTERVALO_MIN, esperando a TV ou já mostrados. Nunca derruba o pedido (erro = 0)."""
+    conn = get_pubshow_db()
+    try:
+        ult = conn.execute(
+            """SELECT MAX(pago_em) FROM pubshow_pedidos WHERE business_id=? AND tipo='garcom' AND nome_cliente=?
+                 AND status IN ('pendente','exibido') AND pago_em >= datetime('now', ?)""",
+            (b['id'], mesa, f'-{GARCOM_INTERVALO_MIN} minutes')).fetchone()[0]
+        if not ult:
+            return 0
+        passou = (datetime.utcnow() - datetime.fromisoformat(str(ult)[:19])).total_seconds()
+        return max(1, int(-(-(GARCOM_INTERVALO_MIN * 60 - passou) // 60)))
+    except Exception:
+        return 0
+    finally:
+        conn.close()
+
+
 def _brinde_proximo(b, excluir_id=None):
     """'22h40' quando um brinde pedido AGORA cai dentro da trava de 15 min (o último exibido + os que já esperam);
     '' quando ele sai no próximo intervalo. Só avisa, nunca bloqueia a venda (D8). excluir_id: o brinde da própria
@@ -5161,12 +5276,20 @@ def api_status(code):
            AND NOT (tipo="brinde" AND EXISTS (SELECT 1 FROM pubshow_pedidos x WHERE x.business_id=? AND x.tipo="brinde"
                     AND x.status="exibido" AND x.created_at >= datetime('now','-1 day')
                     AND x.exibido_at >= datetime('now','-3 hours',?)))
-           ORDER BY created_at ASC LIMIT 1''',
+           ORDER BY (tipo<>'parabens'), created_at ASC LIMIT 1''',
         (b['id'], b['id'], f'-{BRINDE_INTERVALO_MIN} minutes')
     ).fetchone()
+    # ↑ 15/11/26 (Diogo: "quanto mais paga ... melhor e prioridades"): com mais de um momento pago esperando, o 🎂
+    # parabéns sai primeiro; os outros seguem a ordem de sempre (created_at)
     # 🎂 24/10/26 (momentos no telão, D7): o pino "Aniversariante na casa" — o 1º nome dos parabéns EXIBIDOS neste bar
     # nas últimas ANIVERSARIO_PINO_H horas (até 3, na ordem em que passaram). TV antiga ignora o campo.
     aniversariantes = _aniversariantes_do_bar(conn, b['id'])
+    # 🙋 15/11/26 (Diogo): o Ei, garçom! não espera a música acabar. Vem à parte, o mais antigo pago, e só dos últimos
+    # GARCOM_TV_MAX_MIN (pago com a TV muda/desligada não chama o garçom meia hora depois)
+    pedido_garcom = conn.execute(
+        '''SELECT * FROM pubshow_pedidos WHERE business_id=? AND status="pendente" AND tipo="garcom"
+           AND COALESCE(pago_em, created_at) >= datetime('now', ?) ORDER BY id ASC LIMIT 1''',
+        (b['id'], f'-{GARCOM_TV_MAX_MIN} minutes')).fetchone()
 
     if _K.pix_bares() and _K.ligado(b):
         # 🎤 03/11/26 (V2a): pago de ontem não toca na abertura de hoje (freio de 60 s por bar). Antes de montar a fila
@@ -5234,6 +5357,7 @@ def api_status(code):
         'jukebox_ativo':  bool(b['jukebox_ativo']),
         'pedido':         _pedido_para_tv(pedido_especial),
         'pedido_musica':  _pedido_para_tv(pedido_musica),
+        'garcom':         _pedido_para_tv(pedido_garcom),   # 🙋 15/11/26
         'total_fila':     total_fila,
         'aguardando_pix': aguardando_pix,
         'promo':          promo,
@@ -8553,7 +8677,8 @@ def painel():
                            gorjeta_7dias=[dict(r) for r in gorjeta_7dias],
                            # verificador B12: no bar da ponte Efí o furar a fila padrão é R$ 4 (+ R$ 1 do app = R$ 5)
                            tipos_config=({k: (dict(v, preco=PRECO_FLASH_EFI) if k == 'flash' else
-                                              dict(v, preco=PRECO_PULAR_EFI) if k == 'pular_espera' else v)
+                                              dict(v, preco=PRECO_PULAR_EFI) if k == 'pular_espera' else
+                                              dict(v, preco=PRECO_GARCOM_EFI) if k == 'garcom' else v)
                                           for k, v in _tipos_config(bd).items()} if _ponte_efi_para(bd) else _tipos_config(bd)),
                            fila=_pedidos_com_hora_local([dict(f) for f in fila]),
                            aguardando_pix=_pedidos_com_hora_local([dict(p) for p in aguardando_pix]),
@@ -10522,6 +10647,16 @@ def _pausa_resta_s(b) -> int:
         return 0
 
 
+MSG_PAUSA_PAGO = '⏸️ A música do bar está em pausa agora. Tenta de novo quando ela voltar.'
+
+
+def _pago_na_pausa(b, tipo, precos_bar, kara_pix=False):
+    """⏸️ 15/11/26 (travas): True = este pedido é PAGO (preço > 0, donate ou karaokê pago) e a música do bar está em
+    pausa. O POST do celular recusa antes do PIX; a música grátis segue como sempre."""
+    pago = bool(kara_pix) or tipo in TIPOS_DONATE or ((precos_bar.get(tipo) or {}).get('preco') or 0) > 0
+    return pago and _pausa_resta_s(b) > 0
+
+
 @pubshow_bp.route('/painel/pausar-musica', methods=['POST'])
 @pubshow_login_required
 def painel_pausar_musica():
@@ -10886,6 +11021,13 @@ def painel_config():
         except Exception:
             _bl_ant = []
         bloqueados = [t for t in bloqueados if t != 'pular_espera'] + (['pular_espera'] if 'pular_espera' in _bl_ant else [])
+    if not _garcom_para(b):
+        # 🙋 15/11/26: o Ei, garçom! só aparece no painel do bar da Efí; fora dela, salvar não liga nem desliga
+        try:
+            _bl_ant = json.loads(b['tipos_bloqueados'] or '[]')
+        except Exception:
+            _bl_ant = []
+        bloqueados = [t for t in bloqueados if t != 'garcom'] + (['garcom'] if 'garcom' in _bl_ant else [])
 
     # Preços custom — só dos itens pagos (música é sempre grátis; o campo nem aparece mais)
     # Lote D A4 (16/10/26): no modo Efí o preço máximo é R$ 50 (o que passar disso grava R$ 50)
@@ -10901,7 +11043,7 @@ def painel_config():
         _salvos = {}
     precos = {}
     for k in todos_tipos:
-        if k in TIPOS_SEMPRE_GRATIS or k == 'pular_espera':   # ⏩: preço fixo (R$ 2), o bar não muda
+        if k in TIPOS_SEMPRE_GRATIS or k in ('pular_espera', 'garcom'):   # ⏩ e 🙋: preço fixo (R$ 2), o bar não muda
             continue
         val = request.form.get(f'preco_{k}', '').strip()
         if val:

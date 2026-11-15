@@ -791,9 +791,10 @@
 {#- 27/10/26 (D4/D11): "R$ 4,80 pro bar · 20% do app" quebra no "·" quando não cabe (linha do momento), nunca no
     meio do valor #}
 {% macro div_linha(txt) %}{% for x in (txt or '').split(' · ') %}{% if not loop.first %} · {% endif %}<span class="nw">{{ x }}</span>{% endfor %}{% endmacro %}
-  {% set PRINCIPAIS = ['flash', 'pular_espera', 'parabens', 'casamento', 'cantada', 'brinde', 'donate_bar', 'dedicatoria', 'chegada', 'salve'] %}
+  {#- 15/11/26: 🙋 Ei, garçom! no lugar do namoro (só nos bares da Efí; preço fixo R$ 2) #}
+  {% set PRINCIPAIS = ['flash', 'pular_espera', 'garcom', 'parabens', 'cantada', 'brinde', 'donate_bar', 'dedicatoria', 'chegada', 'salve'] %}
   {% set NOMES_CURTOS = {'flash': 'Furar a fila', 'pular_espera': 'Pular a espera', 'parabens': 'Parabéns', 'dedicatoria': 'Dedicatória', 'brinde': 'Brinde',
-                         'chegada': 'Chegamos', 'cantada': 'Cantada', 'salve': 'Salve pra mesa', 'casamento': 'Namoro',
+                         'chegada': 'Chegamos', 'cantada': 'Cantada', 'salve': 'Salve pra mesa', 'garcom': 'Ei, garçom!',
                          'donate_bar': 'Donate para o bar'} %}
   {% set _princ = [] %}{% set _resto = [] %}
   {% for key in tipos_config if key not in tipos_gratis %}{% if key in PRINCIPAIS %}{% set _ = _princ.append(key) %}{% else %}{% set _ = _resto.append(key) %}{% endif %}{% endfor %}
@@ -808,7 +809,7 @@
     {% set _sv = precos_parsed.get(key) %}
     {% set _v = (_sv|float) if _sv is not none and _sv != '' else 0 %}
     {% if not (_v > 0) %}{% set _v = t.preco|float %}{% endif %}
-    {% if _v > 0 and _v < _piso and key != 'pular_espera' %}{% set _v = _piso %}{% endif %}{#- ⏩: preço fixo #}
+    {% if _v > 0 and _v < _piso and key not in ('pular_espera', 'garcom') %}{% set _v = _piso %}{% endif %}{#- ⏩: preço fixo #}
     {% if preco_teto and _v > preco_teto %}{% set _v = preco_teto|float %}{% endif %}{% if promo_fds and promo_fds.get(key) %}{% set _v = promo_fds[key]|float %}{% endif %}{#- 06/11/26: só a tela; o campo escondido segue no salvo #}
     <div class="momento-row{% if key in bloqueados_parsed %} desligado{% endif %}" data-k="{{ key }}">
       <label class="sw"><input type="checkbox" id="mom-{{ key }}" name="tipos_ativos" value="{{ key }}" form="f-config" aria-label="Vender {{ _nome }}"{% if key not in bloqueados_parsed %} checked{% endif %}><span class="sw-t"></span></label>
@@ -849,9 +850,9 @@
     <div class="linha-chave" style="padding:0">
       <label for="moderar-ok" style="cursor:pointer">
         <span class="rot" style="display:block">🛡️ Ler recado antes da TV <span class="salvo" aria-live="polite"></span></span>
-        <span class="sub" style="display:block">Cantada e namoro</span>
+        <span class="sub" style="display:block">Cantada</span>
       </label>
-      <label class="sw"><input type="checkbox" id="moderar-ok" name="moderar_ok" value="1" form="f-config" aria-label="Ler cantada e namoro antes da TV"{% if b.moderar_ok is none or b.moderar_ok %} checked{% endif %}><span class="sw-t"></span></label>
+      <label class="sw"><input type="checkbox" id="moderar-ok" name="moderar_ok" value="1" form="f-config" aria-label="Ler a cantada antes da TV"{% if b.moderar_ok is none or b.moderar_ok %} checked{% endif %}><span class="sw-t"></span></label>
     </div>
   </div>
 
