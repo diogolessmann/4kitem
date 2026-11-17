@@ -545,6 +545,29 @@
   </div>
   {% endif %}
 
+  {#- 🙋 16/11/26 (L1, Diogo: "o bar devolve na hora em espécie"): o 🙋 pago que a TV não chamou em 4 min. O cliente pede
+      no balcão, o bar devolve em dinheiro e o dono aperta ✅ (no repasse esse PIX é todo do bar). O polling recarrega #}
+  {% if garcom_devolver %}
+  <div class="card" id="sec-garcom-dev" style="border-color:rgba(245,158,11,.5);background:linear-gradient(135deg,#13131f,#1a1200)">
+    <div class="card-title" style="color:#fbbf24">🙋 A TV não chamou ({{ garcom_devolver|length }})</div>
+    <p style="font-size:14px;color:var(--text2);margin-bottom:12px">O cliente vai pedir no balcão. Devolve em dinheiro e aperta ✅.{% if not efi %} No repasse da semana, esse PIX é todo teu.{% endif %}</p>
+    {% for g in garcom_devolver %}
+    {#- o ✅ só aparece depois de o celular de quem pagou ler "fala no balcão" (garcom_aviso_em): é a prova da devolução #}
+    <div class="gdv-row"{% if g.visto %} data-visto="1"{% endif %} style="display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(245,158,11,.25)">
+      <span style="font-size:22px">🙋</span>
+      <div style="flex:1;min-width:0;font-size:15px;font-weight:700">Mesa {{ g.mesa }} <span style="font-size:13px;color:var(--text2);font-weight:600">· {{ g.hora }} · devolve {{ g.valor_txt }}</span></div>
+      {% if g.visto %}
+      <form method="POST" action="/pubshow/painel/garcom/{{ g.id }}/devolvi" style="margin:0" onsubmit="return confirm('Tu devolveu {{ g.valor_txt }} em dinheiro pra mesa {{ g.mesa }}?')">
+        <button type="submit" style="background:linear-gradient(135deg,rgba(34,197,94,.25),rgba(34,197,94,.12));border:1px solid rgba(34,197,94,.5);color:#4ade80;padding:10px 14px;min-height:46px;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">✅ Devolvi em dinheiro</button>
+      </form>
+      {% else %}
+      <span class="gdv-espera" style="font-size:13px;color:var(--text2);font-weight:600;max-width:46%;text-align:right">⏳ O cliente ainda não abriu o aviso no celular</span>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   {#- "quanto entrou hoje" sem tocar em nada: linha fina só de leitura (o detalhe fica em 💰 Dinheiro). O polling atualiza #}
   <div class="hoje-linha" id="hoje-linha">
     <span>💰 Hoje: <span id="hoje-linha-casa" style="color:var(--green)">R$ {{ '%.2f'|format(total_hoje)|replace('.',',') }}</span><span id="hoje-linha-gorj-w"{% if not gorjeta_hoje %} style="display:none"{% endif %}> + <span id="hoje-linha-gorjeta" style="color:#4ade80">R$ {{ '%.2f'|format(gorjeta_hoje)|replace('.',',') }}</span> de gorjeta</span></span>
@@ -820,7 +843,7 @@
         <div class="momento-preco-txt">vai pro caixa do bar</div>
         {% else %}
         {#- conserto 27/10/26: a divisão segue o GATEWAY (o servidor tira a parte do app mesmo com o somador 0) #}
-        <div class="momento-preco-txt preco-cli">{% if asaas_ativo %}{{ div_linha(divisao_txt(_v + _taxa)) }}{% else %}100% pro bar{% endif %}</div>
+        <div class="momento-preco-txt preco-cli">{% if asaas_ativo %}{{ div_linha(divisao_txt(_v + _taxa, key)) }}{% else %}100% pro bar{% endif %}</div>
         {#- o preço salvo vai igual ao banco (o servidor mantém o salvo quando vem o mesmo valor) #}
         <input type="hidden" name="preco_{{ key }}" form="f-config" value="{{ '%g'|format(precos_salvos[key]|float) if precos_salvos.get(key) is not none and precos_salvos.get(key) != '' else '' }}">
         {% endif %}
@@ -832,7 +855,7 @@
     {% if loop.last and _resto %}</details>{% endif %}
     {% endfor %}
     {#- Lote D B (aprovado): nunca "taxa de serviço" — o selo já é o que o cliente paga. 27/10/26 (D2): os 20% do app #}
-    {% if asaas_ativo %}<div class="momento-preco-txt" id="taxa-app" style="margin-top:10px">💡 Rosa = o que o cliente paga no PIX. O app fica com {{ APP_REGRA_TXT }} do total; o resto é do bar.</div>{% endif %}{% if promo_fds and promo_fds|reject('in', bloqueados_parsed)|list %}<div class="momento-preco-txt" id="promo-fds-aviso" style="margin-top:8px">Preço de lançamento até sábado. Volta sozinho no domingo.</div>{% endif %}
+    {% if asaas_ativo %}<div class="momento-preco-txt" id="taxa-app" style="margin-top:10px">💡 Rosa = o que o cliente paga no PIX. O app fica com {{ APP_REGRA_TXT }} do total{% if 'garcom' in tipos_config and 'garcom' not in bloqueados_parsed and GARCOM_APP_TXT %} (no 🙋, {{ GARCOM_APP_TXT }}){% endif %}; o resto é do bar.</div>{% endif %}{% if promo_fds and promo_fds|reject('in', bloqueados_parsed)|list %}<div class="momento-preco-txt" id="promo-fds-aviso" style="margin-top:8px">Preço de lançamento até sábado. Volta sozinho no domingo.</div>{% endif %}
     {#- 17/10/26 (Lote D, críticos CD2/CD3): preço salvo fora da faixa diz QUAL momento e o preço de antes #}
     {%- if precos_cortados %}
     <div id="precos-cortados" style="font-size:12px;color:var(--text2);margin-top:8px;line-height:1.6">
@@ -898,7 +921,7 @@
         {% set pct = ((val / max_val) * 100)|int %}
         {% set pct = pct if pct > 4 else 4 %}
         <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;height:100%;justify-content:flex-end">
-          <div style="width:100%;height:{{ pct }}%;background:{% if i==6 %}linear-gradient(180deg,#22c55e,#16a34a){% else %}rgba(34,197,94,.35){% endif %};border-radius:3px 3px 0 0;min-height:4px" title="R$ {{ '%.2f'|format(val) }}"></div>
+          <div style="width:100%;height:{{ pct }}%;background:{% if i==6 %}linear-gradient(180deg,#22c55e,#16a34a){% else %}rgba(34,197,94,.35){% endif %};border-radius:3px 3px 0 0;min-height:4px" title="R$ {{ '%.2f'|format(val)|replace('.', ',') }}"></div>
           <div style="font-size:9px;color:var(--text2)">{{ (now_brt - timedelta(days=6-i)).strftime('%d') }}</div>
         </div>
       {% endfor %}
@@ -1075,7 +1098,7 @@
             {% if p.pago_em and p.status != 'recusado' %}
             <td style="padding:8px 0;text-align:right;color:var(--green);font-weight:700">R$ {{ '%.2f'|format(p.valor or 0)|replace('.',',') }}{% if p.karaoke_pulado == 2 and not p.karaoke %} <span style="font-size:10px">não abriu na TV: devolve pro cliente</span>{% endif %}</td>
             {% else %}
-            <td style="padding:8px 0;text-align:right;color:var(--text2);font-weight:600">{% if not (p.valor or 0) %}grátis{% else %}<s>R$ {{ '%.2f'|format(p.valor or 0)|replace('.',',') }}</s> <span style="font-size:10px">{% if p.status == 'recusado' %}{% if p.karaoke_pulado == 2 and not p.karaoke %}não abriu na TV: o PIX volta pro cliente{% else %}recusado{% endif %}{% else %}não pagou{% endif %}</span>{% endif %}</td>
+            <td style="padding:8px 0;text-align:right;color:var(--text2);font-weight:600">{% if not (p.valor or 0) %}grátis{% else %}{%- set _g2 = p.tipo == 'garcom' and p.status == 'recusado' and p.karaoke_pulado == 2 %}<s>R$ {{ '%.2f'|format((p.valor_cobrado or p.valor or 0) if _g2 else (p.valor or 0))|replace('.',',') }}</s> <span style="font-size:10px">{% if p.status == 'recusado' %}{% if _g2 %}{% if p.devolvido_dinheiro_em %}a TV não chamou: devolvido em dinheiro{% else %}a TV não chamou: devolve em dinheiro{% endif %}{% elif p.karaoke_pulado == 2 and not p.karaoke %}não abriu na TV: o PIX volta pro cliente{% else %}recusado{% endif %}{% else %}não pagou{% endif %}</span>{% endif %}</td>
             {% endif %}
           </tr>
           {% endfor %}
@@ -1093,7 +1116,7 @@
           {%- endif %}
         </tfoot>
       </table>
-      {% if asaas_ativo %}<div style="font-size:12px;color:var(--text2);margin-top:6px">Valores do bar. Do que o cliente paga no PIX, o app fica com {{ APP_REGRA_TXT }}.</div>{% endif %}
+      {% if asaas_ativo %}<div style="font-size:12px;color:var(--text2);margin-top:6px">Valores do bar. Do que o cliente paga no PIX, o app fica com {{ APP_REGRA_TXT }}{% if 'garcom' in tipos_config and 'garcom' not in bloqueados_parsed and GARCOM_APP_TXT %} (no 🙋, {{ GARCOM_APP_TXT }}){% endif %}.</div>{% endif %}
     </div>
   </details>
   {% endif %}
@@ -2223,7 +2246,10 @@ function pollFila() {
       const temPix = (d.aguardando_pix || []).length;
       const pixAtual = document.querySelectorAll('.pix-pedido-row').length;
       const okAtual = document.querySelectorAll('.ok-pedido-row').length;
-      if (temPix !== pixAtual || (d.aguardando_ok || 0) !== okAtual) {
+      {#- 🙋 16/11/26 (L1): o card "A TV não chamou" aparece e some sozinho #}
+      const gdvAtual = document.querySelectorAll('.gdv-row').length, gdvOk = document.querySelectorAll('.gdv-row[data-visto]').length;
+      if (temPix !== pixAtual || (d.aguardando_ok || 0) !== okAtual || +(d.garcom_devolver || 0) !== gdvAtual
+          || +(d.garcom_aviso || 0) !== gdvOk) {
         if (!_digitando()) location.reload();
       }
     })

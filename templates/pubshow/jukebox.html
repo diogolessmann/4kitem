@@ -24,7 +24,7 @@
   'chegada':     'anuncia tua turma na TV',
   'cantada':     'tua cantada na TV',
   'salve':       'recado pra outra mesa',
-  'garcom':      'a TV assobia e chama o garçom',
+  'garcom':      'a TV chama, com a tua mesa grande',
   'donate_bar':  'ajuda o bar e sai na TV',
 } %}
 {% set pix_direto = asaas_ativo or (b.requer_pix and b.pix_key) %}
@@ -415,7 +415,7 @@
   .cc-f3{right:8%;transform:rotate(16deg)}
   .cc-tela .cc-marca{display:block;position:absolute;z-index:1;left:10px;bottom:6px;font-size:8px;font-weight:800;letter-spacing:.06em;color:#f97316}
   .cc-txt{font-size:13px;color:var(--text);line-height:1.45;margin-top:10px}
-  .cc-quando{font-size:13px;font-weight:800;color:#86efac;line-height:1.4;margin:0 0 12px}
+  .cc-quando{font-size:13px;font-weight:800;color:#86efac;line-height:1.4;margin:0 0 12px;white-space:pre-line}
   .cc-quando.espera{color:#fbbf24}
   .sh-pular-furar{font-size:13px;font-weight:700;color:#fde68a;text-align:center;margin:6px 0 12px}
   #btn-pular[style*="none"] + .sh-pular-furar{display:none}   /* só junto do ⏩ (com a grátis esperando) */
@@ -637,7 +637,8 @@ function _fraseFama(mostrar) {
 }
 function _textoPago() {
   if (PIX_TIPO === 'pular_espera') return '✅ Pago! Tua música entrou na fila.';
-  if (PIX_TIPO === 'garcom') return '✅ Pago! A TV já vai chamar o garçom pra tua mesa. 🙋';   // 15/11/26: na hora   // fila normal, não na frente
+  {#- 🙋 16/11/26 (L1): sai na hora, sem prometer que alguém vai até a mesa #}
+  if (PIX_TIPO === 'garcom') return '✅ Pago! A TV chama a tua mesa em instantes. Quando tocar, levanta a mão 🙋';
   if (TIPOS_MUSICA.includes(PIX_TIPO)) return '✅ Pago! Tua música entra na frente da fila.';
   // 24/10/26 (momentos no telão, D9): o momento sai no próximo intervalo (nada por cima do clipe), não "em instantes"
   // revisão CEL-1: a TV mostra 1 momento por intervalo; com N na frente, sai depois de N+1 músicas
@@ -660,6 +661,12 @@ async function _atualizarPosicao() {
     const r = await fetch(`/pubshow/api/pedido-status/${PIX_TOKEN}/${PIX_PEDIDO_ID}?c=${encodeURIComponent(PIX_CID)}`);
     const d = await r.json();
     const musica = TIPOS_MUSICA.includes(PIX_TIPO);
+    {#- 🙋 16/11/26 (L1): a TV não chamou em 4 min. O bar devolve no balcão (antes dos textos da Efí e da música) #}
+    if (d.garcom_venceu) {
+      clearInterval(_posicaoTimer);
+      _pixStatus('ruim', '📺', d.garcom_venceu, '');
+      return;
+    }
     if (d.musica_falhou) {   // 💸 05/11/26: antes dos textos da Efí: aqui o bar não recusou nada
       clearInterval(_posicaoTimer);
       _pixStatus('ruim', '🔊', 'Deu problema na TV e essa música não abriu.', d.musica_falhou);
@@ -716,11 +723,14 @@ async function _atualizarPosicao() {
     } else if (d.status === 'aguardando_ok') {
       _pixStatus('pago', '🛡️', '✅ Pago!', 'O bar está conferindo tua mensagem antes de mostrar na TV.');
     } else if (d.status === 'pendente') {
-      let sub = 'Já está na fila da TV.';
+      let sub = PIX_TIPO === 'garcom' ? '' : 'Já está na fila da TV.';   {#- 🙋 16/11/26 (L1): o 🙋 não entra na fila #}
       // 25/10/26 (trava do ⚡ furar): a posição real numa frase só (#pix-pos-frase), a mesma do cartão antes do PIX
       if (musica && d.posicao) sub = `<span id="pix-pos-frase">${_frasePosicao(d.posicao, d.tempo_min)}</span>`;
       _pixStatus('pago', '✅', _textoPago(), sub);
       _fraseFama(PIX_TIPO === 'flash');   // 25/10/26 (leva 1 da fama): "Teu nome entra na TV antes da música. 📸 …"
+    } else if (d.status === 'exibido' && PIX_TIPO === 'garcom') {   {#- 🙋 16/11/26 (L1) #}
+      clearInterval(_posicaoTimer);
+      _pixStatus('pago', '📺', '📺 A TV chamou! Levanta a mão 🙋', '');
     } else if (d.status === 'exibido') {
       // 💸 05/11/26: a TV ainda pode avisar que o vídeo não abriu: música segue perguntando por 1 min depois de começar
       if (musica && !_exibidoEm) _exibidoEm = Date.now();
@@ -828,7 +838,7 @@ async function jaPaguei() {
       {% elif sucesso == 'brinde' %}{% if brinde_proximo %}Teu brinde sai na TV lá pelas {{ brinde_proximo }}. Prepara o copo! 🍻{% else %}O brinde sai na TV {{ dep }}. Prepara o copo! 🍻{% endif %}
       {% elif sucesso == 'chegada' %}Sua chegada aparece na TV {{ dep }}. 🎉
       {% elif sucesso == 'casamento' %}O pedido aparece na TV {{ dep }}. Boa sorte! 💕🥹
-      {% elif sucesso == 'garcom' %}A TV já vai chamar o garçom pra tua mesa. 🙋
+      {% elif sucesso == 'garcom' %}A TV chama a tua mesa em instantes. Quando tocar, levanta a mão 🙋
       {% elif sucesso == 'donate_bar' %}Valeu! Teu donate aparece na TV {{ dep }}. 🙏
       {% elif sucesso == 'cantada' %}Cantada mandada! Ela aparece na TV {{ dep }}. Boa sorte! 😏
       {% elif sucesso == 'salve' %}Salve mandado! Aparece na TV {{ dep }}. 📣
@@ -1200,7 +1210,7 @@ async function jaPaguei() {
       <label for="inp-nome" id="inp-nome-label">Teu nome *</label>
       <input type="text" name="nome_cliente" id="inp-nome" class="js-nome"
              placeholder="Teu nome" maxlength="40" required autocomplete="given-name"
-             oninput="atualizarPixRef()">
+             oninput="if (tipoAtual === 'garcom') this.value = this.value.replace(/[^0-9]/g, '').slice(0, 3); atualizarPixRef()">
       {#- 25/10/26 (leva 1 da fama): o aviso do nome do ⚡ furar por aqui (os outros momentos não mudam) #}
       <div class="dica-nome" id="inp-nome-erro" role="alert" style="display:none;color:#f87171;font-weight:700"></div>
       <div class="dica-nome" id="inp-nome-dica">É assim que teu nome aparece na TV (até 20 letras). Sem palavrão, beleza? 😉</div>
@@ -1291,6 +1301,10 @@ const BAR_TOKEN  = '{{ b.jukebox_token or b.code }}';
 // Offset de centavos do dia — identifica cada pedido no extrato PIX (só no PIX manual)
 const PIX_OFFSET = {{ pix_offset | default(0) }};
 const PIX_CONV   = {{ pix_conv if pix_conv is defined else 0 }};   // o "R$ 1 do app" que o cliente paga (Lote D B, 16/10/26)
+{#- 🙋 16/11/26 (L1, Diogo: "o bar devolve na hora em espécie"): a 2ª linha antes do PIX, com o total que o cliente paga #}
+const GARCOM_VOLTA = {{ (('Se a TV não chamar em 4 min, fala no balcão: o bar devolve teus '
+                         ~ brl(tipos.garcom.preco + (pix_conv if pix_conv is defined else 0)) ~ ' na hora.')
+                        if 'garcom' in tipos else '')|tojson }};
 const FURAR_TXT  = {{ (brl(tipos.flash.preco + pix_conv) if 'flash' in tipos else '')|tojson }};   // "R$ 5" no botão ⚡ Furar de cada música (20/10/26)
 const DONATES = {{ donates | tojson }};   // 27/10/26: {tipo: {valores, div: {'10': 'R$ 8 pro bar · 20% do app'}}}
 function _convAtual() { return DONATES[tipoAtual] ? 0 : PIX_CONV; }   // o donate: o valor escolhido JÁ é o total
@@ -1506,7 +1520,9 @@ if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => {
   _ccAjusta(document.getElementById('cc-nome')); _ccAjusta(document.getElementById('sh-cc-nome'));
 }).catch(() => {});
 function _quandoSai(key) {
-  if (key === 'garcom') return {t: 'Sai na TV na hora: 3 assobios, "Ei, garçom!" e a tua mesa grande na tela.'};   // 15/11/26
+  {#- 🙋 16/11/26 (L1): 2 linhas antes do PIX (o .cc-quando quebra no \n): quando sai e o que acontece se a TV não chamar #}
+  if (key === 'garcom') return {t: 'Sai na TV na hora, por cima do clipe: a tua mesa grande por 15 s. A música não para.'
+                                  + (GARCOM_VOLTA ? '\n' + GARCOM_VOLTA : '')};
   if (key === 'brinde' && BRINDE_PROX) return {t: `⏳ O próximo brinde sai lá pelas ${BRINDE_PROX}.`, espera: true};
   if (TIPOS_MOMENTO.includes(key) && ((PRECOS[key] && PRECOS[key].ok && MODERA_OK) || ELEICAO_OK))
     return {t: `O bar confere e aí sai na TV ${MOMENTOS_FRENTE > 0 ? _depoisDe() : 'depois da música que estiver tocando'}.`};
@@ -1683,14 +1699,19 @@ function _camposDoNome(key) {
   const rem = document.getElementById('inp-remetente');
   if (!lab || !inp || !rg) return;
   _avisoNomeFurar(inp, 'inp-nome-erro', false);   // 25/10/26 (leva 1 da fama): trocou de momento, o aviso do ⚡ sai
-  // 🙋 15/11/26: no Ei, garçom! o campo é a MESA (até 8 letras); nos outros volta ao nome
-  inp.maxLength = key === 'garcom' ? 8 : 40;
+  {#- 🙋 15/11/26: no Ei, garçom! o campo é a MESA; nos outros volta ao nome. 16/11/26 (L1): só número, de 1 a 3
+      dígitos (a trava do servidor), com o teclado numérico #}
+  inp.maxLength = key === 'garcom' ? 3 : 40;
+  if (key === 'garcom') inp.pattern = '[0-9]*'; else inp.removeAttribute('pattern');
+  {#- o nome (ou letra) que ficou no campo não vira a mesa; o balão do navegador diz o que falta #}
+  if (key === 'garcom' && !/^[0-9]{1,3}$/.test(inp.value)) inp.value = '';
+  if (key === 'garcom') inp.title = 'Só o número da mesa'; else inp.removeAttribute('title');
   inp.inputMode = key === 'garcom' ? 'numeric' : 'text';
   inp.autocomplete = key === 'garcom' ? 'off' : 'given-name';
   if (key === 'garcom') {
     lab.textContent = 'Número da tua mesa *';
     inp.placeholder = 'Ex.: 12';
-    if (dica) dica.textContent = 'Aparece grande na TV: "MESA 12". O garçom vai até a tua mesa.';
+    if (dica) dica.textContent = 'Sai GRANDE na TV por 15 s: MESA 12. Só o número.';
     if (lembrado && inp.value === lembrado) inp.value = '';
     rg.style.display = 'none';
     if (rem) rem.value = '';
@@ -2411,7 +2432,8 @@ function copiarPix() {
 // ── Abre direto na lista de músicas (ou na aba do momento que deu erro) ───────
 {% set tipo_post = request.form.get('tipo', '') if request.method == 'POST' else '' %}
 (function(){
-  {% if erro and tipo_post in ['parabens','dedicatoria','brinde','chegada','casamento','donate_bar','donate_sistema','cantada','salve'] %}
+  {#- 🙋 16/11/26 (L1): o erro do servidor no 🙋 também reabre o formulário com a mesa digitada #}
+  {% if erro and tipo_post in ['garcom','parabens','dedicatoria','brinde','chegada','casamento','donate_bar','donate_sistema','cantada','salve'] %}
   mostrarAba('tv');
   // 16/10/26 (crítico C2): reabre o MESMO momento com o que o cliente digitou (antes: tudo de novo)
   try {

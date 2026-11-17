@@ -268,6 +268,11 @@ def init_pubshow_db():
         # e quando a Efí falhou ao criar o PIX neste bar (o painel avisa em destaque; UTC; limpa no 1º PIX que abrir)
         'ALTER TABLE pubshow_businesses ADD COLUMN karaoke_cobrar INTEGER DEFAULT 1',
         'ALTER TABLE pubshow_businesses ADD COLUMN karaoke_pix_falha_em TEXT DEFAULT NULL',
+        # 🙋 16/11/26 (L1, Diogo: "o bar devolve na hora em espécie"): o 🙋 pago que a TV não chamou em 4 min e o BAR
+        # devolveu em dinheiro no balcão (UTC; o dono marca no painel). No repasse esse PIX conta 100% pro bar, 0 pro app
+        'ALTER TABLE pubshow_pedidos ADD COLUMN devolvido_dinheiro_em TEXT DEFAULT NULL',
+        # 🙋 16/11/26 (L1): quando o celular de quem pagou leu "fala no balcão" (UTC): sem isso o dono não marca a devolução
+        'ALTER TABLE pubshow_pedidos ADD COLUMN garcom_aviso_em TEXT DEFAULT NULL',
     ]:
         try:
             conn.execute(m); conn.commit()

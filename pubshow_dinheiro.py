@@ -382,6 +382,7 @@ def calcular(conn, agora):
     for r in conn.execute(
             "SELECT p.business_id, COUNT(*) AS n, COALESCE(SUM(p.valor),0) AS v FROM pubshow_pedidos p "
             "WHERE TRIM(COALESCE(p.estornado_em,''))<>'' AND p.repasse_manual_id IS NOT NULL "
+            "AND p.devolvido_dinheiro_em IS NULL "   # 🙋 16/11/26 (L1)
             "AND NOT EXISTS (SELECT 1 FROM pubshow_repasses_manuais r WHERE r.business_id = p.business_id "
             "                AND datetime(COALESCE(r.criado_em, r.ate_em)) > datetime(p.estornado_em)) "
             "GROUP BY p.business_id").fetchall():
@@ -391,6 +392,7 @@ def calcular(conn, agora):
     # Devoluções do mês (o Asaas avisou a devolução: estornado_em)
     for r in conn.execute(
             "SELECT business_id, COUNT(*) AS n FROM pubshow_pedidos WHERE TRIM(COALESCE(estornado_em,''))<>'' "
+            "AND devolvido_dinheiro_em IS NULL "   # 🙋 16/11/26 (L1): o PIX não voltou, o bar pagou no balcão
             "AND datetime(estornado_em) >= datetime(?) GROUP BY business_id", (mes_ini,)).fetchall():
         _st(r['business_id'])['dev_mes_n'] = int(r['n'])
 
@@ -404,6 +406,7 @@ def calcular(conn, agora):
     for r in conn.execute(
             f'''SELECT id, business_id, valor, valor_cobrado, pago_em, {A} AS eh_asaas, {E} AS eh_efi
                 FROM pubshow_pedidos WHERE status='recusado' AND pago_em IS NOT NULL AND estornado_em IS NULL
+                  AND NOT {_ps._SQL_GARCOM_BALCAO}   -- 🙋 16/11/26 (L1): o bar devolve no balcão, nunca pela Efí
                 ORDER BY id''').fetchall():
         if r['id'] in auto or r['business_id'] in teste_ids:
             continue
@@ -484,6 +487,7 @@ def _plano_leitura(conn, agora):
     ponte_dev = [dict(r) for r in conn.execute(
         f'''SELECT id, business_id, efi_txid FROM pubshow_pedidos
             WHERE status='recusado' AND pago_em IS NOT NULL AND estornado_em IS NULL AND {E} AND NOT {A}
+              AND NOT {_ps._SQL_GARCOM_BALCAO}
             ORDER BY id''').fetchall() if r['business_id'] not in teste_ids and r['id'] not in split]
     return orfaos, subs, clientes, conhecidas, ponte_dev
 

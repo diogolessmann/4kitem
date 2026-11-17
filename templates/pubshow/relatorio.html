@@ -232,7 +232,7 @@ nav{background:rgba(8,8,15,.95);backdrop-filter:blur(12px);border-bottom:1px sol
       {% for d in por_dia %}
       {% set pct = [((d.r / max_r * 90)|int), 3]|max %}
       <div class="bw">
-        <div class="bv">{% if d.r %}R${{ '%.0f'|format(d.r) }}{% endif %}</div>
+        <div class="bv">{% if d.r %}R${{ ('%.2f' if d.r < 10 and d.r != d.r|int else '%.0f')|format(d.r)|replace('.', ',') }}{% endif %}</div>
         <div class="bar {% if loop.last %}today{% endif %}" style="height:{{ pct }}px"></div>
         <div class="bl">{{ d.dia[5:] }}</div>
       </div>
