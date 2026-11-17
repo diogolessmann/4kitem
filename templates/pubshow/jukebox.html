@@ -23,7 +23,7 @@
   'brinde':      'a TV conta 3, 2, 1, saúde!',
   'chegada':     'anuncia tua turma na TV',
   'cantada':     'tua cantada na TV',
-  'salve':       'recado pra outra mesa',
+  'salve':       'teu recado pro bar todo',
   'garcom':      'a TV chama, com a tua mesa grande',
   'donate_bar':  'ajuda o bar e sai na TV',
 } %}
@@ -276,6 +276,9 @@
   .cardapio-grade .item-karaoke .k-preco{margin-left:auto;flex-shrink:0;font-size:21px;font-weight:900;color:#fff;
     background:rgba(0,0,0,.35);padding:4px 9px;border-radius:10px}
   .cardapio-grade .item-karaoke.off{background:#24242e;border-color:#3a3a46;filter:grayscale(1);opacity:.55;cursor:default}
+  {#- ⏸️ 16/11/26 (L2, V5): música do bar em pausa = os pagos cinza e sem toque (a grátis segue) #}
+  .cardapio-grade.pausado .item,.donate-sis.pausado{background:#24242e;border-color:#3a3a46;filter:grayscale(1);opacity:.55;
+    cursor:default;pointer-events:none}
   .cardapio-grade .item-karaoke.off:active{transform:none}
   .cardapio-grade .item-karaoke.off .card-nome,.cardapio-grade .item-karaoke.off .sub,
   .cardapio-grade .item-karaoke.off .k-preco{color:#8888aa}
@@ -563,6 +566,11 @@ const PIX_TOKEN     = '{{ b.jukebox_token or b.code }}';
 const PIX_PEDIDO_ID = {{ pix_pendente.pedido_id }};
 const PIX_CID       = {{ (request.args.get('c') or request.form.get('client_id') or '')|tojson }};   // conserto 27/10/26
 const PIX_TIPO      = {{ (pix_pendente.tipo or '')|tojson }};
+{#- 😏 16/11/26 (L2): a cantada paga espera o OK do dono até 10 min; sem ele, o bar devolve no balcão (nunca "no teu PIX") #}
+const PIX_OK_SUB    = {{ (('O bar confere tua cantada. Se não liberar em ' ~ cantada_ok_min ~ ' min, fala no balcão: o bar devolve teus '
+                          ~ brl(pix_pendente.valor or 0) ~ ' na hora.')
+                         if (pix_pendente.tipo == 'cantada' and pix_pendente.via_asaas and cantada_ok_min)
+                         else 'O bar está conferindo tua mensagem antes de mostrar na TV.')|tojson }};
 const BRINDE_PROX_PIX = {{ (brinde_proximo or '')|tojson }};   // 24/10/26 (D8): brinde na trava de 15 min → a hora
 const FRENTE_PIX      = {{ (momentos_frente or 0)|int }};       // revisão CEL-1: momentos pagos que a TV mostra antes
 {%- if pix_pendente.efi %}
@@ -645,6 +653,7 @@ function _textoPago() {
   const dep = FRENTE_PIX > 0 ? `depois de ${FRENTE_PIX + 1} músicas` : 'depois da música que está tocando';
   if (PIX_TIPO === 'parabens') return `✅ Pago! Teu parabéns aparece na TV ${dep}. Prepara a câmera 📸`;
   if (PIX_TIPO === 'donate_bar') return `✅ Pago! Obrigado! Teu donate aparece na TV ${dep}. 🙏`;   // 27/10/26 (D5)
+  if (PIX_TIPO === 'salve') return '✅ Pago! Teu salve sai na TV entre uma música e outra. 📣';   {#- 📣 16/11/26 (L2) #}
   if (PIX_TIPO === 'brinde' && BRINDE_PROX_PIX) return `✅ Pago! Teu brinde sai na TV lá pelas ${BRINDE_PROX_PIX}.`;
   return `✅ Pago! Aparece na TV ${dep}.`;
 }
@@ -664,7 +673,7 @@ async function _atualizarPosicao() {
     {#- 🙋 16/11/26 (L1): a TV não chamou em 4 min. O bar devolve no balcão (antes dos textos da Efí e da música) #}
     if (d.garcom_venceu) {
       clearInterval(_posicaoTimer);
-      _pixStatus('ruim', '📺', d.garcom_venceu, '');
+      _pixStatus('ruim', PIX_TIPO === 'cantada' ? '😏' : '📺', d.garcom_venceu, '');   {#- 😏 16/11/26 (L2): a cantada vencida também #}
       return;
     }
     if (d.musica_falhou) {   // 💸 05/11/26: antes dos textos da Efí: aqui o bar não recusou nada
@@ -721,7 +730,7 @@ async function _atualizarPosicao() {
       clearInterval(_posicaoTimer);
       _pixStatus('pago', '💙', '✅ Pago! Obrigado pelo donate.', 'Chegou no sistema. Não aparece na TV.');
     } else if (d.status === 'aguardando_ok') {
-      _pixStatus('pago', '🛡️', '✅ Pago!', 'O bar está conferindo tua mensagem antes de mostrar na TV.');
+      _pixStatus('pago', '🛡️', '✅ Pago!', PIX_OK_SUB);
     } else if (d.status === 'pendente') {
       let sub = PIX_TIPO === 'garcom' ? '' : 'Já está na fila da TV.';   {#- 🙋 16/11/26 (L1): o 🙋 não entra na fila #}
       // 25/10/26 (trava do ⚡ furar): a posição real numa frase só (#pix-pos-frase), a mesma do cartão antes do PIX
@@ -841,7 +850,7 @@ async function jaPaguei() {
       {% elif sucesso == 'garcom' %}A TV chama a tua mesa em instantes. Quando tocar, levanta a mão 🙋
       {% elif sucesso == 'donate_bar' %}Valeu! Teu donate aparece na TV {{ dep }}. 🙏
       {% elif sucesso == 'cantada' %}Cantada mandada! Ela aparece na TV {{ dep }}. Boa sorte! 😏
-      {% elif sucesso == 'salve' %}Salve mandado! Aparece na TV {{ dep }}. 📣
+      {% elif sucesso == 'salve' %}Salve mandado! Sai na TV {{ dep }}, entre uma música e outra. 📣
       {% else %}Seu pedido está na fila! Aguarda um momento.
       {% endif %}
     </p>
@@ -934,10 +943,10 @@ async function jaPaguei() {
      26/10/26: abre no "🎵 Pedir música" (a busca + a lista do bar juntas). ═══ #}
 {% set fila_musicas = fila|selectattr('tipo', 'in', ['vip','flash','musica','musica_especifica','musica_externa','pular_espera'])|list %}
 {#- 27/10/26 (D5): a gorjeta virou o Donate para o bar (dinheiro da casa) #}
-{#- 15/11/26 (Diogo): 🙋 Ei, garçom! no lugar do Pedido de namoro (R$ 2, só nos bares da Efí) #}
+{#- 15/11/26 (Diogo): 🙋 Ei, garçom! no lugar do Pedido de namoro (R$ 1,40 desde 17/11, só nos bares da Efí) #}
 {% set momentos = ['garcom','parabens','dedicatoria','brinde','chegada','cantada','salve','donate_bar']|select('in', tipos)|list %}
 {% set nomes_curtos = {'parabens': 'Parabéns', 'dedicatoria': 'Dedicatória', 'brinde': 'Brinde', 'chegada': 'Chegamos',
-                       'cantada': 'Cantada', 'salve': 'Salve pra mesa', 'garcom': 'Ei, garçom!',
+                       'cantada': 'Cantada', 'salve': 'Salve pro pessoal', 'garcom': 'Ei, garçom!',
                        'donate_bar': 'Donate para o bar'} %}
 <div class="aba on" id="aba-cardapio">
   {%- if karaoke_card %}
@@ -1012,11 +1021,38 @@ async function jaPaguei() {
 
   {%- if 'flash' in tipos or momentos or karaoke_card %}{#- 🎤 09/11/26 (V2b): o cartão do karaokê também abre a seção #}
   <div class="sec-tit" id="sec-tv">💥 Na TV do bar <small class="pedidos-sub">{% if asaas_ativo %}pago no PIX{% elif pix_direto %}PIX · o bar confere{% else %}pago no caixa{% endif %}</small></div>
+  {%- if pausado %}
+  {#- ⏸️ 16/11/26 (L2, V5): o POST recusa o pago na pausa; o celular avisa antes de a pessoa preencher #}
+  <div id="pausa-pagos" class="aviso-curto">⏸️ A música do bar está em pausa. Os pagos voltam quando ela voltar.</div>
+  {#- ⏸️ 17/11/26: a pausa não tem relógio (só o ▶️ do dono a solta; a trava de 6 h é a última). Com a página à
+      vista, o celular pergunta a cada 20 s (?so=pausa: 1 SELECT, nada da fila) e, com a música de volta, os pagos
+      voltam sem recarregar. Se o dono pausar de novo antes do toque, o POST recusa como sempre #}
+  <script>(function () {
+    var url = {{ ('/pubshow/api/fila-info/' ~ (b.jukebox_token or b.code) ~ '?so=pausa')|tojson }}, t = null;
+    function solta() {
+      if (t === null) return;
+      clearInterval(t); t = null;
+      var g = document.getElementById('grid-section'), d = document.getElementById('item-donate_sistema'),
+          a = document.getElementById('pausa-pagos');
+      if (g) { g.classList.remove('pausado'); g.removeAttribute('aria-disabled'); }
+      if (d) { d.classList.remove('pausado'); d.disabled = false; }
+      if (a) a.style.display = 'none';
+    }
+    function olha() {
+      if (t === null || document.visibilityState === 'hidden') return;
+      fetch(url, {cache: 'no-store'}).then(function (r) { return r.json(); })
+        .then(function (j) { if (j && j.pausado === false) solta(); }).catch(function () {});
+    }
+    t = setInterval(olha, 20000);
+    document.addEventListener('visibilitychange', olha);
+    setTimeout(solta, ({{ pausa_resta|default(0)|int }} + 3) * 1000);
+  })();</script>
+  {%- endif %}
   {%- if efi_sem_conta %}
   {# Lote C, fatia b (16/10/26): Efí ligada e o bar sem a conta Efí conectada — o POST já recusa (MSG_EFI_SEM_CONTA) #}
   <div id="efi-sem-conta" class="aviso-curto">⏸️ Os momentos pagos ainda não estão ligados neste bar. A música grátis funciona normal.</div>
   {%- endif %}
-  <div class="pedidos-grid cardapio-grade" id="grid-section">
+  <div class="pedidos-grid cardapio-grade{% if pausado %} pausado{% endif %}" id="grid-section"{% if pausado %} aria-disabled="true"{% endif %}>
     {%- if 'flash' in tipos %}
     <div class="item item-furar" role="button" tabindex="0" id="item-furar" onclick="irBusca('flash')">
       <div class="card-emoji">⚡</div>
@@ -1060,7 +1096,7 @@ async function jaPaguei() {
   </div>
   {%- if donates.donate_sistema %}
   {#- 27/10/26 (D6): uma linha pequena no fim do "Na TV do bar", sem venda e sem link de WhatsApp #}
-  <button type="button" class="donate-sis" id="item-donate_sistema" onclick="abrirDonate('donate_sistema')">💙 Donate para o sistema</button>
+  <button type="button" class="donate-sis{% if pausado %} pausado{% endif %}" id="item-donate_sistema" onclick="abrirDonate('donate_sistema')"{% if pausado %} disabled{% endif %}>💙 Donate para o sistema</button>
   {%- endif %}
   {%- endif %}
 
@@ -1241,7 +1277,9 @@ async function jaPaguei() {
       {%- endfor %}
       <label id="msg-label" for="inp-msg">Mensagem (opcional)</label>
       <textarea name="mensagem" id="inp-msg" rows="2"
-        placeholder="Aparece na tela do bar..." maxlength="80"></textarea>
+        placeholder="Aparece na tela do bar..." maxlength="{{ recado_max|default(60) }}"></textarea>
+      {#- 📣 16/11/26 (L2): a prévia de 1 linha do Salve pro pessoal (o que sai na TV), viva enquanto digita #}
+      <div class="dica-nome" id="salve-previa" style="display:none;color:#7dd3fc;font-weight:700"></div>
       {%- if eleicao %}
       {#- 18/10/26 (trava eleitoral): véspera e dia da eleição, todo momento espera o OK do gerente #}
       <div class="dica-nome" id="dica-eleicao" style="color:#fde68a">🗳️ Fim de semana de eleição: o bar confere o recado antes de mostrar na TV. Política não aparece.</div>
@@ -1305,6 +1343,10 @@ const PIX_CONV   = {{ pix_conv if pix_conv is defined else 0 }};   // o "R$ 1 do
 const GARCOM_VOLTA = {{ (('Se a TV não chamar em 4 min, fala no balcão: o bar devolve teus '
                          ~ brl(tipos.garcom.preco + (pix_conv if pix_conv is defined else 0)) ~ ' na hora.')
                         if 'garcom' in tipos else '')|tojson }};
+{#- 😏 16/11/26 (L2): a 2ª linha da cantada antes do PIX (só na ponte e no Asaas: o prazo conta do PIX; cantada_ok_min) #}
+const CANTADA_VOLTA = {{ (('Se o bar não liberar em ' ~ cantada_ok_min ~ ' min, fala no balcão: o bar devolve teus '
+                          ~ brl(tipos.cantada.preco + (pix_conv if pix_conv is defined else 0)) ~ ' na hora.')
+                         if ('cantada' in tipos and asaas_ativo and cantada_ok_min) else '')|tojson }};
 const FURAR_TXT  = {{ (brl(tipos.flash.preco + pix_conv) if 'flash' in tipos else '')|tojson }};   // "R$ 5" no botão ⚡ Furar de cada música (20/10/26)
 const DONATES = {{ donates | tojson }};   // 27/10/26: {tipo: {valores, div: {'10': 'R$ 8 pro bar · 20% do app'}}}
 function _convAtual() { return DONATES[tipoAtual] ? 0 : PIX_CONV; }   // o donate: o valor escolhido JÁ é o total
@@ -1525,12 +1567,31 @@ function _quandoSai(key) {
                                   + (GARCOM_VOLTA ? '\n' + GARCOM_VOLTA : '')};
   if (key === 'brinde' && BRINDE_PROX) return {t: `⏳ O próximo brinde sai lá pelas ${BRINDE_PROX}.`, espera: true};
   if (TIPOS_MOMENTO.includes(key) && ((PRECOS[key] && PRECOS[key].ok && MODERA_OK) || ELEICAO_OK))
-    return {t: `O bar confere e aí sai na TV ${MOMENTOS_FRENTE > 0 ? _depoisDe() : 'depois da música que estiver tocando'}.`};
+    return {t: `O bar confere e aí sai na TV ${MOMENTOS_FRENTE > 0 ? _depoisDe() : 'depois da música que estiver tocando'}.`
+               + (key === 'cantada' && CANTADA_VOLTA ? '\n' + CANTADA_VOLTA : '')};   {#- 😏 16/11/26 (L2) #}
   if (key === 'parabens') return {t: `Sai na TV ${_depoisDe()}. Segura na mesa quem faz aniversário.`};
   // 25/10/26 (trava do ⚡ furar): a vez real (o /api/fila-info da folha da música), nunca "logo depois desta" sem ser
   if (key === 'flash') return {t: (_filaInfo && _filaInfo.flash ? _frasePosicao(_filaInfo.flash.posicao, _filaInfo.flash.min) + ' ' : '')
                                   + 'Antes, teu nome na TV inteira.'};
+  {#- 📣 16/11/26 (L2): 1 linha, quando sai e o que sai #}
+  if (key === 'salve') return {t: `Sai na TV ${_depoisDe()}, entre uma música e outra: teu nome grande por 9 s.`};
   return {t: `Sai na TV ${_depoisDe()}.`};
+}
+{#- 📣 16/11/26 (L2): a prévia do Salve pro pessoal, 1 linha (o nome como a pessoa escreveu: "de Zé", nunca "do Zé") #}
+function _previaSalve() {
+  const el = document.getElementById('salve-previa');
+  if (!el) return;
+  const on = tipoAtual === 'salve';
+  el.style.display = on ? '' : 'none';
+  if (!on) return;
+  let n = String(document.getElementById('inp-nome').value || '').trim().replace(/\s+/g, ' ');
+  if ([...n].length > 20) {
+    const p = n.split(' ');
+    while (p.length > 1 && [...p.join(' ')].length > 20) p.pop();
+    n = [...p.join(' ')].slice(0, 20).join('');
+  }
+  const m = String(document.getElementById('inp-msg').value || '').trim().replace(/\s+/g, ' ');
+  el.textContent = 'Na TV: 📣 SALVE PRO PESSOAL! · de ' + (n || 'teu nome') + (m ? ' · “' + m + '”' : '');
 }
 function _pintarCartao() {
   const box = document.getElementById('cartao-cena'), q = document.getElementById('cc-quando');
@@ -1542,6 +1603,7 @@ function _pintarCartao() {
   q.textContent = qs ? qs.t : '';
   q.style.display = qs ? '' : 'none';
   q.classList.toggle('espera', !!(qs && qs.espera));
+  _previaSalve();
   const com = !!CENA_CEL[key];
   box.classList.toggle('on', com);
   if (!com) return;
@@ -1553,12 +1615,13 @@ function _pintarCartao() {
     cena = 'parabens'; pre = '🎂 hoje é dia de'; n = nome || 'NOME';
     // revisão CEL-5: o pino da coluna guarda até 3 nomes por ANIVERSARIO_PINO_H (1 h desde 26/10/26); não promete "até o bar fechar"
     // 24/10/26 (momentos no telão, visual): o parabéns da TV não tem 3, 2, 1 (o bar canta com o bolo aceso)
-    txt = 'A música para, o nome entra na TV inteira com o bolo aceso e o bar todo canta junto. Depois, o nome fica na coluna da TV.';
+    {#- 16/11/26 (L2, V3): o que a TV faz (o bolo e o "TODO MUNDO CANTA!"), sem prometer o bar cantando #}
+    txt = 'A música para e o nome entra na TV inteira, com o bolo aceso e "TODO MUNDO CANTA!" na tela. Depois, o nome fica na coluna da TV.';
   } else if (key === 'brinde') {
     cena = 'brinde'; pre = '🍻 brinde geral 🍻'; n = nome || 'TEU NOME'; sub = 'quem puxou o brinde';
     // dentro da trava de 15 min a hora é a da linha ⏳ (não o fim desta música)
     // revisão CEL-1: com momento na frente, também não é "quando esta música acabar"
-    txt = (BRINDE_PROX || MOMENTOS_FRENTE > 0 ? 'Na hora do brinde' : 'Quando esta música acabar') + ', a TV conta 3, 2, 1 e o bar todo brinda contigo.';
+    txt = (BRINDE_PROX || MOMENTOS_FRENTE > 0 ? 'Na hora do brinde' : 'Quando esta música acabar') + ', a TV conta 3, 2, 1, SAÚDE! com teu nome grande.';   {#- 16/11/26 (L2, V3) #}
   } else {   // ⚡ furar pelo formulário (PIX do bar sem confirmação / balcão)
     cena = 'furar'; pre = '⚡ furou a fila ⚡'; n = nome || 'TEU NOME';
     txt = `Fila agora: ${FILA_N === 0 ? 'vazia' : FILA_N + (FILA_N === 1 ? ' música' : ' músicas')}.`;
@@ -1604,6 +1667,8 @@ function _pintarCartaoFurar(d, rotulo) {   // rotulo: só na abertura da folha (
 document.addEventListener('DOMContentLoaded', () => {
   const ni = document.getElementById('inp-nome'), ns = document.getElementById('sh-nome');
   if (ni) ni.addEventListener('input', _pintarCartao);
+  const im = document.getElementById('inp-msg');   {#- 📣 16/11/26 (L2): a prévia anda com o recado #}
+  if (im) im.addEventListener('input', _previaSalve);
   if (ns) ns.addEventListener('input', () => _pintarCartaoFurar(_filaInfo));
   // 25/10/26 (leva 1 da fama): o aviso do nome do ⚡ some assim que o nome passa na regra
   if (ns) ns.addEventListener('input', () => { if (!_nomeFurarRuim(ns.value)) _avisoNomeFurar(ns, 'sh-nome-erro', false); });
@@ -1660,7 +1725,7 @@ function selecionarTipo(key, precoForcado) {
       : key === 'donate_bar' ? 'Recado pro bar (opcional) 🙏'
       : key === 'donate_sistema' ? 'Recado pro sistema (opcional)'
       : key === 'cantada' ? 'Sua cantada (sai na tela) 😏'
-      : key === 'salve' ? 'Pra qual mesa e o recado 📣'
+      : key === 'salve' ? 'Teu recado pro bar (opcional)'
       : key === 'casamento'   ? 'Mensagem especial 💕'
       : 'Mensagem (opcional)';
   } else { mgr.style.display = 'none'; }
@@ -1671,7 +1736,7 @@ function selecionarTipo(key, precoForcado) {
     if (_im.dataset.phOrig === undefined) _im.dataset.phOrig = _im.placeholder || '';
     _im.required    = (key === 'cantada');
     _im.placeholder = key === 'cantada' ? 'Ex.: Você não é o Google, mas tem tudo que eu procuro 😏'
-                    : key === 'salve'   ? 'Ex.: Mesa 3, a próxima é por nossa conta 😉'
+                    : key === 'salve'   ? 'Ex.: A turma do moto clube chegou! 🤘'
                     : key === 'donate_sistema' ? 'Só o sistema lê. Não aparece na TV.' : _im.dataset.phOrig;   // 27/10/26 (D6)
   }
 
@@ -1730,6 +1795,7 @@ function _camposDoNome(key) {
     lab.textContent = 'Teu nome *';
     inp.placeholder = 'Teu nome';
     if (dica) dica.textContent = key === 'donate_sistema' ? 'Só o sistema vê teu nome. Não aparece na TV.'   // 27/10/26 (D6)
+                               : key === 'salve' ? 'Sai grande na TV. Até 20 letras.'   {#- 📣 16/11/26 (L2) #}
                                : 'É assim que teu nome aparece na TV (até 20 letras). Sem palavrão, beleza? 😉';
     rg.style.display = 'none';
     if (rem) rem.value = '';
@@ -2446,7 +2512,7 @@ function copiarPix() {
     selecionarTipo({{ tipo_post|tojson }});
     {% endif %}
     document.getElementById('inp-nome').value = {{ (request.form.get('nome_cliente') or '')[:40]|tojson }};   {#- 27/10/26 (C3): 20 → 40, o campo #}
-    document.getElementById('inp-msg').value  = {{ (request.form.get('mensagem') or '')[:80]|tojson }};
+    document.getElementById('inp-msg').value  = {{ (request.form.get('mensagem') or '')[:(recado_max|default(60))]|tojson }};
     const _rem = document.getElementById('inp-remetente');
     if (_rem) _rem.value = {{ (request.form.get('remetente') or '')[:40]|tojson }};
     _pintarCartao();   // 24/10/26 (revisão CEL-2): o .value não dispara 'input'; o cartão mostra o nome que voltou

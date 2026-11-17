@@ -415,7 +415,7 @@ _SLIDES_DIR = os.path.join(
 
 GORJETA_VALORES = (5.0, 10.0, 20.0, 50.0)   # opções de gorjeta no celular do cliente
 TIPOS_SEMPRE_GRATIS = ('musica', 'musica_especifica', 'musica_externa')   # nunca cobrados, mesmo com precos_custom (YouTube incluído — 12/09/26, Garage tinha 0,50)
-TIPOS_OCULTOS = ('vip', 'gorjeta', 'pular_espera', 'casamento')   # existem no banco/TV, mas o cliente não vê ("Tocar agora" saiu, YouTube entrou — 11/09/26)
+TIPOS_OCULTOS = ('vip', 'gorjeta', 'pular_espera', 'casamento', 'chegada')   # existem no banco/TV, mas o cliente não vê ("Tocar agora" saiu, YouTube entrou — 11/09/26)
 # 15/11/26 (Diogo): o Pedido de namoro ('casamento') saiu do celular e do painel; o 🙋 Ei, garçom! entrou no lugar. O
 # pedido antigo já pago continua passando na TV (a TV e o /api/status ainda conhecem o tipo)
 # 09/11/26 (Diogo: "remove o pular espera"): o ⏩ sai do celular, do painel e do site. O pedido ⏩ que já existe continua
@@ -423,6 +423,11 @@ TIPOS_OCULTOS = ('vip', 'gorjeta', 'pular_espera', 'casamento')   # existem no b
 # karaokê ("🎤 Cante sua música"), na próxima leva.
 # 27/10/26: a gorjeta saiu do cardápio (virou o Donate para o bar); fica no banco/TV/caixinha pro histórico
 TIPOS_EQUIPE  = ('gorjeta',)   # dinheiro da EQUIPE, não do caixa da casa — somado à parte no painel
+# 🎉 16/11/26 (L2, Diogo: "Chegamos tira fora"): o 🎉 saiu do celular, do painel, do canto da TV e do site (TIPOS_OCULTOS
+# e SITE_MOMENTOS); quem comprava 🎉 compra o 📣 Salve pro pessoal. O 🎉 antigo já pago continua passando na TV
+# 16/11/26 (L2): todo recado escrito pelo cliente tem até RECADO_MAX letras (era 80): 2 linhas grandes na TV. Vale pra
+# todo tipo (é a mesma linha do POST), inclusive o recado do Donate para o sistema (que não vai pra TV)
+RECADO_MAX = 60
 
 TIPOS_PEDIDO = {
     'musica':           {'nome': 'Música aleatória',       'emoji': '🎵', 'preco': 0.00,  'cor': '#3b82f6'},   # GRÁTIS (decisão 11/09/26)
@@ -442,8 +447,9 @@ TIPOS_PEDIDO = {
     'chegada':          {'nome': 'Chegamos! 🎉',           'emoji': '🎉', 'preco': 5.00,  'cor': '#f97316'},
     # Cantada (11/09/26): o cliente escreve a cantada e ela aparece na tela — o "esquenta" do pedido de namoro
     'cantada':          {'nome': 'Mandar uma cantada 😏',  'emoji': '😏', 'preco': 5.00,  'cor': '#f472b6', 'ok': True},   # 'ok': passa pelo gerente antes da TV
-    # Salve pra outra mesa (12/09/26): recado de mesa pra mesa — alvo é a MESA, não uma pessoa; sem gate
-    'salve':            {'nome': 'Salve pra outra mesa 📣', 'emoji': '📣', 'preco': 5.00,  'cor': '#0ea5e9'},
+    # 📣 Salve pro pessoal (16/11/26, L2, Diogo; nasceu em 12/09/26 como recado de mesa pra mesa): recado pro bar TODO,
+    # sem mesa e sem "pra quem"; sem gate
+    'salve':            {'nome': 'Salve pro pessoal 📣',    'emoji': '📣', 'preco': 5.00,  'cor': '#0ea5e9'},
     # chave 'casamento' mantida por compatibilidade com o banco; rótulo agora é "Namoro"
     'casamento':        {'nome': 'Pedido de Namoro 💕',   'emoji': '💕', 'preco': 25.00, 'cor': '#a855f7', 'ok': True},
     # 🙋 15/11/26 (Diogo): "EI! Garçom!" no lugar do namoro. 3 assobios + "Eiiii, garçom!" na TV NA HORA, numa faixa por
@@ -3283,8 +3289,8 @@ def _texto_fundador(vagas: int) -> str:
 
 
 # ── 26/10/26 (site = sistema, pedido do Diogo): a tabela de preços do site é o celular de um bar NOVO ───────────────
-SITE_MOMENTOS = ('flash', 'garcom', 'parabens', 'dedicatoria', 'cantada', 'salve', 'brinde',   # 15/11/26: 🙋 no lugar do namoro
-                 'chegada')   # 09/11/26: sem o ⏩ Pular a espera (saiu da oferta)
+SITE_MOMENTOS = ('flash', 'garcom', 'parabens', 'dedicatoria', 'cantada', 'salve', 'brinde')   # 15/11/26: 🙋 no lugar do namoro
+# 09/11/26: sem o ⏩ Pular a espera (saiu da oferta). 16/11/26 (L2): sem o 🎉 Chegamos (oculto)
 
 
 def _site_bar_novo():
@@ -4210,7 +4216,7 @@ def jukebox(token, pix_id=None):
                 nome_cliente = _K.nome_curto(nome_cliente)   # 🎤 "Teu nome na TV": até 14 letras (apelido)
             if tipo == 'garcom':
                 nome_cliente = _mesa_garcom(request.form.get('nome_cliente', ''))   # 🙋 15/11/26: a MESA vai no nome
-            mensagem      = _sem_invisiveis(request.form.get('mensagem', '')).strip()[:80]
+            mensagem      = _sem_invisiveis(request.form.get('mensagem', '')).strip()[:RECADO_MAX]   # 16/11/26 (L2): 80 → 60
             if tipo == 'garcom':
                 mensagem = ''   # 🙋 15/11/26: só a mesa (a TV narra "Eiiii, garçom!", não a mesa)
             if tipo == 'donate_sistema':
@@ -4282,6 +4288,9 @@ def jukebox(token, pix_id=None):
             elif tipo == 'garcom' and (_gt := _garcom_tv_fora(b)):
                 # 🙋 16/11/26 (L1): TV sem sinal há 3 min ou muda, a faixa não sairia. Antes do PIX: nada a devolver
                 erro, erro_tipo = _gt, 'garcom_tv'
+            elif tipo in TIPOS_MOMENTO_TV and (_gt := _garcom_tv_fora(b)):
+                # 16/11/26 (L2): o momento do intervalo também (o cartão só sai com a TV ligada e com som). Antes do PIX
+                erro, erro_tipo = (MSG_MOMENTO_TV_OFF if _gt == MSG_GARCOM_TV_OFF else MSG_MOMENTO_TV_MUDA), 'momento_tv'
             elif tipo in ('musica_especifica', 'musica_externa', 'flash', 'pular_espera') and not youtube_id:
                 erro = 'Selecione uma música antes de confirmar.'
             elif tipo == 'cantada' and not mensagem:
@@ -4795,6 +4804,11 @@ def jukebox(token, pix_id=None):
                                     if pix_pendente else ''),
                            erro_tipo=erro_tipo, gratis_min=GRATIS_INTERVALO_MIN,   # crítico leigo A4/M3/M4
                            eleicao=_janela_eleitoral(),   # 18/10/26: aviso "o bar confere antes da TV" nos momentos
+                           pausado=_pausa_resta_s(b) > 0,   # ⏸️ 16/11/26 (L2, V5): o celular sabe da pausa antes do PIX
+                           pausa_resta=_pausa_resta_s(b),   # ⏸️ o cinza sai sozinho quando a pausa acaba
+                           # 😏 16/11/26 (L2): o prazo da cantada (0 = não vence: split ou PIX manual; nada de "10 min")
+                           cantada_ok_min=(CANTADA_OK_SEG // 60) if (_gw and _rota_efi(b) != 'split') else 0,
+                           recado_max=RECADO_MAX,   # 16/11/26 (L2): o campo do recado no celular
                            # 24/10/26 (momentos no telão, D8): "O próximo brinde sai lá pelas 22h40." antes do PIX
                            brinde_proximo=(_brinde_proximo(b, (pix_pendente or {}).get('pedido_id') or locals().get('pedido_id_sucesso'))
                                            if 'brinde' in tipos_bar else ''),
@@ -4967,9 +4981,19 @@ GARCOM_TV_SOM_SEG = 15      # 16/11/26 (L1): "TV muda" só quando nenhuma TV do 
 _TV_COM_SOM = {}            # bar → hora do último sinal de uma TV COM som (em memória: o Procfile roda 1 worker)
 MSG_GARCOM_TV_OFF = '📺 A TV do bar está desligada agora. Chama no aceno e tenta de novo daqui a pouco.'
 MSG_GARCOM_TV_MUDA = '🔇 A TV do bar está sem som agora. Chama no aceno e tenta de novo daqui a pouco.'
+# 16/11/26 (L2): a mesma recusa antes do PIX pros momentos pagos do intervalo (⚡ e música não mudam)
+# 17/11/26: o 🙏 Donate para o bar NÃO entra (doação não se recusa, nem com a TV fora)
+TIPOS_MOMENTO_TV = ('parabens', 'dedicatoria', 'brinde', 'salve', 'cantada')
+MSG_MOMENTO_TV_OFF = '📺 A TV do bar está desligada agora. Tenta de novo daqui a pouco.'
+MSG_MOMENTO_TV_MUDA = '🔇 A TV do bar está sem som agora. Tenta de novo daqui a pouco.'
+CANTADA_OK_SEG = 600       # 😏 16/11/26 (L2): a cantada paga sem o OK do dono em 10 min (do PIX) vence: o bar devolve no balcão
+CANTADA_VENCE_ATE_SEG = 3600   # 😏 só vence a paga há menos disso (a antiga parada no OK fica no OK, como antes)
+# 😏 só vence a paga na PONTE Efí ou no Asaas: o PIX está na conta do PubShow e volta 100% pro bar no repasse. No split o
+# bar já recebeu só a parte dele e no PIX manual o dinheiro já é do bar: lá a cantada fica no OK do dono, sem prazo
+_SQL_CANTADA_BALCAO = "(TRIM(COALESCE(efi_txid,''))<>'' OR TRIM(COALESCE(asaas_payment_id,''))<>'')"
 # 🙋 16/11/26 (L1, Diogo: "o bar devolve na hora em espécie"): o 🙋 vencido é do balcão, nunca da Efí: fica fora de toda
-# lista de "PIX a devolver" (admin, 💰 Dinheiro) e do aviso de devolução parada
-_SQL_GARCOM_BALCAO = f"(tipo='garcom' AND COALESCE(karaoke_pulado,0)={_K.PULADO_FALHOU})"
+# lista de "PIX a devolver" (admin, 💰 Dinheiro) e do aviso de devolução parada. 😏 16/11/26 (L2): a cantada vencida também
+_SQL_GARCOM_BALCAO = f"(tipo IN ('garcom','cantada') AND COALESCE(karaoke_pulado,0)={_K.PULADO_FALHOU})"
 # a cobrança do split que a Efí já devolveu, está devolvendo ou vai devolver (aprovada no saas-admin)
 _SQL_COB_DEVOLVIDA = "status IN ('devolvendo','devolvida') OR COALESCE(dev_aprovacao,'') LIKE 'aprovada%'"
 # 15/11/26 (travas, 40_PROPOSTA): tetos do BAR inteiro, contando os chamados PAGOS, conferidos ANTES do PIX
@@ -5074,17 +5098,36 @@ def _garcom_vencer(conn, bid):
             "SELECT id FROM pubshow_pedidos WHERE business_id=? AND tipo='garcom' AND status='pendente' "
             "AND COALESCE(karaoke_pulado,0)=0 AND datetime(COALESCE(pago_em, created_at)) <= datetime('now', ?)",
             (bid, f'-{GARCOM_VENCE_SEG} seconds')).fetchall()]
-        n = 0
+        # 😏 16/11/26 (L2): a cantada PAGA que o dono não liberou nem recusou em CANTADA_OK_SEG, contados do PIX (pago_em),
+        # vence pelo MESMO caminho (o bar devolve no balcão). Corrida com o ✅ Mostrar (painel_aprovar) e o 🚫 Não mostrar
+        # fechada no banco: os 3 só mudam a linha 'aguardando_ok'. Só a paga na ponte ou no Asaas (_SQL_CANTADA_BALCAO)
+        # e há menos de CANTADA_VENCE_ATE_SEG; na janela eleitoral, não a que o /api/status devolveu pro OK
+        _jan, _jp = ((" AND created_at >= ?", (_inicio_janela_utc(),)) if _janela_eleitoral() else ('', ()))
+        ids_c = [r[0] for r in conn.execute(
+            "SELECT id FROM pubshow_pedidos WHERE business_id=? AND tipo='cantada' AND status='aguardando_ok' "
+            "AND COALESCE(karaoke_pulado,0)=0 AND TRIM(COALESCE(pago_em,''))<>'' AND " + _SQL_CANTADA_BALCAO +
+            " AND datetime(pago_em) <= datetime('now', ?) AND datetime(pago_em) >= datetime('now', ?)" + _jan,
+            (bid, f'-{CANTADA_OK_SEG} seconds', f'-{CANTADA_VENCE_ATE_SEG} seconds', *_jp)).fetchall()]
+        n = nc = 0
         for pid in ids:
             if conn.execute("UPDATE pubshow_pedidos SET karaoke_pulado=?, status='recusado' WHERE id=? "
                             "AND status='pendente' AND COALESCE(karaoke_pulado,0)=0", (_K.PULADO_FALHOU, pid)).rowcount != 1:
                 continue   # a TV marcou exibido antes: vale o exibido
             n += 1
+        for pid in ids_c:
+            if conn.execute("UPDATE pubshow_pedidos SET karaoke_pulado=?, status='recusado' WHERE id=? "
+                            "AND status='aguardando_ok' AND COALESCE(karaoke_pulado,0)=0", (_K.PULADO_FALHOU, pid)).rowcount != 1:
+                continue   # o dono decidiu antes: vale a decisão dele
+            nc += 1
+        if ids or ids_c:
+            conn.commit()   # fecha a escrita também quando a outra ponta ganhou (nenhuma linha mudou)
         if n:
-            conn.commit()
             log.warning('[PUBSHOW] bar %s: %s 🙋 pago(s) sem a TV chamar em %s s → recusado, o bar devolve no balcão',
                         bid, n, GARCOM_VENCE_SEG)
-        return n
+        if nc:
+            log.warning('[PUBSHOW] bar %s: %s 😏 cantada(s) paga(s) sem o OK em %s s → recusado, o bar devolve no balcão',
+                        bid, nc, CANTADA_OK_SEG)
+        return n + nc
     except Exception as ex:
         try:
             conn.rollback()
@@ -5101,12 +5144,15 @@ def _garcom_a_devolver(conn, bid):
     dono marca). Erro = [] (nunca derruba o painel)."""
     try:
         rows = conn.execute(
-            "SELECT id, nome_cliente, pago_em, COALESCE(valor_cobrado, valor, 0) AS v, garcom_aviso_em FROM pubshow_pedidos "
-            "WHERE business_id=? AND tipo='garcom' AND status='recusado' AND COALESCE(karaoke_pulado,0)=? "
+            "SELECT id, tipo, nome_cliente, pago_em, COALESCE(valor_cobrado, valor, 0) AS v, garcom_aviso_em FROM pubshow_pedidos "
+            "WHERE business_id=? AND tipo IN ('garcom','cantada') AND status='recusado' AND COALESCE(karaoke_pulado,0)=? "
             "AND TRIM(COALESCE(pago_em,''))<>'' AND devolvido_dinheiro_em IS NULL AND estornado_em IS NULL "
             "AND repasse_manual_id IS NULL AND datetime(pago_em) >= datetime('now', '-7 days') "
-            # sem o aviso lido pelo cliente a linha só fica a noite (12 h): quem nunca olhou o celular não vira card eterno
-            "AND (garcom_aviso_em IS NOT NULL OR datetime(pago_em) >= datetime('now', '-12 hours')) ORDER BY id LIMIT 30",
+            # sem o aviso lido pelo cliente a linha só fica a noite (12 h): quem nunca olhou o celular não vira card eterno.
+            # 😏 17/11/26 (revisão A, M3): a cantada fica os 7 dias (o ✅ dela não espera o aviso; sem o card os R$ 6
+            # ficavam sem lista nenhuma)
+            "AND (garcom_aviso_em IS NOT NULL OR tipo='cantada' OR datetime(pago_em) >= datetime('now', '-12 hours')) "
+            "ORDER BY id LIMIT 30",
             (bid, _K.PULADO_FALHOU)).fetchall()
         fora = set()
         if rows and conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='pubshow_pay_cobrancas'").fetchone():
@@ -5114,12 +5160,35 @@ def _garcom_a_devolver(conn, bid):
             fora = {r[0] for r in conn.execute(
                 f"SELECT pedido_id FROM pubshow_pay_cobrancas WHERE ({_SQL_COB_DEVOLVIDA}) "
                 f"AND pedido_id IN ({','.join('?' * len(ids))})", ids)}
-        return [{'id': r['id'], 'mesa': r['nome_cliente'] or '', 'hora': _repasse_brt(r['pago_em'], '%H:%M'),
-                 'valor_txt': _reais_curto(r['v']), 'visto': bool(r['garcom_aviso_em'])}
+        # 😏 16/11/26 (L2): 'tipo' = 'garcom' (mesa = a mesa) ou 'cantada' (mesa = o nome de quem mandou)
+        return [{'id': r['id'], 'tipo': r['tipo'], 'mesa': r['nome_cliente'] or '', 'hora': _repasse_brt(r['pago_em'], '%H:%M'),
+                 # 😏 16/11/26 (L2): na cantada o ✅ não espera o aviso lido (os 10 min foram ditos ANTES do PIX)
+                 'valor_txt': _reais_curto(r['v']), 'visto': bool(r['garcom_aviso_em']) or r['tipo'] == 'cantada'}
                 for r in rows if r['id'] not in fora]
     except Exception as ex:
         log.warning('[PUBSHOW] 🙋 a devolver do bar %s não leu: %s', bid, ex)
         return []
+
+
+def _ok_com_prazo(rows):
+    """😏 16/11/26 (L2): cada linha do "Precisa do seu OK" ganha ok_resta_s = segundos até a cantada paga vencer
+    (CANTADA_OK_SEG contados do PIX; pago_em em UTC). None = sem prazo: a MESMA regra do _garcom_vencer (outro tipo,
+    sem PIX, split ou PIX manual, paga há CANTADA_VENCE_ATE_SEG ou mais, devolvida pro OK na janela eleitoral).
+    Chamar com o created_at do banco (antes do _pedidos_com_hora_local). Nunca derruba o painel."""
+    agora = datetime.utcnow()
+    _ini = _inicio_janela_utc() if _janela_eleitoral() else ''
+    for p in rows:
+        p['ok_resta_s'] = None
+        try:
+            if (p.get('tipo') == 'cantada' and str(p.get('pago_em') or '').strip()
+                    and (str(p.get('efi_txid') or '').strip() or str(p.get('asaas_payment_id') or '').strip())
+                    and not (_ini and str(p.get('created_at') or '') < _ini)):
+                passou = (agora - datetime.fromisoformat(str(p['pago_em']).strip()[:19])).total_seconds()
+                if passou < CANTADA_VENCE_ATE_SEG:
+                    p['ok_resta_s'] = max(0, int(CANTADA_OK_SEG - passou))
+        except Exception:
+            p['ok_resta_s'] = None
+    return rows
 
 
 def _brinde_proximo(b, excluir_id=None):
@@ -5312,6 +5381,10 @@ def _marcar_tv_vista(conn, b, som=None):
         visto = b['tv_visto_em'] if 'tv_visto_em' in b.keys() else None
         if som == 1:
             _TV_COM_SOM[b['id']] = _time.time()   # 🙋 16/11/26 (L1): uma TV do bar tem som (_garcom_tv_fora)
+        elif som == 0 and _time.time() - _TV_COM_SOM.get(b['id'], 0) <= GARCOM_TV_SOM_SEG:
+            # 17/11/26: outra TV do bar avisou som há pouco (2 TVs, uma muda de propósito): o BAR não está mudo. Sem isto o
+            # tv_som trocava a cada sinal: o selo "TV sem som" do painel piscava e o banco gravava a cada 2,5 s
+            som = 1
         som_mudou = som is not None and 'tv_som' in b.keys() and b['tv_som'] != som
         if not som_mudou and visto and visto > (agora - timedelta(seconds=_TV_GRAVA_A_CADA_S)).strftime(_FMT_UTC):
             return
@@ -5611,9 +5684,10 @@ def api_pedido_status(token, pedido_id):
 
     status = row['status']
     _garcom_venceu = False
-    if row['tipo'] == 'garcom':
-        # 🙋 16/11/26 (L1): o celular de quem pagou pergunta a cada 5 s: o 🙋 vence aqui mesmo com a TV desligada
-        if status == 'pendente':
+    if row['tipo'] in ('garcom', 'cantada'):
+        # 🙋 16/11/26 (L1): o celular de quem pagou pergunta a cada 5 s: o 🙋 vence aqui mesmo com a TV desligada.
+        # 😏 16/11/26 (L2): a cantada paga esperando o OK também
+        if status in ('pendente', 'aguardando_ok'):
             _garcom_vencer(conn, row['business_id'])
         _gv = conn.execute('SELECT status, COALESCE(karaoke_pulado,0) AS kp FROM pubshow_pedidos WHERE id=?',
                            (pedido_id,)).fetchone()
@@ -5718,13 +5792,14 @@ def api_pedido_status(token, pedido_id):
     if status == 'recusado' and row['tipo'] in TIPOS_MUSICA_FILA and row['pix_volta']:
         resp['musica_volta'] = _brl(row['valor_cli'])
     # 💸 05/11/26: o vídeo não abriu na TV, fora do karaokê (_musica_nao_abriu): o celular diz onde está o PIX
-    if (not row['karaoke'] and row['tipo'] != 'garcom' and int(row['karaoke_pulado'] or 0) == _K.PULADO_FALHOU
+    if (not row['karaoke'] and row['tipo'] not in ('garcom', 'cantada') and int(row['karaoke_pulado'] or 0) == _K.PULADO_FALHOU
             and status in ('recusado', 'exibido')):
         resp['musica_falhou'] = (f"Teus {_brl(row['valor_cli'])} voltam no teu PIX. {_K.MSG_PRAZO}" if status == 'recusado'
                                  else f"Teu PIX de {_brl(row['valor_cli'])} foi pra conta do bar. Fala no balcão.")
     if _garcom_venceu:   # 🙋 16/11/26 (L1, Diogo: o bar devolve na hora, em dinheiro; nunca "volta no teu PIX")
-        resp['garcom_venceu'] = (f"📺 A TV não conseguiu chamar. Fala no balcão: o bar devolve teus "
-                                 f"{_reais_curto(row['valor_cli'])} na hora.")
+        resp['garcom_venceu'] = (("😏 O bar não liberou a tua cantada." if row['tipo'] == 'cantada'   # 😏 16/11/26 (L2)
+                                  else "📺 A TV não conseguiu chamar.")
+                                 + f" Fala no balcão: o bar devolve teus {_reais_curto(row['valor_cli'])} na hora.")
     if _efi_ligado():
         # Lote C: a tela diz "Teu PIX já foi devolvido" (recusa/atraso) ou "O QR venceu, pede de novo"
         # VCa-07 (16/10/26): "já foi devolvido" só depois da Efí confirmar (DEVOLVIDO); no meio do caminho é
@@ -5758,7 +5833,7 @@ def api_pedido_status(token, pedido_id):
 # hora dele: o servidor não sabe o fuso do bar, e o Garage é em Manaus.
 CARTAO_TV_ESPERA_SEG = 15   # a TV desiste de um vídeo em até 8 s (o stall detector): só oferece depois disso
 _CARTAO_TV_ROTULO = {'flash': '⚡ Furou a fila', 'parabens': '🎂 Parabéns', 'brinde': '🍻 Brinde',
-                     'dedicatoria': '💌 Dedicatória', 'chegada': '🎉 Chegamos', 'cantada': '😏 Cantada', 'salve': '📣 Salve',
+                     'dedicatoria': '💌 Dedicatória', 'chegada': '🎉 Chegamos', 'cantada': '😏 Cantada', 'salve': '📣 Salve pro pessoal',
                      'casamento': '💕 Pedido de namoro', 'gorjeta': '🙏 Gorjeta pra equipe', 'donate_bar': '🙏 Donate para o bar'}
 
 
@@ -8587,6 +8662,8 @@ def api_fila_info(token):
     b = _bar_por_token(token)
     if not b:
         return jsonify({'error': 'not_found'}), 404
+    if request.args.get('so') == 'pausa':   # ⏸️ 17/11/26 (L2): o celular com os pagos cinza, a cada 20 s
+        return jsonify({'pausado': _pausa_resta_s(b) > 0})
     ip_cliente = request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip()
     _cid = (request.args.get('cid') or '').strip()
     if re.fullmatch(r'[A-Za-z0-9_-]{8,40}', _cid):
@@ -8865,7 +8942,9 @@ def painel():
                                           for k, v in _tipos_config(bd).items()}),
                            fila=_pedidos_com_hora_local([dict(f) for f in fila]),
                            aguardando_pix=_pedidos_com_hora_local([dict(p) for p in aguardando_pix]),
-                           aguardando_ok=_pedidos_com_hora_local([dict(p) for p in aguardando_ok]),
+                           # 😏 16/11/26 (L2): "⏱️ falta X min" em cada cantada paga (_ok_com_prazo)
+                           aguardando_ok=_pedidos_com_hora_local(_ok_com_prazo([dict(p) for p in aguardando_ok])),
+                           cantada_ok_min=CANTADA_OK_SEG // 60,
                            garcom_devolver=garcom_devolver,   # 🙋 16/11/26 (L1): "✅ Devolvi em dinheiro"
                            # 27/10/26 (D6): o Donate para o sistema não existe pro dono (nem no TIPOS_INFO do JS)
                            tipos={k: v for k, v in TIPOS_PEDIDO.items() if k != 'donate_sistema'},
@@ -11045,9 +11124,10 @@ def painel_garcom_devolvi(pid):
             "SELECT 1 FROM sqlite_master WHERE type='table' AND name='pubshow_pay_cobrancas'").fetchone() else '')
         n = conn.execute(
             "UPDATE pubshow_pedidos SET devolvido_dinheiro_em=datetime('now'), estornado_em=datetime('now') "
-            "WHERE id=? AND business_id=? AND tipo='garcom' AND status='recusado' AND COALESCE(karaoke_pulado,0)=? "
+            "WHERE id=? AND business_id=? AND tipo IN ('garcom','cantada') AND status='recusado' AND COALESCE(karaoke_pulado,0)=? "
             "AND TRIM(COALESCE(pago_em,''))<>'' AND devolvido_dinheiro_em IS NULL AND estornado_em IS NULL "
-            "AND repasse_manual_id IS NULL AND garcom_aviso_em IS NOT NULL" + _cob,
+            # 😏 16/11/26 (L2): na cantada não espera o aviso lido (os 10 min foram ditos antes do PIX)
+            "AND repasse_manual_id IS NULL AND (garcom_aviso_em IS NOT NULL OR tipo='cantada')" + _cob,
             (pid, b['id'], _K.PULADO_FALHOU)).rowcount
         conn.commit()
         if n:
@@ -11064,9 +11144,19 @@ def painel_recusar(pid):
     Estorno: manual no Asaas; AUTOMÁTICO com a Efí ligada pro bar (Lote C, 16/10/26)."""
     b = _get_business()
     conn = get_pubshow_db()
-    n = conn.execute("UPDATE pubshow_pedidos SET status='recusado' WHERE id=? AND business_id=? AND status='aguardando_ok'", (pid, b['id'])).rowcount
+    # 😏 17/11/26 (revisões A e B, M2): a cantada com o prazo dos 10 min (_ok_com_prazo: paga na ponte ou no Asaas há
+    # menos de 1 h) recusada aqui vai pelo caminho do balcão, igual à vencida: o celular já prometeu "o bar devolve no
+    # balcão". Card "💵 Devolver em dinheiro", ✅ e 100% no repasse; nunca o "PIX a devolver" (o cliente receberia 2 vezes)
+    _r = conn.execute("SELECT * FROM pubshow_pedidos WHERE id=? AND business_id=? AND status='aguardando_ok'",
+                      (pid, b['id'])).fetchone()
+    _balcao = bool(_r) and _ok_com_prazo([dict(_r)])[0]['ok_resta_s'] is not None
+    n = conn.execute("UPDATE pubshow_pedidos SET status='recusado', karaoke_pulado=CASE WHEN ? THEN ? ELSE karaoke_pulado END "
+                     "WHERE id=? AND business_id=? AND status='aguardando_ok'",
+                     (1 if _balcao else 0, _K.PULADO_FALHOU, pid, b['id'])).rowcount
     conn.commit(); conn.close()
-    if n == 1:   # só quem ESTE clique recusou (pedido já liberado/na TV nunca é devolvido)
+    if n == 1 and _balcao:
+        log.info('[PUBSHOW] bar %s: 😏 #%s recusada no prazo → o bar devolve no balcão', b['id'], pid)
+    if n == 1 and not _balcao:   # só quem ESTE clique recusou (pedido já liberado/na TV nunca é devolvido)
         r = _efi_estornar(b, pid, 'recusado pelo gerente')
         if r and r.get('aprovacao') == 'pendente':
             # 17/10/26 (decisão 3b): passou de R$ 100 de devolução no dia (por dono) → o suporte aprova
@@ -11635,7 +11725,7 @@ def admin_dashboard():
                   p.pago_em, p.asaas_payment_id, p.efi_txid{", p.karaoke_pago, p.karaoke_pulado" if _K.pix_bares() else ""}
            FROM pubshow_pedidos p JOIN pubshow_businesses b ON b.id = p.business_id
            WHERE p.status='recusado' AND p.pago_em IS NOT NULL AND p.estornado_em IS NULL
-             AND NOT (p.tipo='garcom' AND COALESCE(p.karaoke_pulado,0)=2)   -- 🙋 16/11/26 (L1): o bar devolve no balcão
+             AND NOT (p.tipo IN ('garcom','cantada') AND COALESCE(p.karaoke_pulado,0)=2)   -- 🙋 L1 + 😏 L2: o bar devolve no balcão
            ORDER BY p.pago_em DESC LIMIT 100''').fetchall()]
     _espera_ok = set()   # 💸 05/11/26: devolução que espera o clique no saas-admin: a linha não diz "o robô devolve sozinho"
     if pix_a_devolver and _efi_ligado():
@@ -11996,6 +12086,8 @@ def _repasse_conferir(bid=None, limite=15):
     Retorna quantos conferiu. Só leitura nos gateways."""
     st = ','.join('?' * len(_REPASSE_STATUS_PAGO))
     filtro_bar = 'AND business_id=?' if bid is not None else ''
+    # 🙋😏 17/11/26 (revisão A, M1): também o 'recusado' que o bar devolveu em dinheiro (🙋/😏 vencido): sem a
+    # conferência, o liberado pelo "PIX caiu" do admin (ADMIN) nunca entrava no devido e o bar pagava do bolso
     conn = get_pubshow_db()
     try:
         rows = conn.execute(
@@ -12004,7 +12096,7 @@ def _repasse_conferir(bid=None, limite=15):
                   AND ((TRIM(COALESCE(pago_em,''))='' AND pix_conferido IS NULL)
                        OR pix_conferido IN ('HISTORICO','ADMIN') OR pix_conferido LIKE 'ERRO%')
                   AND repasse_manual_id IS NULL
-                  AND status IN ({st}) AND COALESCE(valor,0) > 0 {filtro_bar}
+                  AND (status IN ({st}) OR (status='recusado' AND {_SQL_DEV_DINHEIRO})) AND COALESCE(valor,0) > 0 {filtro_bar}
                 ORDER BY (CASE WHEN pix_conferido LIKE 'ERRO%' THEN 1 ELSE 0 END), pix_conferido, id
                 LIMIT ?''',
             list(_REPASSE_STATUS_PAGO) + ([bid] if bid is not None else []) + [int(limite)]

@@ -235,7 +235,7 @@ def _bar_zero():
             'x_n': 0, 'x_cob': 0, 'x_bar': 0, 'x_marg': 0,
             's_n': 0, 's_val': 0, 'm_n': 0, 'm_val': 0, 'xp_n': 0, 'xp_val': 0, 'm0_n': 0,
             's_aberto_n': 0, 's_aberto_val': 0, 'dev_mes_n': 0, 'ult_pix': None,
-            'repasse_desde': None, 'rep_dev_n': 0, 'rep_dev_val': 0,
+            'repasse_desde': None, 'rep_dev_n': 0, 'rep_dev_val': 0, 'gb_n': 0, 'gb_val': 0,
             'devido': 0.0, 'devido_asaas': 0.0, 'devido_efi': 0.0}
 
 
@@ -395,6 +395,23 @@ def calcular(conn, agora):
             "AND devolvido_dinheiro_em IS NULL "   # 🙋 16/11/26 (L1): o PIX não voltou, o bar pagou no balcão
             "AND datetime(estornado_em) >= datetime(?) GROUP BY business_id", (mes_ini,)).fetchall():
         _st(r['business_id'])['dev_mes_n'] = int(r['n'])
+
+    # 🙋 17/11/26: o garçom que a TV não chamou (vencido) e que ninguém marcou como devolvido no balcão, nos últimos 30
+    # dias. Na ponte o PIX está na conta do PubShow e fica fora do repasse (no split o bar já recebeu a parte dele na
+    # hora). O card do painel some em 12 h quando o cliente nunca leu o aviso no celular: sem esta linha no cartão do
+    # bar, ele não aparecia em tela nenhuma. Fora da linha (revisão de 17/11): o que já entrou num repasse e o que a Efí
+    # já devolveu, está devolvendo, travou ou espera OK (esses têm tela própria).
+    _gb_cob = (" AND NOT EXISTS (SELECT 1 FROM pubshow_pay_cobrancas c WHERE c.pedido_id = pubshow_pedidos.id "
+               f"AND ({_ps._SQL_COB_DEVOLVIDA} OR c.status='devolver_erro' OR COALESCE(c.dev_aprovacao,'')='pendente'))"
+               if tem_x else '')
+    for r in conn.execute(
+            f"SELECT business_id, COUNT(*) AS n, COALESCE(SUM(COALESCE(valor_cobrado, valor, 0)),0) AS v "
+            f"FROM pubshow_pedidos WHERE {_ps._SQL_GARCOM_BALCAO} AND status='recusado' "
+            f"AND TRIM(COALESCE(pago_em,''))<>'' AND devolvido_dinheiro_em IS NULL AND estornado_em IS NULL "
+            f"AND repasse_manual_id IS NULL AND datetime(pago_em) >= datetime(?){_gb_cob} GROUP BY business_id",
+            (_txt(agora - timedelta(days=30)),)).fetchall():
+        s = _st(r['business_id'])
+        s['gb_n'], s['gb_val'] = int(r['n']), _c(r['v'])
 
     # PIX a devolver: pago e recusado, sem devolução registrada (o "↩️ PIX a devolver" do /pubshow/admin)
     auto = set()
@@ -1224,6 +1241,9 @@ def montar(conn, agora, leitura=None):
                 'conf_txt': f"⏳ {conf_n} PIX {_plural(conf_n, 'antigo', 'antigos')} em conferência" if conf_n else '',
                 # 04/11/26, Diogo: "assim posso pagar corretamente"
                 'kara_txt': f"{brl(k['valor'])} · {_ps._karaoke_vezes(k['n'])}" if k else '',
+                # 🙋 17/11/26: a TV não mostrou (o 🙋 e, com a leva 2, a 😏: _SQL_GARCOM_BALCAO) e ninguém marcou a devolução
+                # no balcão (30 dias; fora do repasse)
+                'garcom_txt': f"{s['gb_n']} PIX · {brl(_r(s['gb_val']))}" if s['gb_n'] else '',
                 'gorj_txt': (f"bar {brl(dev['bar'])} + gorjeta {brl(dev['gorj'])}" if float(dev.get('gorj') or 0) > 0
                              else ''),
                 'ultima_baixa': (f"{(ate + _BRT).strftime('%d/%m')} · "

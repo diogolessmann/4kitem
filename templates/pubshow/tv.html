@@ -113,6 +113,12 @@
     background:rgba(0,0,0,.93);backdrop-filter:blur(12px);
   }
   #overlay.show{display:flex}
+  {# 📣 16/11/26 (leva 2, ERRATA 10): o CARTÃO (📣 😏 🙏 e os antigos; mostrarCena tira o palco-cena) nunca cobre a coluna
+     da fila: termina onde ela começa, como o clipe (#player-wrap). A cena no palco (⚡ 🍻 🎂) segue em tela cheia até a
+     leva dos tamanhos. Conta do recado de 60 letras: caixa ≤ 740px (width 90%), área do clipe 1020px em 1280×720 (coluna
+     260px) e 1574px em 1920×1080 (coluna 345,6px): a caixa centrada nunca chega na coluna. Recado 22px em 612px de miolo:
+     até 3 linhas (palavra comprida quebra, overflow-wrap); nome de 20 letras em 62px: até 2. Caixa mais alta ~604px < 720. #}
+  body.fila-on:not(.modo-fundo) #overlay:not(.palco-cena){right:var(--col-w)}
   .overlay-box{
     text-align:center;padding:52px 64px;
     border-radius:32px;border:2px solid var(--overlay-cor,#ec4899);
@@ -124,8 +130,9 @@
   .overlay-emoji{font-size:100px;margin-bottom:16px;display:block;animation:pulse 1.2s ease-in-out infinite alternate}
   @keyframes pulse{from{transform:scale(1)}to{transform:scale(1.12)}}
   .overlay-titulo{font-size:38px;font-weight:900;color:var(--overlay-cor,#ec4899);margin-bottom:8px;letter-spacing:-1px;text-transform:uppercase}
-  .overlay-nome{font-size:62px;font-weight:900;color:#fff;margin-bottom:14px;letter-spacing:-2px;line-height:1}
-  .overlay-msg{font-size:22px;color:rgba(255,255,255,.82);margin-bottom:20px;line-height:1.5;font-style:italic}
+  .overlay-nome{font-size:62px;font-weight:900;color:#fff;margin-bottom:14px;letter-spacing:-2px;line-height:1;overflow-wrap:break-word}
+  .overlay-nome small{font-size:.45em}
+  .overlay-msg{font-size:22px;color:rgba(255,255,255,.82);margin-bottom:20px;line-height:1.5;font-style:italic;overflow-wrap:break-word}
   .overlay-de{font-size:14px;color:rgba(255,255,255,.4);margin-bottom:20px}
   .overlay-bar{height:5px;border-radius:3px;background:var(--overlay-cor,#ec4899);margin-top:16px;animation:shrink linear forwards}
   @keyframes shrink{from{width:100%}to{width:0}}
@@ -575,8 +582,8 @@
   #pcb-por{color:#fde68a;font-size:2.8vh;letter-spacing:.8vh;margin-top:1.5vh}
   #pcb-nome{font-size:13vh;--n1:#fff;--n2:#fde68a;--n3:#f59e0b;--brilho:rgba(253,230,138,.5);margin-top:calc(.6vh - .06em)}
   #pcb-msg{margin-top:2vh}
-  /* 🎂 parabéns (parabens.html, 16 s): sem 3·2·1; o bolo aceso e "TODO MUNDO CANTA!" por ~7 s com a TV muda (o bar
-     canta; nenhuma letra do "Parabéns a Você", que tem dono), depois o pedido e as velas apagando */
+  {# 🎂 parabéns (parabens.html, 16 s): sem 3·2·1; em 0 s a musiquinha do Diogo (só o arquivo; sem ela, a intro), o bolo
+     aceso e "TODO MUNDO CANTA!" por ~7 s (nenhuma letra do "Parabéns a Você"), depois o pedido e as velas apagando #}
   #pcp-topo{color:#f9a8d4;text-shadow:0 0 18px rgba(236,72,153,.8)}
   #pcp-nome{font-size:21vh;--n1:#fff1f2;--n2:#f9a8d4;--n3:#db2777;--brilho:rgba(236,72,153,.7);--sombra:#500724;margin-top:calc(1vh - .06em)}
   .pcp-parabens{font:11vh/1.1 Anton,Impact,sans-serif;letter-spacing:1vh;color:#fde68a;margin-top:.5vh;white-space:nowrap}
@@ -963,7 +970,7 @@ const TIPO_CONFIG = {
   gorjeta:     {emoji:'🙏', titulo:'GORJETA PRA EQUIPE! 🙏', cor:'#22c55e', duracao:7000,  confetes:true},
   donate_bar:  {emoji:'🙏', titulo:'DONATE PARA O BAR! 🙏', cor:'#22c55e', duracao:7000,  confetes:true},   // 27/10/26: a gorjeta virou o donate (a linha acima fica pras antigas)
   cantada:     {emoji:'😏', titulo:'CANTADA! 😏',           cor:'#f472b6', duracao:9000,  confetes:false},
-  salve:       {emoji:'📣', titulo:'SALVE! 📣',             cor:'#0ea5e9', duracao:7000,  confetes:false},
+  salve:       {emoji:'📣', titulo:'SALVE PRO PESSOAL!',    cor:'#0ea5e9', duracao:9000,  confetes:false},
 };
 
 const TIPOS_MUSICA = {
@@ -1233,7 +1240,8 @@ function onPlayerStateChange(e) {
     if (_palcoAtivo) return;   // 24/10/26 (momentos no telão): o palco decide o que vem depois dele
     // TVP-1: recarga que esperou esta música acabar (o próximo pedido continua na fila do servidor). Com momento
     // pendente, a cena passa antes (o fim da cena recarrega)
-    if (window._recarregarPendente && !overlayAtivo && !_momentoPend) { location.reload(); return; }
+    {# 🙋 17/11/26: nem com a faixa do 🙋 na tela (ela sai em 15 s e o _garcomFim recarrega) #}
+    if (window._recarregarPendente && !overlayAtivo && !_momentoPend && !_garcomAtivo) { location.reload(); return; }
     clearTimeout(proximoTimer);
     clearTimeout(stallTimer);
     document.getElementById('proximo-card').classList.remove('show');
@@ -1730,7 +1738,7 @@ function _karaokeTv(data) {
     // um pedido (espera a música acabar, a regra do tv_version). Só com um status de verdade (tem tv_version) e
     // no máximo 1 vez por minuto (sessionStorage): sem laço de recarga
     if (data && data.tv_version !== undefined && !_kRecarregou) {
-      if (_pedidoTocandoAgora() || overlayAtivo) { window._recarregarPendente = true; return; }
+      if (_pedidoTocandoAgora() || overlayAtivo || _garcomAtivo) { window._recarregarPendente = true; return; }
       _kRecarregou = true;
       let ult = 0;
       try { ult = Number(sessionStorage.getItem('k_rl')) || 0; } catch (e) {}
@@ -1844,9 +1852,12 @@ function mostrarOverlay(pedido, depois) {
   document.getElementById('ov-emoji').textContent  = cfg.emoji;
   document.getElementById('ov-titulo').textContent = cfg.titulo;
   document.getElementById('ov-titulo').style.color = cfg.cor;
-  document.getElementById('ov-nome').textContent   = pedido.nome_cliente || '';
+  {# 📣 16/11/26 (leva 2): no salve, "de Zé" (nunca "do": não chuta gênero pelo nome); o "de" menor, tudo por textContent #}
+  const nm = document.getElementById('ov-nome'), sv = pedido.tipo === 'salve';
+  nm.textContent = pedido.nome_cliente || '';
+  if (sv && nm.textContent) nm.prepend(Object.assign(document.createElement('small'), {textContent: 'de '}));
   document.getElementById('ov-msg').textContent    = pedido.mensagem || '';
-  document.getElementById('ov-de').textContent     = pedido.nome_cliente
+  document.getElementById('ov-de').textContent     = pedido.nome_cliente && !sv
     ? `💌 pedido enviado pela mesa` : '';
 
   // Barra de progresso
@@ -1889,7 +1900,7 @@ function _intervalo(opts) {
   if (p && _somLigado() && !_consumidos.has(p.id)) {
     // revisão P3: na D3 o clipe ainda pode estar tocando (a pausa do YouTube chega depois): a cena espera ele parar
     _pausarEDepois(() => mostrarCena(p, () => {
-      if (window._recarregarPendente) { location.reload(); return; }   // TVP-1: a recarga esperava esta cena
+      if (window._recarregarPendente && !_garcomAtivo) { location.reload(); return; }   // TVP-1: a recarga esperava esta cena
       avancarFila({semSlide: true});
     }));
     return;
@@ -1900,7 +1911,8 @@ function _intervalo(opts) {
 // O /api/status manda o momento mais antigo pendente (o brinde respeita a trava do servidor). Guarda, sem marcar exibido.
 function _momentoAtualizar(p) {
   if (p && _somLigado() && !_consumidos.has(p.id)) {
-    if (!_momentoPend || _momentoPend.id !== p.id) _momentoDesde = Date.now();
+    {# 🎂 16/11/26 (leva 2): a musiquinha só baixa quando chega um 🎂, 1 vez por pedido (nunca repete a cada status) #}
+    if (!_momentoPend || _momentoPend.id !== p.id) { _momentoDesde = Date.now(); if (p.tipo === 'parabens') _somBaixar('parabens_musica'); }
     _momentoPend = p;
     _somBaixar((SOM_DA_CENA[p.tipo] || [])[0]);
   } else {
@@ -1931,7 +1943,7 @@ function _esperaMaxMomento() {
 
 // Coluna (D4/D7): "Depois desta" no topo (também com a fila vazia) e o pino do aniversariante. Texto por textContent.
 const DEPOIS_DESTA = {
-  parabens:    n => n ? `🎂 Depois desta: parabéns pra ${n}` : '🎂 Depois desta: um parabéns',
+  parabens:    () => '🎂 Depois desta: parabéns surpresa! 🤫',   {# 🎂 16/11/26 (leva 2, V1): o nome só na cena; depois, o pino #}
   brinde:      n => n ? `🍻 Depois desta: brinde de ${n}. Prepara o copo.` : '🍻 Depois desta: brinde. Prepara o copo.',
   dedicatoria: n => n ? `💌 Depois desta: dedicatória de ${n}` : '💌 Depois desta: uma dedicatória',
   chegada:     n => n ? `🎉 Depois desta: chegada de ${n}` : '🎉 Depois desta: uma chegada',
@@ -1943,27 +1955,27 @@ const DEPOIS_DESTA = {
 };
 {# ── 🔥 15/11/26 (Diogo): ESQUENTA ─────────────────────────────────────────────────────────────────────────────────
 Faixa de 7 s (Diogo, 15/11: "7 segundos tá bom e o depois também") por cima do clipe (a do 🙋 é o modelo), sem som e sem mexer no volume. Só parabens, dedicatoria, brinde e
-salve (ESQ: [2 suspenses, aí vem, homenagem(nome), convite]).
+salve (ESQ: [2 suspenses, aí vem, homenagem(nome)]). 16/11/26 (leva 2): o convite dos 45 s saiu de todos (anúncio por cima
+do clipe de outro cliente); o 📣 virou "Salve pro pessoal".
 - ANTES: momento desses esperando (_momentoPend, o mesmo do "Depois desta") e o clipe tocando há 8 s: suspense SEM nome,
   1 vez por pedido, as 2 frases alternadas por contador. Só se faltar mais de 15 s (não come a hora do AÍ VEM).
 - AÍ VEM: faltando ≤ 9 s pro clipe acabar (a conta do _filaTick: getDuration − getCurrentTime; sem duração válida, nada),
   1 vez por pedido.
 - DEPOIS: a cena acabou (mostrarCena → _esqDepois(p)); conta os segundos de clipe TOCANDO: aos 15 a homenagem (1º nome,
-  até 12 letras), aos 45 o convite. No máx. 4 pares por hora (guardados ao registrar).
+  até 12 letras), e o par acaba. No máx. 4 pares por hora (guardados ao registrar).
 Nunca com 🙋 na tela, palco/cartão, pausa, TV muda ou modo fundo, nunca 2 faixas: a hora que cai num desses casos é
 PULADA (o id fica marcado; não entra em fila). Só o ANTES espera a própria faixa sair. Se um desses casos começa com a
 faixa na tela, ela sai no tick seguinte (≤ 1 s); o 🙋 a tira na hora pelo CSS. Bancada: _esqMostrar(texto, cor),
-_esqAntes(p), _esqAiVem(p), _esqDepois(p) (registra o par) e _esqDepois(p, 0|1) (homenagem|convite já). #}
+_esqAntes(p), _esqAiVem(p), _esqDepois(p) (registra o par) e _esqDepois(p, 0) (a homenagem já). #}
 const ESQ_MS = 7000, ESQ = {
   parabens: ['🎂 Fiquei sabendo que tem alguém de aniversário hoje…', '🎂 Tem aniversariante no bar… já já vocês sabem quem!',
-    '🎂 AÍ VEM O PARABÉNS!', n => n ? `🥳 Parabéns, ${n}! Que venham muitos!` : '🥳 Parabéns pro aniversariante!',
-    '🎂 Tem aniversário na tua mesa? Pede pelo QR 📱'],
+    '🎂 AÍ VEM O PARABÉNS!', n => n ? `🥳 Parabéns, ${n}! Que venham muitos!` : '🥳 Parabéns pro aniversariante!'],
   dedicatoria: ['💌 Alguém aqui mandou um recado especial…', '💌 Tem dedicatória chegando…', '💌 AÍ VEM A DEDICATÓRIA!',
-    () => '💌 Teve dedicatória no telão. Quem é o próximo?', '💌 Quer dedicar pra alguém? É pelo QR 📱'],
+    () => '💌 Teve dedicatória no telão. Quem é o próximo?'],
   brinde: ['🍻 Tem brinde chegando… avisa a mesa!', '🍻 Já já tem brinde no telão!', '🍻 AÍ VEM O BRINDE!',
-    n => n ? `🍻 Saúde! Brinde puxado por ${n}` : '🍻 Saúde, galera!', '🍻 Puxa o próximo brinde pelo QR 📱'],
-  salve: ['📣 Tem recado chegando pra uma mesa…', '📣 Já já tem salve no telão!', '📣 AÍ VEM O SALVE!',
-    () => '📣 Salve dado no telão!', '📣 Manda um salve também pelo QR 📱'],
+    n => n ? `🍻 Saúde! Brinde puxado por ${n}` : '🍻 Saúde, galera!'],
+  salve: ['📣 Tem salve chegando pro bar todo…', '📣 Já já tem salve no telão!', '📣 AÍ VEM O SALVE!',
+    n => n ? `📣 Valeu pelo salve, ${n}!` : '📣 Valeu pelo salve!'],
 };
 let _esqT = 0, _esqDep = null, _esqHora = [];
 const _esqJa = new Set(), _esqEl = document.getElementById('esq');
@@ -1979,7 +1991,7 @@ function _esqMostrar(texto, cor) {
   _esqT = setTimeout(_esqSai, ESQ_MS);
   return true;
 }
-{# i: 0 = suspense (o contador do tipo, e.n, alterna a frase 0 e a 1), 2 = aí vem, 3 = homenagem (1º nome, até 12 letras), 4 = convite #}
+{# i: 0 = suspense (o contador do tipo, e.n, alterna a frase 0 e a 1), 2 = aí vem, 3 = homenagem (1º nome, até 12 letras) #}
 function _esqVai(p, i) {
   const e = ESQ[p.tipo];
   if (!e) return false;
@@ -1989,9 +2001,9 @@ function _esqVai(p, i) {
 }
 function _esqAntes(p) { _esqJa.add('a' + p.id); return _esqVai(p, 0); }
 function _esqAiVem(p) { _esqJa.add('v' + p.id); return _esqVai(p, 2); }
-{# sem k: a cena acabou, registra o par (máx. 4 por hora); k = 0|1: mostra a homenagem|o convite já #}
+{# sem k: a cena acabou, registra o par (máx. 4 por hora); k = 0: mostra a homenagem já #}
 function _esqDepois(p, k) {
-  if (k >= 0) return _esqVai(p, 3 + k);
+  if (k >= 0) return _esqVai(p, 3);
   const agora = Date.now();
   _esqHora = _esqHora.filter(t => agora - t < 36e5);
   if (!ESQ[p.tipo] || _esqHora.length > 3) return false;
@@ -2009,8 +2021,7 @@ setInterval(() => {
     if (rest <= 9) { if (!_esqJa.has('v' + p.id)) _esqAiVem(p); }
     else if (t >= 8 && !_esqT && !_esqJa.has('a' + p.id) && rest > 15) _esqAntes(p);
   }
-  if (q && ++q.s == 15) _esqDepois(q.p, 0);
-  if (q && q.s == 45) { _esqDep = null; _esqDepois(q.p, 1); }
+  if (q && ++q.s == 15) { _esqDep = null; _esqDepois(q.p, 0); }
 }, 1000);
 let _avisosAssin = '';
 function _avisosAtualizar() {
@@ -2374,11 +2385,12 @@ function mostrarCena(p, depois) {
   _somDaCena(p.tipo, (TIPO_CONFIG[p.tipo] || TIPO_CONFIG['brinde']).duracao);
 }
 
-// 🎂 parabéns (16 s, parabens.html; SEM 3·2·1): fanfarra (nossa, ≤ 1,5 s) em 0 s → "🎂 hoje é dia de" → 0,8 s o NOME (o
-// aniversariante = nome_cliente) com flash e confete → 1,5 s PARABÉNS! em onda → 2,1 s o recado → 4,4 s sai → o bolo de
-// 2 andares com 3 velas + "🎤 TODO MUNDO CANTA!" pulsando ~7 s (a TV MUDA: o bar canta; nunca a letra nem a melodia do
-// "Parabéns a Você") → 12,4 s "faz um pedido…" → 13,6 s as velas apagam com fumaça → 13,9 s "PARABÉNS, <1º NOME>!" +
-// confete dos 2 cantos → escurece 15,3 s → fecha 16,0 s. "Dia de" sempre (não chuta gênero pelo nome).
+{# 🎂 parabéns (16 s, parabens.html; SEM 3·2·1): em 0 s a musiquinha do Diogo (parabens_musica.mp3, 13,85 s, decisão
+dele em 16/11/26: o bar canta junto; a TV só toca o arquivo, nunca a letra do "Parabéns a Você"); sem ela, a intro dos
+pagos (ou a fanfarra nossa, ≤ 1,5 s) → "🎂 hoje é dia de" → 0,8 s o NOME (o aniversariante = nome_cliente) com flash e
+confete → 1,5 s PARABÉNS! em onda → 2,1 s o recado → 4,4 s sai → o bolo de 2 andares com 3 velas + "🎤 TODO MUNDO
+CANTA!" pulsando ~7 s → 12,4 s "faz um pedido…" → 13,6 s as velas apagam com fumaça → 13,9 s o parabens_fim e
+"PARABÉNS, <1º NOME>!" + confete dos 2 cantos → escurece 15,3 s → fecha 16,0 s. "Dia de" sempre (não chuta gênero). #}
 function _cenaParabens(p, fim) {
   const $ = id => document.getElementById(id);
   const nome = _pcNome($('pcp-nome'), p.nome_cliente);
@@ -2392,7 +2404,8 @@ function _cenaParabens(p, fim) {
   });
   _pcAjusta();
   _pcClasse(0, $('palco'), 'pc-zoom7');
-  if (!_somArquivo('intro')) _somCena('fanfarra');   // 09/11/26: a intro dos pagos abre a cena
+  {# 🎂 16/11/26 (leva 2): a musiquinha só se já baixou (nada de esperar: 404, erro ou atraso = o som de hoje) #}
+  if (!(_sonsBuf.parabens_musica && _somArquivo('parabens_musica', 0, 16000)) && !_somArquivo('intro')) _somCena('fanfarra');
   const mod = _modeloAplicar('parabens');
   const cores = mod.bc || ['#f472b6', '#facc15', '#38bdf8', '#a78bfa', '#4ade80', '#fb7185'];
   // balões subindo o tempo todo
@@ -2696,6 +2709,11 @@ function _garcomFim(ini) {
   _garcomAtivo = false;
   const f = _garcomDepois;
   _garcomDepois = null;
+  {# 🙋 17/11/26: a recarga que esperou a faixa sai agora, se nada espera (cena, vinheta, momento) nem pedido pago
+     toca; senão fica pro fim da música ou da cena, como sempre #}
+  if (!f && window._recarregarPendente && !overlayAtivo && !_palcoAtivo && !_momentoPend && !_pedidoTocandoAgora()) {
+    location.reload(); return;
+  }
   if (f) f();
 }
 {# a vinheta do ⚡ espera a faixa sair: o palco fica "ocupado" (nada abre nem carrega) e ela entra no _garcomFim; com o
@@ -2752,7 +2770,8 @@ function _somGarcom(par) {   // dur 0 = sem som (TV muda, pausa, volume 0, naveg
 // _somCena: só com o palco aberto e o clipe parado, no volume do painel, e param junto com o palco (_pararSom). O
 // arquivo é baixado e decodificado uma vez, num contexto offline (nada de áudio antes do toque na TV). Sem o arquivo
 // pronto (1ª vez, rede ruim, navegador antigo), quem chamou usa o som sintetizado de antes.
-const SONS_URL = {intro: '/static/pubshow/sons/intro_pedidos.mp3?v=1', cantada: '/static/pubshow/sons/cantada.mp3?v=1'};
+const SONS_URL = {intro: '/static/pubshow/sons/intro_pedidos.mp3?v=1', cantada: '/static/pubshow/sons/cantada.mp3?v=1',
+  parabens_musica: '/static/pubshow/sons/parabens_musica.mp3?v=1'};
 for (let n = 1; n <= TORCIDAS; n++) SONS_URL['torcida' + n] = '/static/pubshow/sons/torcida_' + n + '.mp3?v=1';   // 10/11/26
 // 11/11/26: faixa de banco por cena [arquivo, ms]
 const SOM_DA_CENA = {
@@ -2987,7 +3006,7 @@ async function pollStatus() {
     if (data.tv_version !== undefined) {
       if (window._tvVersion === undefined) {
         window._tvVersion = data.tv_version;           // 1ª leitura: sincroniza
-      } else if (data.tv_version !== window._tvVersion && (_pedidoTocandoAgora() || overlayAtivo)) {
+      } else if (data.tv_version !== window._tvVersion && (_pedidoTocandoAgora() || overlayAtivo || _garcomAtivo)) {
         // pedido tocando ou momento na tela (TVP-1): recarrega no fim DESTA música (onPlayerStateChange), antes
         // do próximo pedido — senão, com a fila cheia, a TV ficava a noite com o QR velho depois do "Novo QR"
         window._recarregarPendente = true;

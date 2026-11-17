@@ -524,6 +524,10 @@
       <div style="flex:1;min-width:0">
         <div style="font-size:14px;font-weight:700">{{ p.nome_cliente }} <span style="font-size:12px;color:var(--text2);font-weight:600">· {{ t.get('nome', p.tipo) }} · R$ {{ '%.2f'|format(p.valor or 0)|replace('.',',') }}{% if asaas_ativo %} pro bar{% endif %}{% if efi and efi_ok_info and efi_ok_info.get(p.id) %} (o cliente pagou {{ brl_cent(efi_ok_info[p.id].valor_cent) }}){% endif %}</span></div>
         {% if p.mensagem %}<div style="font-size:15px;color:#fde68a;margin-top:2px;word-break:break-word">“{{ p.mensagem }}”</div>{% endif %}
+        {%- if p.ok_resta_s is number %}
+        {#- 😏 16/11/26 (L2): a cantada paga espera o OK até 10 min contados do PIX; depois o bar devolve no balcão #}
+        <div class="ok-prazo" data-resta="{{ p.ok_resta_s }}" style="font-size:13px;color:#fbbf24;font-weight:700;margin-top:4px">⏱️ {% if p.ok_resta_s < 60 %}falta menos de 1 min{% else %}falta {{ ((p.ok_resta_s + 59) // 60)|int }} min{% endif %} · sem teu OK, o bar devolve no balcão</div>
+        {%- endif %}
       </div>
       <div class="ok-botoes" style="display:flex;gap:6px;flex-shrink:0">
         <form method="POST" action="/pubshow/painel/pedido/{{ p.id }}/aprovar" style="margin:0">
@@ -535,7 +539,8 @@
           <button type="submit" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#f87171;padding:10px 12px;min-height:46px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">🚫 Não mostrar</button>
         {%- else %}
         {#- Lote D, críticos (17/10/26, CD1): a palavra também no Asaas (só "🚫" o leigo não sabe o que faz) #}
-        <form method="POST" action="/pubshow/painel/pedido/{{ p.id }}/recusar" style="margin:0" onsubmit="return confirm('Não mostrar na TV? O cliente vai ver que o bar não liberou.')">
+        {#- 😏 17/11/26 (M2): a cantada com o prazo dos 10 min recusada vai pro balcão, igual à vencida #}
+        <form method="POST" action="/pubshow/painel/pedido/{{ p.id }}/recusar" style="margin:0" onsubmit="return confirm('Não mostrar na TV? O cliente vai ver que o bar não liberou.{% if p.ok_resta_s is number %} Tu devolves os {{ ('R$ %.2f'|format(p.valor_cobrado or p.valor or 0))|replace('.',',')|replace(',00','') }} em dinheiro no balcão e apertas ✅ em 💵 Devolver em dinheiro.{% endif %}')">
           <button type="submit" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#f87171;padding:10px 12px;min-height:46px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">🚫 Não mostrar</button>
         {%- endif %}
         </form>
@@ -549,15 +554,17 @@
       no balcão, o bar devolve em dinheiro e o dono aperta ✅ (no repasse esse PIX é todo do bar). O polling recarrega #}
   {% if garcom_devolver %}
   <div class="card" id="sec-garcom-dev" style="border-color:rgba(245,158,11,.5);background:linear-gradient(135deg,#13131f,#1a1200)">
-    <div class="card-title" style="color:#fbbf24">🙋 A TV não chamou ({{ garcom_devolver|length }})</div>
+    {#- 😏 16/11/26 (L2): o mesmo card pro 🙋 que a TV não chamou e pra 😏 que ninguém liberou em 10 min #}
+    <div class="card-title" style="color:#fbbf24">💵 Devolver em dinheiro ({{ garcom_devolver|length }})</div>
     <p style="font-size:14px;color:var(--text2);margin-bottom:12px">O cliente vai pedir no balcão. Devolve em dinheiro e aperta ✅.{% if not efi %} No repasse da semana, esse PIX é todo teu.{% endif %}</p>
     {% for g in garcom_devolver %}
     {#- o ✅ só aparece depois de o celular de quem pagou ler "fala no balcão" (garcom_aviso_em): é a prova da devolução #}
     <div class="gdv-row"{% if g.visto %} data-visto="1"{% endif %} style="display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(245,158,11,.25)">
-      <span style="font-size:22px">🙋</span>
-      <div style="flex:1;min-width:0;font-size:15px;font-weight:700">Mesa {{ g.mesa }} <span style="font-size:13px;color:var(--text2);font-weight:600">· {{ g.hora }} · devolve {{ g.valor_txt }}</span></div>
+      {%- set _gc = g.tipo == 'cantada' %}
+      <span style="font-size:22px">{{ '😏' if _gc else '🙋' }}</span>
+      <div style="flex:1;min-width:0;font-size:15px;font-weight:700">{% if _gc %}Cantada de {{ g.mesa }}{% else %}Mesa {{ g.mesa }}{% endif %} <span style="font-size:13px;color:var(--text2);font-weight:600">· {{ g.hora }} · devolve {{ g.valor_txt }} · {{ ('ninguém liberou em ' ~ (cantada_ok_min|default(10)) ~ ' min') if _gc else 'a TV não chamou' }}</span></div>
       {% if g.visto %}
-      <form method="POST" action="/pubshow/painel/garcom/{{ g.id }}/devolvi" style="margin:0" onsubmit="return confirm('Tu devolveu {{ g.valor_txt }} em dinheiro pra mesa {{ g.mesa }}?')">
+      <form method="POST" action="/pubshow/painel/garcom/{{ g.id }}/devolvi" style="margin:0" onsubmit="return confirm('Tu devolveu {{ g.valor_txt }} em dinheiro {% if _gc %}pra quem mandou a cantada{% else %}pra mesa {{ g.mesa }}{% endif %}?')">
         <button type="submit" style="background:linear-gradient(135deg,rgba(34,197,94,.25),rgba(34,197,94,.12));border:1px solid rgba(34,197,94,.5);color:#4ade80;padding:10px 14px;min-height:46px;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">✅ Devolvi em dinheiro</button>
       </form>
       {% else %}
@@ -814,10 +821,10 @@
 {#- 27/10/26 (D4/D11): "R$ 4,80 pro bar · 20% do app" quebra no "·" quando não cabe (linha do momento), nunca no
     meio do valor #}
 {% macro div_linha(txt) %}{% for x in (txt or '').split(' · ') %}{% if not loop.first %} · {% endif %}<span class="nw">{{ x }}</span>{% endfor %}{% endmacro %}
-  {#- 15/11/26: 🙋 Ei, garçom! no lugar do namoro (só nos bares da Efí; preço fixo R$ 2) #}
+  {#- 15/11/26: 🙋 Ei, garçom! no lugar do namoro (só nos bares da Efí; preço fixo R$ 1,40 desde 17/11) #}
   {% set PRINCIPAIS = ['flash', 'pular_espera', 'garcom', 'parabens', 'cantada', 'brinde', 'donate_bar', 'dedicatoria', 'chegada', 'salve'] %}
   {% set NOMES_CURTOS = {'flash': 'Furar a fila', 'pular_espera': 'Pular a espera', 'parabens': 'Parabéns', 'dedicatoria': 'Dedicatória', 'brinde': 'Brinde',
-                         'chegada': 'Chegamos', 'cantada': 'Cantada', 'salve': 'Salve pra mesa', 'garcom': 'Ei, garçom!',
+                         'chegada': 'Chegamos', 'cantada': 'Cantada', 'salve': 'Salve pro pessoal', 'garcom': 'Ei, garçom!',
                          'donate_bar': 'Donate para o bar'} %}
   {% set _princ = [] %}{% set _resto = [] %}
   {% for key in tipos_config if key not in tipos_gratis %}{% if key in PRINCIPAIS %}{% set _ = _princ.append(key) %}{% else %}{% set _ = _resto.append(key) %}{% endif %}{% endfor %}
@@ -1098,7 +1105,7 @@
             {% if p.pago_em and p.status != 'recusado' %}
             <td style="padding:8px 0;text-align:right;color:var(--green);font-weight:700">R$ {{ '%.2f'|format(p.valor or 0)|replace('.',',') }}{% if p.karaoke_pulado == 2 and not p.karaoke %} <span style="font-size:10px">não abriu na TV: devolve pro cliente</span>{% endif %}</td>
             {% else %}
-            <td style="padding:8px 0;text-align:right;color:var(--text2);font-weight:600">{% if not (p.valor or 0) %}grátis{% else %}{%- set _g2 = p.tipo == 'garcom' and p.status == 'recusado' and p.karaoke_pulado == 2 %}<s>R$ {{ '%.2f'|format((p.valor_cobrado or p.valor or 0) if _g2 else (p.valor or 0))|replace('.',',') }}</s> <span style="font-size:10px">{% if p.status == 'recusado' %}{% if _g2 %}{% if p.devolvido_dinheiro_em %}a TV não chamou: devolvido em dinheiro{% else %}a TV não chamou: devolve em dinheiro{% endif %}{% elif p.karaoke_pulado == 2 and not p.karaoke %}não abriu na TV: o PIX volta pro cliente{% else %}recusado{% endif %}{% else %}não pagou{% endif %}</span>{% endif %}</td>
+            <td style="padding:8px 0;text-align:right;color:var(--text2);font-weight:600">{% if not (p.valor or 0) %}grátis{% else %}{%- set _g2 = p.tipo in ('garcom', 'cantada') and p.status == 'recusado' and p.karaoke_pulado == 2 %}<s>R$ {{ '%.2f'|format((p.valor_cobrado or p.valor or 0) if _g2 else (p.valor or 0))|replace('.',',') }}</s> <span style="font-size:10px">{% if p.status == 'recusado' %}{% if _g2 %}{{ ('sem OK em ' ~ (cantada_ok_min|default(10)) ~ ' min') if p.tipo == 'cantada' else 'a TV não chamou' }}: {% if p.devolvido_dinheiro_em %}devolvido em dinheiro{% else %}devolve em dinheiro{% endif %}{% elif p.karaoke_pulado == 2 and not p.karaoke %}não abriu na TV: o PIX volta pro cliente{% else %}recusado{% endif %}{% else %}não pagou{% endif %}</span>{% endif %}</td>
             {% endif %}
           </tr>
           {% endfor %}
@@ -2231,6 +2238,15 @@ function renderTotalHoje(total, n) {
   if (m && typeof n === 'number') m.textContent = n + (n === 1 ? ' momento pago' : ' momentos pagos') + ' · caixa da casa';
 }
 
+{#- 😏 16/11/26 (L2): o "⏱️ falta X min" da cantada anda sozinho (quando ela vence, o fila-json conta e a página recarrega) #}
+(function () {
+  const t0 = Date.now();
+  setInterval(() => document.querySelectorAll('.ok-prazo[data-resta]').forEach(el => {
+    const s = +el.dataset.resta - (Date.now() - t0) / 1000;
+    el.textContent = '⏱️ ' + (s < 60 ? 'falta menos de 1 min' : 'falta ' + Math.ceil(s / 60) + ' min')
+                     + ' · sem teu OK, o bar devolve no balcão';
+  }), 15000);
+})();
 function pollFila() {
   fetch('/pubshow/painel/fila-json')
     .then(r => r.json())
