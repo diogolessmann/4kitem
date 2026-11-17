@@ -424,7 +424,20 @@
     line-height:1.1!important;color:#4ade80!important}
   /* ⚽ Esporte junto (modo fundo): o cartão da fila ocupa o topo à direita; o QR desce pro canto de baixo à esquerda,
      sobre o esporte do fundo (que não é o vídeo do clipe) */
-  body.karaoke.k-palco.modo-fundo #qr-fixo{top:auto!important;bottom:18px;left:2vw;right:auto}{% endif %}
+  body.karaoke.k-palco.modo-fundo #qr-fixo{top:auto!important;bottom:18px;left:2vw;right:auto}
+  {# 🎤 17/11/26: o aviso do próximo cantor (garcom/trocas_kara_aviso.py) #}
+  #kav{--r:0px;--u:min(1vh,(100vw - var(--r))/140);position:fixed;left:0;right:var(--r);bottom:4vh;z-index:94;height:calc(var(--u)*22);
+    overflow:hidden;pointer-events:none;opacity:0;transform:translateY(30vh);transition:opacity .3s,transform .4s;display:flex;
+    flex-direction:column;justify-content:center;padding:0 3vh;background:linear-gradient(135deg,#db2777,#7c3aed);color:#fff;text-align:center}
+  body.fila-on:not(.modo-fundo) #kav{--r:var(--col-w)}
+  #kav.topo{top:0;bottom:auto;height:11vh;--u:min(.7vh,(100vw - var(--r))/200);transform:translateY(-12vh)}
+  #kav.topo div:last-child{display:none}
+  body.com-promo #kav.topo{top:118px}
+  #kav.on{opacity:1;transform:none}
+  #esq.on~#kav{display:none}
+  #kav div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font:800 calc(var(--u)*3.2)/1.2 Inter,Arial,sans-serif}
+  #kav .k1{font-size:calc(var(--u)*3.4);letter-spacing:.1em;color:#fde68a}
+  #kav .k2{font:calc(var(--u)*min(8.6,250/var(--n,20)))/1.15 Anton,Impact,sans-serif}{% endif %}
 
   /* ── 🎬 MOMENTOS NO TELÃO (24/10/26, momentos no telão): o palco é o INTERVALO ──────────────────────────────────────
      Regra do YouTube do Diogo: nada na frente do clipe tocando e nenhum som nosso por cima dele. O momento pago espera
@@ -714,7 +727,8 @@
 <div id="garcom" aria-hidden="true"><div class="gc-box"><div class="gc-mao">🙋</div><div><div class="gc-tit">EI, GARÇOM!</div><div class="gc-mesa">MESA</div></div><div class="gc-num" id="gc-mesa"></div></div></div>
 
 {# 🔥 15/11/26: o Esquenta (logo depois do #garcom: o #garcom.on+#esq depende disso; texto por textContent) #}
-<div id="esq" aria-hidden="true"><div></div></div>
+<div id="esq" aria-hidden="true"><div></div></div>{% if karaoke %}
+<div id="kav" aria-hidden="true"><div class="k1">🎤 O PRÓXIMO VAI CANTAR! ESTÃO PREPARADOS?!</div><div class="k2"></div><div></div></div>{% endif %}
 
 <!-- Overlay especial -->
 <div id="overlay">
@@ -1791,7 +1805,55 @@ function _karaokeCorte() {
   const pc = document.getElementById('proximo-card'); if (pc) pc.classList.remove('show');
   try { player.pauseVideo(); } catch (e) {}
   _intervalo({semSlide: true});
-}{% endif %}
+}
+{# 🎤 17/11/26: o aviso do próximo cantor (o porquê em garcom/trocas_kara_aviso.py). Bancada: _kavMostra(p) #}
+{# a marca é cantor:música de antes (o ⚡ que passa na frente dá outra vez); saiu antes da hora (c) = desmarca #}
+var _kavT = 0, _kavId = 0, _kavK = '', _kavS = null;
+const _kavJa = new Set(), _kavEl = document.getElementById('kav');
+try { JSON.parse(sessionStorage.getItem('ps_kav')).forEach(i => _kavJa.add(i)); } catch (e) {}
+function _kavGrava() { try { sessionStorage.setItem('ps_kav', JSON.stringify([..._kavJa].slice(-30))); } catch (x) {} }
+function _kavVolta() {
+  if (!_kavS) return;
+  try { _kavS.stop(); } catch (e) {}
+  _kavS = null;
+  try { if (volumeAtualTV() > 0) player.setVolume(volumeAtualTV()); } catch (e) {}
+}
+function _kavSai(c) {
+  if (c && _kavT) { _kavJa.delete(_kavK); _kavGrava(); }
+  clearTimeout(_kavT); _kavT = 0; _kavEl.classList.remove('on'); _kavVolta();
+}
+function _kavMostra(p) {
+  const n = String(p.n || '').trim(), t = _kTit(p.titulo_pedido), g = n ? `Está preparado, ${n}?` : 'Está preparado?',
+        v = volumeAtualTV(), b = _sonsBuf.chegada, e = _kavEl, k = e.children;
+  _kavJa.add(_kavK = (_kavId = p.id) + ':' + _pedidoId);
+  _kavGrava();
+  e.className = _kPalcoId ? 'topo' : '';
+  k[1].textContent = g;
+  k[2].textContent = t ? '🎵 ' + t : '';
+  e.style.setProperty('--n', Math.max(20, g.length));
+  void e.offsetWidth;
+  e.classList.add('on');
+  _kavT = setTimeout(_kavSai, 10000);
+  if (_kPalcoId || !b || !(v > 0)) return;
+  try {
+    if (!_ac) _ac = new (window.AudioContext || window.webkitAudioContext)();
+    if (_ac.state === 'suspended') _ac.resume().catch(() => {});
+    const s = _kavS = _ac.createBufferSource(), a = _ac.createGain();
+    a.gain.value = .009 * v;
+    s.buffer = b; s.connect(a); a.connect(_ac.destination); s.onended = () => s === _kavS && _kavVolta(); s.start(); _somNos.push(s);
+    player.setVolume(Math.max(1, Math.round(v * .2)));
+  } catch (x) {}
+}
+setInterval(() => {
+  const p = pedidoMusica;
+  if (_kavT && _consumidos.has(_kavId)) _kavSai();
+  if (_kavT && (!_esqLivre() || _esqT || !p || p.id !== _kavId)) _kavSai(1);
+  if (_kavT || !p || !p.k || !_tocandoPedido || _consumidos.has(p.id) || _kavJa.has(p.id + ':' + _pedidoId)) return;
+  if (!_isMuted) _somBaixar('chegada');
+  let d, r;
+  try { if (player.getPlayerState() !== 1) return; d = player.getDuration(); r = d - player.getCurrentTime(); } catch (x) { return; }
+  if (d > 0 && d <= 3600 && r <= Math.min(120, d / 2) && r >= 15 && _esqLivre() && !_esqT && !_garcomPend) _kavMostra(p);
+}, 1000);{% endif %}
 
 // ── Now Playing ───────────────────────────────────────────────────────────────
 // Escapa texto do cliente antes de ir pro innerHTML (15/10/26: o título do pedido era HTML cru na TV)
@@ -2677,7 +2739,8 @@ function _garcomTentar() {
   _garcomPar = null;
   _garcomDesde = 0;
   _garcomPend = null;
-  _garcomAtivo = true;
+  _garcomAtivo = true;{% if karaoke %}
+  _kavSai(1);{% endif %}
   setTimeout(_garcomFim, GARCOM_MS, _garcomIni = Date.now());
   try { localStorage.setItem('ps_garcom_vez', String((par[2] + 1) % (GARCOM_NS * GARCOM_NV))); } catch(e) {}
   _marcarExibido(p.id);
