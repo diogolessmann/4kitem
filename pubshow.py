@@ -2110,6 +2110,7 @@ def _validar_video_pedido(b, youtube_id, info=None, karaoke=False):
     conn.close()
     if curado:
         info['titulo'] = _sem_invisiveis(curado['titulo']).strip()[:80]
+        info['karaoke_video'] = _karaoke_video(curado['titulo'], curado['artista'], youtube_id)   # 🎤 18/11/26: o POST decide
         return MSG_NAO_TOCA if _nao_toca(_nt, curado['titulo'], curado['artista']) else ''
     if _preso:
         return MSG_VIDEO_FALHOU
@@ -2122,6 +2123,11 @@ def _validar_video_pedido(b, youtube_id, info=None, karaoke=False):
         return 'Esse clipe não toca na TV (o dono do vídeo bloqueou). Escolhe outro. 🙏'
     if st == 404:
         return 'Esse clipe não existe mais. Escolhe outro.'   # 26/10/26: sem a palavra YouTube no celular
+    # 🎤 18/11/26: karaokê só pelo cartão 🎤. O título INTEIRO e o canal do oEmbed (o info['titulo'] corta em 80); sem o
+    # oEmbed, o que a busca leu (e os ids de karaokê conhecidos). Quem decide é o POST (o cartão 🎤 passa, o resto não)
+    _kt, _kc = ((str(_oj.get('title') or ''), str(_oj.get('author_name') or ''))
+                if st == 200 and isinstance(_oj, dict) else _titulo_canal_da_busca(youtube_id))
+    info['karaoke_video'] = _karaoke_video(_kt, _kc, youtube_id)
     if _nt:
         _tit, _can = ((str(_oj.get('title') or ''), str(_oj.get('author_name') or ''))
                       if st == 200 and isinstance(_oj, dict) else _titulo_canal_da_busca(youtube_id))
@@ -3246,8 +3252,10 @@ def _videos_do_canal(canal_key, limit=500, bloqueados=None, temas=None, legado=F
     # 18/10/26 (trava eleitoral): jingle que entrou no acervo por pedido antigo não toca na rotação; na janela, filtro
     # estrito; no domingo, nada que entrou por pedido de cliente (C3 do verificador: o título engana)
     _jan, _vot = _janela_eleitoral(), _dia_da_votacao()
+    _kv = _karaoke_ids()   # 🎤 18/11/26: playback sem cantor não roda (o karaokê de antes da trava)
     videos = [v for v in videos if _yid_ok(v.get('youtube_id')) and not _tem_politica(v.get('titulo'), _jan)
-              and not (_vot and v.get('subcategoria') == 'pedido_publico')]
+              and not (_vot and v.get('subcategoria') == 'pedido_publico')
+              and not _karaoke_video(v.get('titulo'), v.get('artista'), v.get('youtube_id'), _kv)]
     if bloqueados:
         _ban = set(bloqueados)
         videos = [v for v in videos if v.get('youtube_id') not in _ban]
@@ -4295,6 +4303,10 @@ def jukebox(token, pix_id=None):
                 erro = 'Selecione uma música antes de confirmar.'
             elif tipo == 'cantada' and not mensagem:
                 erro = 'Escreve a cantada antes de mandar. 😏'
+            elif youtube_id and not _kara and _karaoke_video(titulo_pedido, '', youtube_id):
+                # 🎤 18/11/26: o que se sabe sem rede (o card que o celular mostrou e os ids de karaokê conhecidos), antes da
+                # espera da grátis (que oferecia ⚡ com o karaokê) e do estilo (que perguntava ao Gemini à toa)
+                erro, erro_tipo = _msg_karaoke_so_cartao(b), 'karaoke_so_cartao'
             elif tipo in TIPOS_MUSICA_FILA and youtube_id and _musica_longa(b, youtube_id, tipo):
                 # 17/10/26: máx. 10 min em todo pedido de música, grátis ou pago (antes de qualquer PIX)
                 erro, erro_tipo = MSG_MUSICA_LONGA, 'musica_longa'
@@ -4320,6 +4332,10 @@ def jukebox(token, pix_id=None):
                 erro = _erro_yt
             elif youtube_id and _tem_politica(_info_yt.get('titulo') or titulo_pedido, _janela_eleitoral()):
                 erro, erro_tipo = MSG_POLITICA_MUSICA, 'politica_musica'   # 18/10/26: jingle não toca (acervo ou YouTube)
+            elif youtube_id and not _kara and _info_yt.get('karaoke_video'):
+                # 🎤 18/11/26: vídeo de karaokê só pelo cartão 🎤 (pago, com o nome na TV); grátis, ⚡ e 👑 não (o título e o
+                # canal de verdade, do oEmbed ou do acervo). O 🎂 em karaokê não passa por aqui (a TV toca sozinha)
+                erro, erro_tipo = _msg_karaoke_so_cartao(b), 'karaoke_so_cartao'
             else:
                 # Título = o do acervo/oEmbed (15/10/26); o do formulário só se o YouTube não respondeu.
                 # Sem vídeo não há título (antes um pedido 'musica' levava texto livre pro ranking da TV).
@@ -5958,7 +5974,8 @@ def api_pedido_exibido(pedido_id):
     # 🎤 29/10/26: pedido de KARAOKÊ não entra no acervo (senão a rotação e a lista do bar tocam karaokê depois que o modo
     # desliga). Só o pedido marcado: com o modo desligado nada muda (o filtro geral por título ficou pra V1.1)
     if (ok and _yid_ok(_yid) and not _tem_politica(pedido['titulo_pedido'])   # 11 letras, igual ao POST (16/10/26, V4-01)
-            and not pedido['karaoke'] and not _em_quarentena(conn, _yid)):   # 🧹 06/11/26: em quarentena não volta pelo pedido
+            and not pedido['karaoke'] and not _karaoke_video(pedido['titulo_pedido'], '', _yid)   # 🎤 18/11/26
+            and not _em_quarentena(conn, _yid)):   # 🧹 06/11/26: em quarentena não volta pelo pedido
         _cat = SHOWS_FORA.get(pedido['categoria'], pedido['categoria'])   # 17/10/26: pedido feito no show → o clipe
         _cat = _cat if _cat in CANAIS else 'rock'
         _seg = _YT_DURACAO.get(_yid) or 180       # 17/10/26: a duração real que a busca viu (antes: 180 fixo)
@@ -6127,6 +6144,8 @@ def api_buscar_biblioteca():
             ).fetchall()
 
     rows = [r for r in rows if _yid_ok(r['youtube_id'])]   # só o que o POST aceita (16/10/26, V4-01)
+    _kv = _karaoke_ids()   # 🎤 18/11/26: o karaokê que entrou no acervo antes da trava some da lista (só pelo cartão 🎤)
+    rows = [r for r in rows if not _karaoke_video(r['titulo'], r['artista'], r['youtube_id'], _kv)]
     if banidos:
         rows = [r for r in rows if r['youtube_id'] not in banidos]
     _nt = _artistas_bloqueados(_bar_por_token(bar_token)) if bar_token else []   # 🚫 22/10/26: "Não tocar aqui"
@@ -6216,6 +6235,80 @@ _YID_RE      = re.compile(r'[A-Za-z0-9_-]{11}')
 def _yt_norm(s):
     s = unicodedata.normalize('NFKD', (s or '').replace('&', ' e ')).encode('ascii', 'ignore').decode().lower()
     return ' '.join(re.sub(r'[^a-z0-9]+', ' ', s).split())
+
+
+# 🎤 18/11/26 (Diogo: "tudo que tenha KARAOKE não possa ser tocado gratuitamente, exceto o parabéns que já vem no parabéns
+# pago"): vídeo de karaokê só entra pelo cartão 🎤 (pago, com o nome na TV). Karaokê = karaokê/videokê/playback/backing
+# track/instrumental com letra no título ou no canal, ou um id de karaokê conhecido. "Com letra" sozinho fica livre: tem a
+# voz do cantor (clipe de letra). O 🎂 em karaokê não passa por pedido nem pelo acervo: é a TV que toca.
+# Os regex rodam no texto do _yt_norm: "Karaokês", "ZoomKaraokeOfficial", "Videoquê" e "K A R A O K E" também.
+_KARAOKE_VIDEO_RE = re.compile(r'karaok|videoke|videoque|karaoque|\bplay ?backs?\b|\bbacking ?tracks?\b'
+                               r'|\binstrumental (com |con |with )?(letras?|lyrics)\b')
+_KARAOKE_JUNTO_RE = re.compile(r'karaok|videoke')   # no texto sem espaço ("K A R A O K E")
+_KARAOKE_TIRA_RE = re.compile(r'\bplay ?backs?\b|\bbacking ?tracks?\b|\binstrumental (com |con |with )?(letras?|lyrics)\b'
+                              r'|\b\w*(karaok|videok|videoqu|karaoqu)\w*\b')
+MSG_KARAOKE_SO_CARTAO = '🎤 Karaokê é no cartão 🎤 Cante sua música: tua vez no palco, com teu nome na TV.'
+MSG_KARAOKE_PAUSADO = '🎤 O karaokê está pausado agora. Escolhe a versão normal da música. 🎵'
+MSG_KARAOKE_DESLIGADO = 'Esse bar não está com o karaokê ligado. Escolhe a versão normal da música. 🎵'
+_KARAOKE_IDS = {'t': float('-inf'), 'ids': frozenset()}
+_KARAOKE_IDS_SEG = 600
+
+
+def _karaoke_texto(*textos):
+    """True = algum dos textos (título, canal, termo digitado) é de karaokê."""
+    for t in textos:
+        n = _yt_norm(t)
+        if n and (_KARAOKE_VIDEO_RE.search(n) or _KARAOKE_JUNTO_RE.search(n.replace(' ', ''))):
+            return True
+    return False
+
+
+def _karaoke_ids():
+    """Os ids de karaokê que o título guardado nem sempre mostra: o acervo karaokê curado + todo vídeo que a busca leu (o
+    acervo vivo, 25 dias) com karaokê no título ou no CANAL (o pedido_publico antigo tem o título cortado em 80 e o artista
+    vazio). Cache de 10 min; erro = o que já tinha (nunca derruba a busca nem o pedido)."""
+    agora = _time.time()
+    if agora - _KARAOKE_IDS['t'] < _KARAOKE_IDS_SEG:
+        return _KARAOKE_IDS['ids']
+    ids = set()
+    try:
+        ids |= set(_K.acervo_ids())
+    except Exception as e:
+        log.warning('[PUBSHOW] 🎤 acervo karaokê curado falhou (segue sem ele): %s', e)
+    try:
+        conn = get_pubshow_db()
+        try:
+            for r in conn.execute(
+                    "SELECT youtube_id, titulo, canal FROM pubshow_busca_videos WHERE "
+                    + ' OR '.join(f"{c} LIKE '%{p}%'" for c in ('titulo', 'canal')
+                                  for p in ('karaok', 'videok', 'videoqu', 'karaoqu', 'play%back', 'backing%track',
+                                            'instrumental%letra', 'instrumental%lyric'))).fetchall():
+                if _karaoke_texto(r['titulo'], r['canal']):
+                    ids.add(r['youtube_id'])
+        finally:
+            conn.close()
+    except Exception as e:
+        log.warning('[PUBSHOW] 🎤 ids de karaokê do acervo vivo falharam (segue com o que tinha): %s', e)
+        ids |= _KARAOKE_IDS['ids']
+    _KARAOKE_IDS.update(t=agora, ids=frozenset(ids))
+    return _KARAOKE_IDS['ids']
+
+
+def _karaoke_video(titulo='', canal='', yid='', ids=None):
+    """True = vídeo de karaokê, que só o cartão 🎤 pede."""
+    return _karaoke_texto(titulo, canal) or (bool(yid) and yid in (_karaoke_ids() if ids is None else ids))
+
+
+def _karaoke_sem_palavra(q):
+    """O termo sem as palavras de karaokê ("Evidências Karaokê" → "evidencias"), pra busca de sempre."""
+    return ' '.join(_KARAOKE_TIRA_RE.sub(' ', _yt_norm(q)).split())
+
+
+def _msg_karaoke_so_cartao(b):
+    """O aviso do pedido de sempre (grátis, ⚡, 👑) com vídeo de karaokê: o cartão 🎤 aceso, pausado ou o bar sem ele."""
+    if not _K.ligado(b):
+        return MSG_KARAOKE_DESLIGADO
+    return MSG_KARAOKE_SO_CARTAO if _karaoke_cobranca(b) else MSG_KARAOKE_PAUSADO
 
 
 def _yt_norm_canal(c):
@@ -6361,6 +6454,7 @@ def _yt_ranquear(lidos, q, top=YT_TOP, karaoke=False):
     fora_q = {m.group(0).replace(' ', '') for m in _YT_FORA_RE.finditer(qn)}
     audio_q = bool(_YT_AUDIO_RE.search(qn))
     _ids_ac = set()
+    _ids_kv = frozenset() if karaoke else _karaoke_ids()   # 🎤 18/11/26: os ids de karaokê conhecidos, fora da busca de sempre
     if karaoke:
         # o canal de karaokê escreve "(Karaokê Version) (Cover)": no modo, cover com letra é exatamente o que se quer
         fora_q |= {'karaoke', 'playback', 'instrumental', 'backingtrack', 'cover', 'covers'}
@@ -6379,6 +6473,8 @@ def _yt_ranquear(lidos, q, top=YT_TOP, karaoke=False):
         tn = _yt_norm(v['titulo'])
         if karaoke and not _K.titulo_ok(v['titulo'], v['id'], _ids_ac):
             continue                           # 🎤 karaokê: o clipe sem letra fica fora
+        if not karaoke and _karaoke_video(v['titulo'], v['canal'], v['id'], _ids_kv):
+            continue                           # 🎤 18/11/26: karaokê só pelo cartão 🎤 (nem digitando "karaoke")
         if ({m.group(0).replace(' ', '') for m in _YT_FORA_RE.finditer(tn)} - fora_q
                 and not (karaoke and v['id'] in _ids_ac)):   # 🎤 o acervo karaokê curado já foi conferido a mão
             continue
@@ -6916,7 +7012,8 @@ def _acervo_bate(b, q):
     bate, vistos = [], set()
     for r in rows:
         yid = r['youtube_id']
-        if not _yid_ok(yid) or yid in banidos or yid in vistos or int(r['duracao_seg'] or 0) > YT_DUR_MAX_SEG:
+        if (not _yid_ok(yid) or yid in banidos or yid in vistos or int(r['duracao_seg'] or 0) > YT_DUR_MAX_SEG
+                or _karaoke_video(r['titulo'], r['artista'], yid)):   # 🎤 18/11/26: karaokê só pelo cartão 🎤
             continue
         pt, pa = _yt_norm(r['titulo']).split(), _yt_norm(r['artista']).split()
         no_tit = {t for t in tokens if any(p.startswith(t) for p in pt)}
@@ -8487,6 +8584,16 @@ def api_buscar():
     # 🎤 09/11/26 (V2b): a do cartão 🎤 vale com o "Pedir qualquer música" fechado (nunca no dia da votação)
     if not (_youtube_liberado(b) or (_kara and not _dia_da_votacao())) or not _jukebox_aberto(b)[0]:
         return jsonify({'resultados': [], 'erro': 'youtube_fora', 'indisponivel': 'bar'}), 503
+    if not _kara and _karaoke_texto(q):
+        # 🎤 18/11/26: "evidencias karaoke" na busca de sempre. Com o cartão 🎤 aceso, a dica dele (nem gasta a cota, nem no
+        # "só da casa"); sem karaokê no bar ou com ele pausado, a palavra sai e vem a música normal
+        if _K.ligado(b) and _karaoke_cobranca(b):
+            if request.path.endswith('/api/buscar-local'):
+                return jsonify({'resultados': [], 'local': True, 'basta': True, 'karaoke_dica': True})
+            return jsonify({'resultados': [], 'karaoke_dica': True})
+        q = _karaoke_sem_palavra(q)
+        if len(q) < 2:
+            return jsonify({'resultados': []})
     _so_local = request.path.endswith('/api/buscar-local')
     if _so_local and len(re.sub(r'\s', '', q)) < 3:   # 2 letras: o prefixo varre o acervo vivo inteiro; fica pra pausa
         return jsonify({'resultados': [], 'local': True, 'basta': False})
@@ -8607,7 +8714,7 @@ def api_mais_pedidas(token):
                 and _dur[r['youtube_id']] <= YT_DUR_MAX_SEG]
         _ests_bar = pubshow_estilo.estilos_do_bar(b)   # 17/10/26: bar de rock não mostra o sertanejo de antes
         _nt = _artistas_bloqueados(b)                  # 🚫 22/10/26: "Não tocar aqui"
-        rows = rows if (_ests_bar or _nt) else rows[:6]
+        # 🎤 18/11/26: o corte de 6 foi pro fim (o karaokê de antes da trava sai antes de contar)
         ids = [r['youtube_id'] for r in rows]
         titulos = {}
         if ids:
@@ -8630,9 +8737,12 @@ def api_mais_pedidas(token):
     finally:
         conn.close()
     out = []
+    _kv = _karaoke_ids()
     for r in rows:
         yid = r['youtube_id']
         t = (titulos.get(yid) or '').strip()
+        if _karaoke_video(t, '', yid, _kv):
+            continue                           # 🎤 18/11/26: o karaokê pedido pelo caminho de sempre (antes da trava)
         titulo = t if ' · ' in t else _yt_titulo_limpo(t)   # " · " = já veio limpo da busca nova
         out.append({'id': yid, 'titulo': titulo[:80] or 'Música pedida',
                     'vezes': r['vezes'], 'thumb': f'https://i.ytimg.com/vi/{yid}/hqdefault.jpg'})
@@ -8644,6 +8754,7 @@ def api_mais_pedidas(token):
         out = out[:6]
     if _nt:
         out = [o for o in out if not _nao_toca(_nt, o['titulo'])][:6]
+    out = out[:6]
     _yt_selos(b['id'], out)
     return jsonify({'resultados': out})
 

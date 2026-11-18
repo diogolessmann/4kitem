@@ -2124,6 +2124,12 @@ async function buscarLocal() {
     if (!res.ok) { _soBar(); return; }
     const data = await res.json();
     if (seq !== _buscaSeq) return;
+    if (data.karaoke_dica) {   // 🎤 18/11/26: a dica do cartão 🎤 já no "só da casa" (a busca da pausa nem sai)
+      clearTimeout(buscaTimer); buscaTimer = null;
+      _ultimaQ = q;
+      _kDica(lista);
+      return;
+    }
     const r = _juntarLivres(_doBar(q, false).slice(0, 20).map(_cardDoBar), data.resultados);
     _casaQ = q; _casaR = r;
     const _cards = l => l.map((v, i) => _cardHtml(v, i, 'res')).join('');
@@ -2142,6 +2148,15 @@ async function buscarLocal() {
   } finally {
     if (_buscaCtl === ctl) _buscaCtl = null;
   }
+}
+
+function _kDica(lista) {   // 🎤 18/11/26: "… karaoke" na busca de sempre: o karaokê é no cartão 🎤
+  const _kUrl = '/pubshow/jukebox/' + encodeURIComponent(BAR_TOKEN) + '?k=1';   // a tela de cantar (o cartão 🎤)
+  lista.className = '';
+  lista.innerHTML = '<div class="yt-fora" id="yt-kdica"><div class="yt-fora-ic">🎤</div>'
+    + '<div class="yt-fora-t">Quer cantar?</div>'
+    + '<div class="yt-fora-s">O karaokê é no cartão 🎤 Cante sua música: tua vez no palco, com teu nome na TV.</div>'
+    + '<button type="button" class="yt-fora-btn" onclick="location.href=\'' + _kUrl + '\'">🎤 Cante sua música</button></div>';
 }
 
 async function buscar() {
@@ -2204,6 +2219,7 @@ async function buscar() {
       return;
     }
     if (res.ok) YT_FORA = false;   // a busca livre voltou
+    if (data.karaoke_dica) { _ultimaQ = ''; _kDica(lista); return; }   // 🎤 18/11/26: o karaokê é no cartão 🎤
     const r = _juntarLivres(doBar, data.resultados);
     if (!r.length && data.fora_estilo) {   // 17/10/26: tudo de outro estilo → aviso grande + botão
       _ultimaQ = '';
@@ -2527,7 +2543,7 @@ function copiarPix() {
   if (YT_LIBERADO) _carregarMaisPedidas();
 })();
 {% set yt_post = request.form.get('youtube_id', '') if request.method == 'POST' else '' %}
-{% if erro and yt_post and tipo_post in ['musica_especifica','musica_externa','flash'] and erro_tipo not in ('musica_na_fila', 'musica_longa', 'politica_musica') %}
+{% if erro and yt_post and tipo_post in ['musica_especifica','musica_externa','flash'] and erro_tipo not in ('musica_na_fila', 'musica_longa', 'politica_musica', 'karaoke_so_cartao') %}
 // 16/10/26 (crítico C2): erro na música (palavrão no nome, 2ª grátis…) — a música escolhida fica a 1 toque
 (function(){
   const v = {id: {{ yt_post[:11]|tojson }}, titulo: {{ (request.form.get('titulo_pedido') or '')[:80]|tojson }}, sub: ''};
