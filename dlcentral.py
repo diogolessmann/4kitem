@@ -131,7 +131,7 @@ def log(msg):
         pass
 
 
-def log_recente(n=10):
+def log_recente(n=30):      # 18/11: eram 10; o resumo dos insights (23h30) sumia da tela antes do meio-dia
     try:
         with open(_LOG_PATH, encoding="utf-8") as f:
             return json.load(f)[:n]

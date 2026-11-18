@@ -12,9 +12,11 @@ Banco: dlm/chuva/<marca>.json. Cada pauta traz fonte, url, trecho literal, confe
   - validade "permanente" ou "ano AAAA" (só até 31/12 daquele ano); "conferir no dia" (valor, taxa ou prazo
     que muda) NUNCA sai sozinho;
   - dentro do prazo do campo "ate" (AAAA-MM-DD), quando a pauta fala de uma data.
-Grade (informar fica em ~2/3 do feed): Despachante 13h e 19h, DL Mobilidade 11h e 19h15 (dlmotor.agenda).
+Grade (18/11, "menos é mais": 1 post de feed por dia em cada perfil; informar fica em ~2/3): a chuva sai nos
+5 dias sem venda, Despachante às 19h e DL Mobilidade às 19h15 (dlmotor.agenda e DIAS_VENDA_*).
 Ordem: uma linha diferente a cada post (a usada há mais tempo primeiro); dentro dela, a menos publicada.
-Arte: o mesmo carrossel das séries (capa com foto REAL, conteúdo, fecho) e legenda com a FONTE citada.
+Arte: carrossel de 3 slides (capa com foto REAL, conteúdo, fecho) e legenda com a FONTE citada. Na DL a foto
+ocupa a capa inteira (marcas.slide_capa_foto); a capa não repete as últimas FOTOS_LEMBRADAS fotos da marca.
 Desliga com CHUVA_ON=0 no Railway.
 """
 import glob
@@ -111,34 +113,100 @@ def escolher(marca, hoje=None, est=None):
     return min(cand, key=lambda i: (usada.get(i["linha"], ""), ordem[i["id"]]))
 
 
-def _sorteio(chave, pool):
-    return pool[int(hashlib.md5(chave.encode("utf-8")).hexdigest(), 16) % len(pool)] if pool else None
+# 18/11 (pente fino do Instagram, 5 dias no ar): a mesma foto saiu 2 vezes em 3 dias na DL e a cena do
+# "caderno com carimbo" 4 vezes em 15 posts no Despachante. A capa agora lembra as últimas fotos (pelo
+# CONTEÚDO, não pelo nome: a mesma foto mora na Central e no repositório com nomes diferentes).
+FOTOS_LEMBRADAS = 12
+ULTIMA_FOTO = {}          # marca → impressão digital da capa que o montar() acabou de fazer (o postar() grava)
+# arte, logo e story já têm texto; foto de entrega é para o post de entrega, não para capa de aviso ou de regra
+_SO_VENDA = re.compile(r"arte|promo|logo|story|entt?rega", re.I)
+# cenas do Despachante: sem foto nova na pasta da linha, vale a de uma pasta irmã (nunca a de scooter)
+_FAMILIA = (("trocar_carro", "licenciamento", "ipva", "negocio"), ("multa", "cnh"))
+# Foto limpa do produto para a pauta que tem o modelo no título. São fotos do repositório, que não levam o
+# nome do modelo; conferidas no olho em 18/11 contra o mostruário: a Akasha é a das faixas de LED, a Kay é a
+# vermelha com baú e o X13 é o azul com a bandeira. Sem isto, "Conheça a Akasha" saía com a capa preta.
+FOTOS_MODELO = {"akasha": ("dl_34.jpg", "dl_35.jpg", "dl_36.jpg"),
+                "kay": ("zap_2026-09-13_211412_10.jpg", "zap_2026-09-13_211412_11.jpg",
+                        "zap_2026-09-13_211412_12.jpg", "zap_2026-09-13_211412_13.jpg"),
+                "x13": ("zap_2026-09-13_211741.jpg",)}
 
 
-def foto(marca, item):
-    """Foto REAL do fundo da capa. Pauta de um modelo só sai com foto daquele modelo; sem ela, card liso."""
+def _ordem(chave, pool):
+    """A mesma pauta dá sempre a mesma ordem; cada pauta dá uma ordem diferente."""
+    return sorted(pool, key=lambda p: hashlib.md5(f"{chave}|{os.path.basename(p)}".encode("utf-8")).hexdigest())
+
+
+def _nova(chave, pool, recentes):
+    """(caminho, digital) da primeira foto da ordem que não repete uma capa recente; (None, None) se todas repetem."""
+    from dlm import dl_material
+    for p in _ordem(chave, pool):
+        d = dl_material.digital(p)
+        if d is not None and not any(dl_material.gemeas(d, r) for r in recentes):
+            return p, d
+    return None, None
+
+
+def _pasta(nome):
     from dlm import marcas
-    if marca == "dl_mobilidade":
-        from dlm import dl_material
-        try:
-            central = dl_material.fotos_central()
-        except Exception:
-            central = []
-        modelo = (item.get("foto_modelo") or "").strip()
-        if modelo:
-            alvo = dl_material.modelo_de(modelo)
-            chave = re.sub(r"[^a-z0-9]", "", modelo.lower())
-            pool = [p for p in central
-                    if (alvo and dl_material.modelo_de(os.path.basename(p)) == alvo)
-                    or (chave and chave in re.sub(r"[^a-z0-9]", "", os.path.basename(p).lower()))]
-        else:
-            pool = sorted(glob.glob(os.path.join(marcas.DL_PHOTOS_DIR, "*.jpg"))) + central
-            # arte, logo e story já têm texto: debaixo da capa da chuva viram texto sobre texto
-            pool = [p for p in pool if dl_material.foto_ok(os.path.basename(p))
-                    and not re.search(r"arte|promo|logo|story", os.path.basename(p), re.I)]
-        return _sorteio(item["id"], pool)
-    d = os.path.join(marcas.SERIES_IMG_DIR, POOL_DESP.get(item.get("linha"), "trocar_carro"))
-    return _sorteio(item["id"], sorted(glob.glob(os.path.join(d, "*.jp*g")) + glob.glob(os.path.join(d, "*.webp"))))
+    d = os.path.join(marcas.SERIES_IMG_DIR, nome)
+    return sorted(glob.glob(os.path.join(d, "*.jp*g")) + glob.glob(os.path.join(d, "*.webp")))
+
+
+def _pools(marca, item):
+    """Listas de fotos em ordem de preferência. A pauta que tem o modelo no TÍTULO só sai com foto daquele modelo."""
+    from dlm import marcas
+    if marca != "dl_mobilidade":
+        propria = POOL_DESP.get(item.get("linha"), "trocar_carro")
+        irmas = next((f for f in _FAMILIA if propria in f), ())
+        return [_pasta(propria), [p for n in irmas if n != propria for p in _pasta(n)]]
+    from dlm import dl_material
+    try:
+        central = dl_material.fotos_central()
+    except Exception:
+        central = []
+    geral = [p for p in sorted(glob.glob(os.path.join(marcas.DL_PHOTOS_DIR, "*.jpg"))) + central
+             if dl_material.foto_ok(os.path.basename(p)) and not _SO_VENDA.search(os.path.basename(p))
+             and not dl_material.retirada(p, dl_material._FORA_CAPA)]
+    modelo = (item.get("foto_modelo") or "").strip()
+    if not modelo:
+        return [geral]
+    alvo = dl_material.modelo_de(modelo)
+    chave = re.sub(r"[^a-z0-9]", "", modelo.lower())
+    do_modelo = [p for p in central
+                 if (alvo and dl_material.modelo_de(os.path.basename(p)) == alvo)
+                 or (chave and chave in re.sub(r"[^a-z0-9]", "", os.path.basename(p).lower()))]
+    # o modelo só no exemplo (ex.: a conta de energia usa a Akasha): sem foto dele, vale a foto geral da loja.
+    # 13/11 esta pauta saiu com a capa preta, sem foto nenhuma.
+    limpas = [os.path.join(marcas.DL_PHOTOS_DIR, n) for k, ns in FOTOS_MODELO.items() if k in chave for n in ns]
+    limpas = [p for p in limpas if os.path.exists(p)]
+    no_titulo = chave and chave in re.sub(r"[^a-z0-9]", "", (item.get("titulo") or "").lower())
+    # pauta de ciclomotor (X8, XE-30) nunca leva a foto geral: debaixo de "exige CNH e placa" ela mostraria
+    # uma scooter que NÃO exige. Sem foto do próprio modelo, card liso.
+    if no_titulo or dl_material.CICLOMOTOR.search(modelo):
+        return [limpas, do_modelo]
+    return [limpas, do_modelo, geral]
+
+
+def foto(marca, item, recentes=None):
+    """Foto REAL do fundo da capa (None = card liso). Não repete as últimas FOTOS_LEMBRADAS capas da marca."""
+    from dlm import dl_material
+    if recentes is None:
+        recentes = _estado().get(marca, {}).get("fotos_recentes", [])
+    recentes = [int(r, 16) for r in recentes if isinstance(r, str)]
+    pools = _pools(marca, item)
+    for pool in pools:
+        p, d = _nova(item["id"], pool, recentes)
+        if p:
+            ULTIMA_FOTO[marca] = d
+            return p
+    # todas repetem (banco de fotos pequeno): sai a primeira da ordem, que ainda é melhor que card liso
+    for pool in pools:
+        if pool:
+            p = _ordem(item["id"], pool)[0]
+            ULTIMA_FOTO[marca] = dl_material.digital(p)
+            return p
+    ULTIMA_FOTO[marca] = None
+    return None
 
 
 def montar(marca, item, outdir):
@@ -150,14 +218,23 @@ def montar(marca, item, outdir):
     it = dict(item)
     it["foto_path"] = foto(marca, item)
     it["rotulo_conteudo"] = ROTULO.get(item.get("formato"), "COMO FUNCIONA")
+    if item.get("formato") == "numero" and not re.search(r"\d", " ".join(item.get("bullets", []))):
+        it["rotulo_conteudo"] = "COMO FUNCIONA"      # 18/11: "OS NÚMEROS" saiu em pauta sem número nenhum
     it["cta_seal"] = "SALVA PRA LEMBRAR" if info else ("VEM DAR UMA VOLTA" if dl else "MANDA A PLACA")
     it["cta_big"] = (["DÚVIDA?", "CHAMA A LOJA"] if dl else ["DÚVIDA?", "PERGUNTA PRA GENTE"]) if info \
         else (["TEST-RIDE", "SEM COMPROMISSO"] if dl else ["A GENTE FAZ", "POR VOCÊ"])
     vacina.exigir(f"chuva {item['id']}", {k: it.get(k) for k in ("titulo", "bullets", "cta_seal", "cta_big")},
                   extra={"brand": marca, "titulo": it.get("titulo")})
     os.makedirs(outdir, exist_ok=True)
-    paths = [marcas.slide_capa(t, it, outdir, 1), marcas.slide_conteudo(t, it, outdir, 2),
-             marcas.slide_cta(t, outdir, 3, item=it)]
+    # 18/11: na DL a foto ocupa a capa inteira, como no card de oferta. Das 131 fotos da loja, 102 são em pé,
+    # e a capa antiga só mostrava uma faixa deitada delas: cortava o topo da scooter e a cabeça de gente.
+    capa = marcas.slide_capa_foto if (dl and it["foto_path"]) else marcas.slide_capa
+    try:
+        p1 = capa(t, it, outdir, 1)
+    except Exception as ex:                  # foto que não abre não derruba o post: sai a capa clássica
+        print(f"[chuva] capa de foto inteira falhou ({ex}); vai a capa clássica")
+        p1 = marcas.slide_capa(t, it, outdir, 1)
+    paths = [p1, marcas.slide_conteudo(t, it, outdir, 2), marcas.slide_cta(t, outdir, 3, item=it)]
     base = {k: v for k, v in it.items() if k not in ("serie", "link")}
     cap = marcas.build_caption(t, base)
     cap = cap.replace("\n\n🌐", f"\n\n{it.get('fecho', '')}\n📚 Fonte: {it['fonte']}\n\n🌐", 1)
@@ -210,6 +287,8 @@ def postar(marca, ao_vivo=False, hoje=None):
             e.setdefault("publicados", {}).setdefault(item["id"], []).append(
                 datetime.now().isoformat(timespec="minutes"))
             e.setdefault("linha_usada", {})[item["linha"]] = datetime.now().isoformat(timespec="seconds")
+            if ULTIMA_FOTO.get(marca) is not None:
+                e["fotos_recentes"] = (e.get("fotos_recentes", []) + ["%016x" % ULTIMA_FOTO[marca]])[-FOTOS_LEMBRADAS:]
             _grava(est)
         except Exception as ex:
             print(f"[chuva] postou {item['id']}, mas o estado não gravou: {ex}")

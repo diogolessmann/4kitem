@@ -7,11 +7,13 @@ código portado 1:1 do repo da Rádio. Este arquivo só decide QUANDO rodar o qu
 (A versão anterior deste arquivo — foto da Central DL 1x/dia — está no git, commit 7ca9560.)
 
 Grade (America/Sao_Paulo):
-  10:00       despachante · manhã   (série "1 post = 1 página", alterna documentalista/defesa) — post de VENDA do dia
-  16:00       DL Mobilidade · oferta de scooter com FOTO REAL no IG PRÓPRIO (tokens DLMOB_*) — 1x/dia
-              (ter/qui/sáb vira REEL da Central: dlm/dl_material.py)
-  11:00 19:15 DL Mobilidade · CHUVA DE INFORMAÇÃO (13/11, dlm/chuva.py) — CHUVA_ON=0 desliga
-  13:00 19:00 despachante · CHUVA DE INFORMAÇÃO (13/11, dlm/chuva.py)
+  18/11 — "menos é mais, aqui não é a rádio, tá demais post, reduz" (o dono, 17/11): UM post de feed por dia
+  em cada perfil. Informar segue em ~2/3: 5 dias de chuva, 2 de venda (DIAS_VENDA_* aqui embaixo).
+  10:00 ter/qui  despachante · venda (série "1 post = 1 página", alterna documentalista/defesa)
+  19:00 demais   despachante · CHUVA DE INFORMAÇÃO (dlm/chuva.py) — CHUVA_ON=0 desliga
+  16:00 ter/sáb  DL Mobilidade · venda no IG PRÓPRIO (tokens DLMOB_*): REEL da Central (dlm/dl_material.py);
+                 sem reel, o carrossel de oferta com foto real
+  19:15 demais   DL Mobilidade · CHUVA DE INFORMAÇÃO
   17:30 48h   DL Defesas · dia sim, dia não, IG PRÓPRIO @dldefesas.multas (tokens DEFESAS_*)
   12:30       story da FILA de peças prontas (CONTEUDO_21) — FILA_PRONTA_ON=0 desliga
   (19:00 despachante · noite saiu em 27/10: era o MESMO tema da manhã, de novo, em story)
@@ -145,6 +147,15 @@ def _insights():
     from dlm import insights
     n = insights.coletar_marca("despachante", dias=7)
     m = insights.coletar_marca("dl_mobilidade", dias=7)
+    # 18/11: o número já era coletado e ninguém via. Agora o alcance por linha de pauta vai para o log da Central.
+    for marca in ("despachante", "dl_mobilidade"):
+        try:
+            linhas = insights.resumo_marca(marca, dias=14)
+            if linhas:
+                dlc.log(f"📊 {marca}, 14 dias (alcance · salvos · envios, média por post): " + " | ".join(
+                    f"{s} x{q}: {a or 0:.0f} · {sv or 0:.1f} · {sh or 0:.1f}" for s, q, a, sv, sh in linhas[:12]))
+        except Exception as e:
+            print(f"[dlmotor] resumo de insights de {marca} falhou: {e}")
     return f"insights: despachante {n} · dl_mobilidade {m}"
 
 
@@ -186,20 +197,27 @@ def _mob_horas():
     return hs or [7, 10, 12, 15, 18, 20]
 
 
+# 18/11: 1 post de feed por dia em cada perfil (antes eram 3). Os dias de venda; nos outros sai a chuva.
+DIAS_VENDA_DESP = (1, 3)       # ter e qui (0 = segunda)
+DIAS_VENDA_DLMOB = (1, 5)      # ter e sáb: os mesmos dias do reel (dl_material.DIAS_REEL)
+
+
+def _outros(dias):
+    return tuple(d for d in range(7) if d not in dias)
+
+
 def agenda():
     """[(id, hora, minuto, dias|None, func)] — dias: 0=seg … 6=dom."""
     a = [
-        ("desp_manha", 10, 0, None, lambda: _desp("manha")),
+        ("desp_manha", 10, 0, DIAS_VENDA_DESP, lambda: _desp("manha")),
         ("desp_story", 12, 30, None, _story_fila),
         ("kitem", 14, 0, None, _kitem),          # KITEM_ON=1 liga; 1 post/dia
-        ("dlmob", 16, 0, None, _dlmob),
+        ("dlmob", 16, 0, DIAS_VENDA_DLMOB, _dlmob),
         ("defesas", 17, 30, None, _defesas),     # dia sim, dia nao (48h) — a paridade esta dentro de _defesas()
         ("insights", 23, 30, None, _insights),
-        # 13/11: chuva de informação — informar ~2/3 do feed (série das 10h e oferta das 16h seguem)
-        ("chuva_dlmob_11", 11, 0, None, lambda: _chuva("dl_mobilidade")),
-        ("chuva_desp_13", 13, 0, None, lambda: _chuva("despachante")),
-        ("chuva_desp_19", 19, 0, None, lambda: _chuva("despachante")),
-        ("chuva_dlmob_19", 19, 15, None, lambda: _chuva("dl_mobilidade")),
+        # 13/11: chuva de informação. 18/11: uma por dia, só nos dias sem venda (as vagas das 11h e 13h saíram)
+        ("chuva_desp_19", 19, 0, _outros(DIAS_VENDA_DESP), lambda: _chuva("despachante")),
+        ("chuva_dlmob_19", 19, 15, _outros(DIAS_VENDA_DLMOB), lambda: _chuva("dl_mobilidade")),
     ]
     for i, h in enumerate(_mob_horas()):
         a.append((f"mob_{i}", h, 20, None, (lambda i=i: _mob(i))))

@@ -19,7 +19,7 @@ import os
 import re
 from datetime import datetime
 
-DIAS_REEL = (1, 3, 5)     # ter, qui, sáb (0 = segunda)
+DIAS_REEL = (1, 5)        # ter e sáb (0 = segunda). 18/11: 1 post por dia; a venda ficou em 2 dias (dlmotor.agenda)
 MARCA = "dlmob"
 DESTINO = "dl_mobilidade"
 
@@ -80,6 +80,56 @@ def foto_ok(arquivo):
     return not CICLOMOTOR.search(arquivo) and arquivo not in FORA_FOTO and sem_preco(arquivo)
 
 
+# 18/11 (pente fino do Instagram): a mesma foto mora na Central e no repositório com nomes diferentes
+# ("WhatsApp Image 2026-05-12 at 21.36.46.jpg" = "zap_2026-05-12_213646.jpg" = às vezes um "dl_NN.jpg").
+# O que a curadoria já tirou do repositório (pastas _fora_*) voltava pela Central: arte com texto debaixo
+# do card e a fat bike, que é ciclomotor, com o selo "sem CNH". A impressão digital compara o CONTEÚDO.
+_FOTOS_REPO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "dl_scooters")
+_FORA_SEMPRE = ("_fora_arte", "_fora_fatbike")          # engana ou vira texto sobre texto: fora de tudo
+_FORA_CAPA = _FORA_SEMPRE + ("_fora_gente", "_fora_detalhe")   # capa de pauta que informa não leva cliente
+_cache_fora = {}
+_cache_digital = {}
+
+
+def digital(caminho):
+    """Impressão digital da imagem (dHash de 64 bits). None se não abrir."""
+    try:
+        st = os.stat(caminho)
+        chave = (caminho, st.st_mtime_ns, st.st_size)
+        if chave in _cache_digital:
+            return _cache_digital[chave]
+        from PIL import Image
+        im = Image.open(caminho)
+        im.draft("L", (72, 64))
+        px = list(im.convert("L").resize((9, 8), Image.BILINEAR).getdata())
+    except Exception:
+        return None
+    n = 0
+    for y in range(8):
+        for x in range(8):
+            n = (n << 1) | (px[y * 9 + x] > px[y * 9 + x + 1])
+    _cache_digital[chave] = n
+    return n
+
+
+def gemeas(a, b, folga=6):
+    return a is not None and b is not None and bin(a ^ b).count("1") <= folga
+
+
+def _digitais_fora(pastas):
+    if pastas not in _cache_fora:
+        import glob
+        ds = [digital(p) for pasta in pastas for p in glob.glob(os.path.join(_FOTOS_REPO, pasta, "*.*"))]
+        _cache_fora[pastas] = [d for d in ds if d is not None]
+    return _cache_fora[pastas]
+
+
+def retirada(caminho, pastas=_FORA_SEMPRE):
+    """A curadoria já tirou esta foto do sorteio (com outro nome)?"""
+    d = digital(caminho)
+    return any(gemeas(d, f) for f in _digitais_fora(pastas))
+
+
 def fotos_central():
     """Caminhos locais das fotos da Central que podem ir ao sorteio (vazio fora do Railway)."""
     import dlcentral
@@ -87,9 +137,11 @@ def fotos_central():
     for it in dlcentral.listar(MARCA):
         if it.get("tipo") == "foto" and foto_ok(it["arquivo"]):
             try:
-                out.append(dlcentral.acha(MARCA, it["arquivo"])[0])
+                p = dlcentral.acha(MARCA, it["arquivo"])[0]
             except Exception:
-                pass
+                continue
+            if not retirada(p):
+                out.append(p)
     return out
 
 

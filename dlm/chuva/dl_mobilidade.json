@@ -128,7 +128,7 @@
    "O limite do autopropelido é 1.000 W de potência nominal."
   ],
   "fecho": "Salva pra lembrar",
-  "fonte": "Mostruário DL Mobilidade v3 (13/11/2026), p. 2 a 7; Resolução CONTRAN 996/2023, art. 2º, II, c",
+  "fonte": "Mostruário DL Mobilidade; Resolução CONTRAN 996/2023, art. 2º, II, c",
   "url": "D:\\MIGRADO_DO_C\\Desktop\\PROJETOS\\SCOOTER_CORRECAO_13nov\\01_MOSTRUARIO\\MOSTRUARIO_DL_SCOOTER v3.pdf",
   "trecho": "provido de motor de propulsão com potência nominal máxima de até 1000 W (mil watts)",
   "conferido_em": "2026-11-13",
@@ -151,7 +151,7 @@
    "X8 (50 km/h) e XE-30 (45 km/h) são ciclomotores: exigem CNH A/ACC e placa."
   ],
   "fecho": "Salva pra lembrar",
-  "fonte": "Mostruário DL Mobilidade v3 (13/11/2026), p. 2 a 7; Resolução CONTRAN 996/2023, art. 2º, II, d",
+  "fonte": "Mostruário DL Mobilidade; Resolução CONTRAN 996/2023, art. 2º, II, d",
   "url": "D:\\MIGRADO_DO_C\\Desktop\\PROJETOS\\SCOOTER_CORRECAO_13nov\\01_MOSTRUARIO\\MOSTRUARIO_DL_SCOOTER v3.pdf",
   "trecho": "velocidade máxima de fabricação não superior a 32 km/h (trinta e dois quilômetros por hora)",
   "conferido_em": "2026-11-13",
@@ -174,7 +174,7 @@
    "Já o X13 é lítio removível: a regra de guardar é outra."
   ],
   "fecho": "Salva pra lembrar",
-  "fonte": "Manual de uso da DL Mobilidade, p. 2; Mostruário DL Mobilidade v3 (13/11/2026), p. 5",
+  "fonte": "Manual de uso da DL Mobilidade, p. 2; Mostruário DL Mobilidade",
   "url": "D:\\bateria\\motor_afiado_13nov\\chuva\\manual.txt",
   "trecho": "a bateria é fixa: ela carrega na própria scooter, com o carregador bivolt (110/220 V) que vem junto.",
   "conferido_em": "2026-11-13",
@@ -197,7 +197,7 @@
    "Cada linha tem um jeito de uso: dá para escolher pelo trajeto."
   ],
   "fecho": "Salva pra lembrar",
-  "fonte": "Mostruário DL Mobilidade v3 (13/11/2026), p. 2 a 7",
+  "fonte": "Mostruário DL Mobilidade",
   "url": "D:\\MIGRADO_DO_C\\Desktop\\PROJETOS\\SCOOTER_CORRECAO_13nov\\01_MOSTRUARIO\\MOSTRUARIO_DL_SCOOTER v3.pdf",
   "trecho": "LINHA ENTRADA ... LINHA INTERMEDIÁRIA ... LINHA PREMIUM ... LINHA HÍBRIDA ... LINHA CARGA ... LINHA ENTREGA",
   "conferido_em": "2026-11-13",
@@ -220,7 +220,7 @@
    "Test-ride grátis na loja, em Schroeder, sem compromisso."
   ],
   "fecho": "Agenda o test-ride no WhatsApp",
-  "fonte": "Mostruário DL Mobilidade v3 (13/11/2026), p. 8",
+  "fonte": "Mostruário DL Mobilidade",
   "url": "D:\\MIGRADO_DO_C\\Desktop\\PROJETOS\\SCOOTER_CORRECAO_13nov\\01_MOSTRUARIO\\MOSTRUARIO_DL_SCOOTER v3.pdf",
   "trecho": "Não compre scooter sem dar uma volta antes. Test-ride grátis, sem compromisso.",
   "conferido_em": "2026-11-13",
@@ -466,7 +466,7 @@
   "formato": "checklist",
   "tipo": "informar",
   "cat": "RECARGA: EVITE",
-  "titulo": "Recarga: 4 coisas que desgastam a bateria",
+  "titulo": "Recarga: o que mais desgasta a bateria",
   "bullets": [
    "Rodar até a bateria zerar: descarga total repetida é o que mais desgasta.",
    "Ligar o carregador logo após trajeto longo: espere a scooter esfriar.",
@@ -721,7 +721,7 @@
   "cat": "BATERIA É O CAPITAL",
   "titulo": "O que mais custa caro: bateria deixada vazia",
   "bullets": [
-   "Descarga total repetida é o que mais desgasta a bateria de chumbo.",
+   "Descarga total repetida é o que mais desgasta a bateria de grafeno, que é de base de chumbo.",
    "Guardada vazia, ela perde capacidade para sempre.",
    "Bateria abandonada descarregada ainda pode tirar a garantia."
   ],
@@ -795,7 +795,7 @@
    "Atendimento pelo WhatsApp (47) 99776-6831."
   ],
   "fecho": "Chama no WhatsApp e agenda",
-  "fonte": "Mostruário DL Mobilidade v3 (13/11/2026), p. 8",
+  "fonte": "Mostruário DL Mobilidade",
   "url": "D:\\MIGRADO_DO_C\\Desktop\\PROJETOS\\SCOOTER_CORRECAO_13nov\\01_MOSTRUARIO\\MOSTRUARIO_DL_SCOOTER v3.pdf",
   "trecho": "Não compre scooter sem dar uma volta antes. Test-ride grátis, sem compromisso.",
   "conferido_em": "2026-11-13",
@@ -813,12 +813,12 @@
   "cat": "CONHEÇA A V0",
   "titulo": "V0: scooter compacta de 800 W na linha intermediária",
   "bullets": [
-   "Motor de 800 W, 32 km/h de fábrica e peso máximo de 150 kg.",
+   "Motor de 800 W, 32 km/h de fábrica e carga máxima de 150 kg.",
    "Bateria de grafeno de 60 V 23 Ah, recarga de cerca de 6 horas.",
-   "Modelo compacto, de linha intermediária, com pneus de 30 PSI."
+   "Modelo compacto, de linha intermediária. Calibragem dos pneus: 30 PSI."
   ],
   "fecho": "Salva pra lembrar",
-  "fonte": "Mostruário DL Mobilidade v3 (13/11/2026), p. 2; Manual de uso da DL Mobilidade, p. 2 (tabela do catálogo NXT 2026)",
+  "fonte": "Mostruário DL Mobilidade; Manual de uso da DL Mobilidade, p. 2 (tabela do catálogo NXT 2026)",
   "url": "D:\\MIGRADO_DO_C\\Desktop\\PROJETOS\\SCOOTER_CORRECAO_13nov\\01_MOSTRUARIO\\MOSTRUARIO_DL_SCOOTER v3.pdf",
   "trecho": "V0 NOVO ... MOTOR 800W ... 32 km/h ... 150 kg ... Compacta",
   "conferido_em": "2026-11-13",
@@ -836,12 +836,12 @@
   "cat": "CONHEÇA A AKASHA",
   "titulo": "Akasha: 1.000 W, 72 V 26 Ah e LED Full",
   "bullets": [
-   "Motor de 1.000 W, 32 km/h de fábrica, peso máximo de 150 kg.",
+   "Motor de 1.000 W, 32 km/h de fábrica, carga máxima de 150 kg.",
    "Bateria de grafeno 72 V 26 Ah, recarga de até 6 horas.",
-   "Destaque: iluminação LED Full e pneus de 36 PSI."
+   "Destaque: iluminação LED Full. Calibragem dos pneus: 36 PSI."
   ],
   "fecho": "Salva pra lembrar",
-  "fonte": "Mostruário DL Mobilidade v3 (13/11/2026), p. 3; Manual de uso da DL Mobilidade, p. 2 (tabela do catálogo NXT 2026)",
+  "fonte": "Mostruário DL Mobilidade; Manual de uso da DL Mobilidade, p. 2 (tabela do catálogo NXT 2026)",
   "url": "D:\\MIGRADO_DO_C\\Desktop\\PROJETOS\\SCOOTER_CORRECAO_13nov\\01_MOSTRUARIO\\MOSTRUARIO_DL_SCOOTER v3.pdf",
   "trecho": "Akasha NOVO ... MOTOR 1000W ... 32 km/h ... LED Full",
   "conferido_em": "2026-11-13",
@@ -859,12 +859,12 @@
   "cat": "CONHEÇA A KAY",
   "titulo": "Kay: a linha premium com bateria de 72 V 35 Ah",
   "bullets": [
-   "Motor de 1.000 W, 32 km/h de fábrica, peso máximo de 150 kg, com bagageiro.",
+   "Motor de 1.000 W, 32 km/h de fábrica, carga máxima de 150 kg, com bagageiro.",
    "Bateria de grafeno 72 V 35 Ah e recarga de 5 horas.",
    "Mapa e música ficam na tela: configure sempre com a scooter parada."
   ],
   "fecho": "Salva pra lembrar",
-  "fonte": "Mostruário DL Mobilidade v3 (13/11/2026), p. 4; Manual de uso da DL Mobilidade, p. 2 e p. 5",
+  "fonte": "Mostruário DL Mobilidade; Manual de uso da DL Mobilidade, p. 2 e p. 5",
   "url": "D:\\MIGRADO_DO_C\\Desktop\\PROJETOS\\SCOOTER_CORRECAO_13nov\\01_MOSTRUARIO\\MOSTRUARIO_DL_SCOOTER v3.pdf",
   "trecho": "Kay NOVO ... MOTOR 1000W ... Com bagageiro",
   "conferido_em": "2026-11-13",
@@ -887,7 +887,7 @@
    "Lítio se guarda pela metade (50 a 60%), não cheio como o chumbo."
   ],
   "fecho": "Salva pra lembrar",
-  "fonte": "Mostruário DL Mobilidade v3 (13/11/2026), p. 5; Manual de uso da DL Mobilidade, p. 3",
+  "fonte": "Mostruário DL Mobilidade; Manual de uso da DL Mobilidade, p. 3",
   "url": "D:\\MIGRADO_DO_C\\Desktop\\PROJETOS\\SCOOTER_CORRECAO_13nov\\01_MOSTRUARIO\\MOSTRUARIO_DL_SCOOTER v3.pdf",
   "trecho": "X13 Citycoco NOVO ... Lítio removível ... Plaqueta de fábrica de autopropelido (CONTRAN 996)",
   "conferido_em": "2026-11-13",
@@ -905,12 +905,12 @@
   "cat": "CONHEÇA A GATAKA",
   "titulo": "Gataka: 1.000 W, bagageiro e baú opcional",
   "bullets": [
-   "Motor de 1.000 W, 32 km/h de fábrica e peso máximo de 150 kg.",
-   "Bateria de grafeno 72 V 22 Ah, recarga de 5 a 6 horas, pneus de 36 PSI.",
+   "Motor de 1.000 W, 32 km/h de fábrica e carga máxima de 150 kg.",
+   "Bateria de grafeno 72 V 22 Ah, recarga de 5 a 6 horas. Calibragem dos pneus: 36 PSI.",
    "Aceita o baú opcional, que combina com o bagageiro."
   ],
   "fecho": "Salva pra lembrar",
-  "fonte": "Mostruário DL Mobilidade v3 (13/11/2026), p. 5; Manual de uso da DL Mobilidade, p. 2 e p. 5",
+  "fonte": "Mostruário DL Mobilidade; Manual de uso da DL Mobilidade, p. 2 e p. 5",
   "url": "D:\\MIGRADO_DO_C\\Desktop\\PROJETOS\\SCOOTER_CORRECAO_13nov\\01_MOSTRUARIO\\MOSTRUARIO_DL_SCOOTER v3.pdf",
   "trecho": "Gataka DE VOLTA ... MOTOR 1000W ... Com bagageiro",
   "conferido_em": "2026-11-13",
@@ -933,7 +933,7 @@
    "Por ser ciclomotor, exige habilitação (CNH A ou ACC) e placa."
   ],
   "fecho": "Salva pra lembrar",
-  "fonte": "Mostruário DL Mobilidade v3 (13/11/2026), p. 6; Resolução CONTRAN 996/2023, art. 2º, IV e §6º",
+  "fonte": "Mostruário DL Mobilidade; Resolução CONTRAN 996/2023, art. 2º, IV e §6º",
   "url": "D:\\MIGRADO_DO_C\\Desktop\\PROJETOS\\SCOOTER_CORRECAO_13nov\\01_MOSTRUARIO\\MOSTRUARIO_DL_SCOOTER v3.pdf",
   "trecho": "Ciclomotor — exige CNH A/ACC e placa (50 km/h, acima do limite autopropelido)",
   "conferido_em": "2026-11-13",
@@ -956,7 +956,7 @@
    "A unidade da loja já é emplacada (CAT/DETRAN), com garantia de 1 ano no motor."
   ],
   "fecho": "Salva pra lembrar",
-  "fonte": "Mostruário DL Mobilidade v3 (13/11/2026), p. 6",
+  "fonte": "Mostruário DL Mobilidade",
   "url": "D:\\MIGRADO_DO_C\\Desktop\\PROJETOS\\SCOOTER_CORRECAO_13nov\\01_MOSTRUARIO\\MOSTRUARIO_DL_SCOOTER v3.pdf",
   "trecho": "XE-30 NOVO ... MOTOR 1.800W ... 45 km/h ... Caçamba basculante ... Ciclomotor — exige CNH A/ACC e placa",
   "conferido_em": "2026-11-13",
@@ -974,12 +974,12 @@
   "cat": "PRÉ-VENDA: E4",
   "titulo": "E4 em pré-venda: scooter de entrega com baú de série",
   "bullets": [
-   "Motor de 1.000 W, 32 km/h de fábrica e peso máximo de 150 kg.",
+   "Motor de 1.000 W, 32 km/h de fábrica e carga máxima de 150 kg.",
    "Vem com baú traseiro de série, pensado para quem faz entregas.",
    "Quer saber quando chega? Chame a loja pelo WhatsApp."
   ],
   "fecho": "Pede aviso no WhatsApp",
-  "fonte": "Mostruário DL Mobilidade v3 (13/11/2026), p. 7",
+  "fonte": "Mostruário DL Mobilidade",
   "url": "D:\\MIGRADO_DO_C\\Desktop\\PROJETOS\\SCOOTER_CORRECAO_13nov\\01_MOSTRUARIO\\MOSTRUARIO_DL_SCOOTER v3.pdf",
   "trecho": "E4 PRÉ-VENDA ... MOTOR 1000W ... 32 km/h ... Baú traseiro de série",
   "conferido_em": "2026-11-13",
@@ -999,10 +999,10 @@
   "bullets": [
    "Três rodas e motor de 1.000 W, 32 km/h de fábrica, com cesta.",
    "Bateria de grafeno 60 V 22 Ah, recarga de 5 a 6 horas.",
-   "Peso máximo de 150 kg e pneus de 30 PSI."
+   "Carga máxima de 150 kg. Calibragem dos pneus: 30 PSI."
   ],
   "fecho": "Salva pra lembrar",
-  "fonte": "Mostruário DL Mobilidade v3 (13/11/2026), p. 3; Manual de uso da DL Mobilidade, p. 2 (tabela do catálogo NXT 2026)",
+  "fonte": "Mostruário DL Mobilidade; Manual de uso da DL Mobilidade, p. 2 (tabela do catálogo NXT 2026)",
   "url": "D:\\MIGRADO_DO_C\\Desktop\\PROJETOS\\SCOOTER_CORRECAO_13nov\\01_MOSTRUARIO\\MOSTRUARIO_DL_SCOOTER v3.pdf",
   "trecho": "Pancho TRICICLO ... MOTOR 1000W ... Triciclo — com cesta",
   "conferido_em": "2026-11-13",
@@ -1156,7 +1156,7 @@
   "formato": "checklist",
   "tipo": "informar",
   "cat": "ANTES DE SAIR",
-  "titulo": "6 perguntas antes de sair com a scooter",
+  "titulo": "Perguntas rápidas antes de sair com a scooter",
   "bullets": [
    "A bateria tem carga para ir e voltar? Os dois freios pegam firme?",
    "Pneus sem prego, corte ou bolha? Farol, lanterna, pisca e campainha funcionam?",
@@ -1202,7 +1202,7 @@
   "formato": "numero",
   "tipo": "informar",
   "cat": "AUTOPROPELIDO: 4 MEDIDAS",
-  "titulo": "Autopropelido tem 4 medidas: potência, velocidade e tamanho",
+  "titulo": "Autopropelido: os limites de potência, velocidade e tamanho",
   "bullets": [
    "Motor de até 1.000 W de potência nominal.",
    "Velocidade máxima de fabricação de até 32 km/h.",
@@ -1255,7 +1255,7 @@
    "Na loja, X8 e XE-30 são ciclomotores: exigem CNH A/ACC e placa."
   ],
   "fecho": "Salva pra lembrar",
-  "fonte": "Resolução CONTRAN 996/2023, art. 2º, IV e §7º; Mostruário DL Mobilidade v3 (13/11/2026), p. 6",
+  "fonte": "Resolução CONTRAN 996/2023, art. 2º, IV e §7º; Mostruário DL Mobilidade",
   "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao9962023.pdf",
   "trecho": "motor de propulsão elétrica com potência máxima de 4 kW (quatro quilowatts), e cuja velocidade máxima de fabricação não exceda a 50 km/h",
   "conferido_em": "2026-11-13",
@@ -1577,7 +1577,7 @@
    "Em ambos, habilitação (CNH A ou ACC) e placa são exigidas."
   ],
   "fecho": "Chama no WhatsApp e tira a dúvida",
-  "fonte": "Mostruário DL Mobilidade v3 (13/11/2026), p. 6; Resolução CONTRAN 996/2023, art. 2º, IV",
+  "fonte": "Mostruário DL Mobilidade; Resolução CONTRAN 996/2023, art. 2º, IV",
   "url": "D:\\MIGRADO_DO_C\\Desktop\\PROJETOS\\SCOOTER_CORRECAO_13nov\\01_MOSTRUARIO\\MOSTRUARIO_DL_SCOOTER v3.pdf",
   "trecho": "Ciclomotor — exige CNH A/ACC e placa",
   "conferido_em": "2026-11-13",
@@ -1595,7 +1595,7 @@
   "cat": "MACETE DA RECARGA",
   "titulo": "Chegou? Ponha pra carregar, mesmo com carga",
   "bullets": [
-   "Bateria de chumbo dura mais quando volta sempre para 100%.",
+   "A bateria de grafeno, que é de base de chumbo, dura mais quando volta sempre para 100%.",
    "Carga cortada no meio também envelhece a bateria.",
    "Tire da tomada de manhã e guarde o carregador com cuidado."
   ],
@@ -1777,7 +1777,7 @@
   "formato": "checklist",
   "tipo": "informar",
   "cat": "SINAIS DE ALERTA",
-  "titulo": "5 sinais para parar e chamar a loja",
+  "titulo": "Sinais para parar a scooter e chamar a loja",
   "bullets": [
    "Cheiro de queimado, fumaça ou carregador quente demais.",
    "Bateria que estufou, vazou ou não completa a carga; água no motor, painel ou sob o banco.",
@@ -1846,7 +1846,7 @@
   "formato": "checklist",
   "tipo": "informar",
   "cat": "O QUE TIRA A GARANTIA",
-  "titulo": "5 coisas que costumam tirar a garantia da scooter",
+  "titulo": "O que costuma tirar a garantia da scooter",
   "bullets": [
    "Carregador que não é o original; modificar velocidade, potência ou bateria.",
    "Entrada de água por lavagem com jato ou por atravessar alagamento.",
@@ -1988,15 +1988,15 @@
   "bullets": [
    "Peças e assistência na DL Mobilidade, em Schroeder.",
    "Test-ride grátis, sem compromisso.",
-   "Avenida Marechal Castelo Branco, 2838, Sala 02, Centro."
+   "Rua Marechal Castelo Branco, 2838, Sala 02, Centro."
   ],
   "fecho": "Chama no WhatsApp (47) 99776-6831",
-  "fonte": "Mostruário DL Mobilidade v3 (13/11/2026), p. 8; Manual de uso da DL Mobilidade, p. 1",
+  "fonte": "Mostruário DL Mobilidade; Manual de uso da DL Mobilidade, p. 1",
   "url": "D:\\MIGRADO_DO_C\\Desktop\\PROJETOS\\SCOOTER_CORRECAO_13nov\\01_MOSTRUARIO\\MOSTRUARIO_DL_SCOOTER v3.pdf",
   "trecho": "DL Mobilidade: test-ride grátis, peças e assistência.",
   "conferido_em": "2026-11-13",
   "validade": "permanente",
-  "obs": "[L] Endereço: o manual e o mostruário dizem 'Av. Mal. Castelo Branco'; o motor, a Central e as legendas dizem 'R. Mal. Castelo Branco'. Decidir um só.",
+  "obs": "[L] Endereço: RUA Marechal Castelo Branco, 2838, Sala 02 (o dono, 13/11/2026). O 'Av.' do mostruário v3 e do manual antigo estava errado.",
   "status": "pronta",
   "foto_modelo": ""
  },

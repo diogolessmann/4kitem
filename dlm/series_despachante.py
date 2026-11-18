@@ -367,7 +367,7 @@ SERIES["trocar_carro"]["passos"] += [
                  "Débito não impede a baixa (CTB art. 126).",
                  "A gente faz a baixa por você e o IPVA para de nascer."],
      "fonte": "https://www.planalto.gov.br/ccivil_03/leis/l9503compilado.htm"},
-    {"cat": "ISENÇÃO PCD", "link": "/isencao-pcd",
+    {"cat": "ISENÇÃO PCD", "link": "/isencao-pcd", "sem_placa": True,   # 18/11: saiu "mande a placa do seu carro"
      "titulo": "Isenção PCD: o pedido é ANTES de comprar o carro",
      "bullets": ["IPI, IOF, ICMS e IPVA: quem tem direito e os tetos de 2026.",
                  "Laudo, SISEN e TTD 596 — a ordem certa evita perder a isenção.",

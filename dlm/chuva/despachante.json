@@ -1446,7 +1446,7 @@
   "formato": "checklist",
   "tipo": "informar",
   "cat": "VISTORIA DE IDENTIFICAÇÃO",
-  "titulo": "Vistoria do carro: 5 situações em que ela é obrigatória",
+  "titulo": "Vistoria do carro: quando ela é obrigatória",
   "bullets": [
    "Transferência de propriedade, para expedir o novo CRV.",
    "Remarcação ou regravação do chassi ou do motor, e troca de motor.",
@@ -1820,7 +1820,7 @@
   "formato": "checklist",
   "tipo": "informar",
   "cat": "O QUE TRAVA O CRLV-e",
-  "titulo": "10 coisas no prontuário que travam o CRLV-e em SC",
+  "titulo": "O que no prontuário trava o CRLV-e em SC",
   "bullets": [
    "RENAJUD de circulação, restrição judicial, RFB, administrativa e furto/roubo.",
    "Recall, comunicação de venda, intenção de venda e mudança de características.",
@@ -2172,7 +2172,7 @@
   "formato": "numero",
   "tipo": "informar",
   "cat": "QUANDO SAI O CRLV-e",
-  "titulo": "O CRLV-e não sai só no licenciamento: são 8 situações",
+  "titulo": "O CRLV-e não sai só no licenciamento: veja quando",
   "bullets": [
    "Registro, licenciamento anual, transferência e mudança de município.",
    "Alteração de característica, mudança de categoria e remarcação de chassi ou motor.",
@@ -2194,7 +2194,7 @@
   "formato": "numero",
   "tipo": "vender",
   "cat": "5 CASOS DE CRV NOVO",
-  "titulo": "5 casos em que o DETRAN exige um novo CRV",
+  "titulo": "Quando o DETRAN exige um novo CRV",
   "bullets": [
    "Transferência de propriedade e mudança de município do dono.",
    "Alteração de característica do veículo e remarcação de chassi ou motor.",

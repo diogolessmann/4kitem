@@ -270,6 +270,7 @@ BRANDS = {
         "brand_tag": "DL MOBILIDADE",
         "tagline": "Scooters elétricas NXT em Schroeder e região",
         "site": "dldespachante.com.br",       # a legenda já acrescenta /mobilidade
+        "site_info": "dldespachante.com.br/mobilidade",   # 18/11: a legenda da chuva (build_caption) usa este
         "whats": "(47) 99776-6831",          # WhatsApp da LOJA (28/set), não o do despachante
         "instagram": os.environ.get("DLMOB_HANDLE", ""),
         # tema laranja/preto (energia + scooter)
@@ -472,6 +473,8 @@ _DL_PROIBIDO = [
     (r"r\$ ?\d", "preço ou parcela em R$ inventado pela IA (regra de 11/10: DE real, POR em %)"),
     (r"\b\d{2,3} ?km\b(?!/h)", "autonomia inventada (a ficha diverge por modelo)"),
     (r"\bexclusiv|\bso a dl\b|\bgrupo\b", "exclusividade sem prova ou 'Grupo' (regra da casa)"),
+    # 18/11: saiu "E a boa de hoje é que você pode financiar" (16/11). A peça fica no perfil; "hoje" envelhece.
+    (r"\b(hoje|amanha|ontem)\b", "'hoje', 'amanhã' ou 'ontem' (regra da casa: a peça fica no perfil)"),
 ]
 
 
@@ -498,11 +501,12 @@ def _dl_caption(t, angle):
         from dlm import cerebro
         prompt = (
             f"{t.get('voz', '')}\n\n"
-            "Escreva a legenda de UM post de Instagram (portugues BR) para a oferta de scooter "
-            "eletrica de hoje. "
-            f"ANGULO DE HOJE: {angle['badge']} — {angle['h1']} {angle['h2']} ({angle['sub']}).\n"
+            "Escreva a legenda de UM post de Instagram (portugues BR) para uma oferta de scooter "
+            "eletrica. "
+            f"ANGULO DO POST: {angle['badge']} — {angle['h1']} {angle['h2']} ({angle['sub']}).\n"
             "Regras: 1a linha e um gancho curto (no max 1 emoji). Depois 3-4 linhas curtas. "
-            "Bata no angulo do dia. Termine convidando a CHAMAR NO WHATSAPP. "
+            "Bata no angulo do post. Termine convidando a CHAMAR NO WHATSAPP. "
+            "NAO escreva 'hoje', 'amanha' nem 'ontem': o post fica no perfil. "
             "Pode dizer 'sem CNH e sem placa (CONTRAN 996)' e 'ate 48x pela Viacredi'. "
             "NAO cite preco nem valor de parcela em R$, outro numero de parcelas, autonomia em km nem "
             "'exclusivo'. NAO invente modelo. NAO use hashtags (eu adiciono depois)."
@@ -727,19 +731,68 @@ def slide_capa(t, item, outdir, n=1):
     return p
 
 
+def slide_capa_foto(t, item, outdir, n=1):
+    """18/11 — capa com a FOTO INTEIRA (chuva da DL Mobilidade), no desenho do card de oferta (_dl_photo_card):
+    foto real cobrindo o quadro, degradê escuro embaixo e o título por cima. A foto de celular é em pé; a capa
+    de slide_capa só mostrava uma faixa deitada dela (37% da altura) e cortava o topo da scooter."""
+    from PIL import Image, ImageDraw
+    ph = Image.open(item["foto_path"]).convert("RGB")
+    r = max(W / ph.width, H / ph.height)
+    ph = ph.resize((round(ph.width * r), round(ph.height * r)), Image.LANCZOS)
+    l = (ph.width - W) // 2
+    tp = (ph.height - H) // 2
+    ph = ph.crop((l, tp, l + W, tp + H))
+    d = ImageDraw.Draw(ph)
+    # o título encolhe de degrau até caber em 4 linhas (mesma escala de slide_capa)
+    for px in (82, 64, 56):
+        ft = _font(px, impact=True)
+        lines = gi.wrap(d, item["titulo"], ft, W - 120)
+        if len(lines) <= 4:
+            break
+    passo = int(ft.size * 1.04)
+    y_tit = H - 210 - len(lines) * passo          # o bloco de texto encosta no pé, acima do "arrasta"
+    y_badge = y_tit - 78
+    # degradê: a foto fica limpa em cima e escurece a partir de 150 px acima do selo
+    ini = max(0, y_badge - 150)
+    grad = Image.new("L", (1, H), 0)
+    for y in range(H):
+        grad.putpixel((0, y), int(238 * min(1.0, max(0.0, (y - ini) / 300.0))))
+    ph = Image.composite(Image.new("RGB", (W, H), (8, 10, 16)), ph, grad.resize((W, H)))
+    d = ImageDraw.Draw(ph)
+    gi.pill(d, 56, 56, t["brand_tag"], _font(40), t["accent"], t["white"])
+    gi.pill(d, 56, y_badge, item["cat"], _font(34), t["accent2"], (10, 10, 10))
+    y = y_tit
+    for ln in lines:
+        d.text((56, y), ln, font=ft, fill=t["white"], stroke_width=2, stroke_fill=(0, 0, 0))
+        y += passo
+    gi.pill(d, 56, H - 150, "ARRASTA PARA O LADO  ->", _font(34), t["accent"], (10, 10, 10))
+    p = os.path.join(outdir, f"slide_{n}.png")
+    ph.save(p, quality=92)
+    return p
+
+
 def slide_conteudo(t, item, outdir, n=2):
     img, d = _canvas(t)
     _brand_header(d, t)
     ft = _font(50, impact=True)
     gi.pill(d, 56, 200, item.get("rotulo_conteudo") or "COMO FUNCIONA", ft, t["accent2"], t["white"])
-    y = 360
-    fb = _font(46, bold=False)
-    for b in item["bullets"]:
+    # 18/11: com 3 itens curtos, quase metade do slide ficava vazia. O texto cresce um degrau quando cabe
+    # e o bloco fica no meio da área útil (entre o selo e o rodapé).
+    topo, pe = 330, H - 150
+    for px in (54, 46):
+        fb = _font(px, bold=False)
+        passo = int(fb.size * 1.32)
+        blocos = [gi.wrap(d, b, fb, W - 180) for b in item["bullets"]]
+        alturas = [max(120, len(ls) * passo + 40) for ls in blocos]
+        total = sum(alturas) - 40
+        if total <= pe - topo:
+            break
+    y = topo + max(0, min((pe - topo - total) // 2, 150))
+    for lines, alt in zip(blocos, alturas):
         # marcador
         d.ellipse([56, y + 12, 56 + 22, y + 34], fill=t["accent"])
-        lines = gi.wrap(d, b, fb, W - 180)
-        gi.draw_lines(d, lines, fb, 100, y, t["white"], int(fb.size * 1.32))
-        y += max(120, len(lines) * int(fb.size * 1.32) + 40)
+        gi.draw_lines(d, lines, fb, 100, y, t["white"], passo)
+        y += alt
     _footer(d, t)
     p = os.path.join(outdir, f"slide_{n}.png")
     img.save(p, quality=92)
@@ -838,9 +891,12 @@ def _rodape_serie(t, item):
         except Exception:
             _u = t["site"] + item["link"]
         _rod = ("\n" + _sd.RODAPE_DEFESA) if item.get("serie") == "multa" else ""
+        # 18/11: quem ainda vai comprar o carro (isenção PCD) não tem placa para mandar
+        _zap = "Fala com a gente" if item.get("sem_placa") else "Manda a placa"
         return (f"\n\n🌐 Acesse e veja mais informações: {_u}"
-                f"\n📲 Manda a placa no WhatsApp: {t['whats']}{_rod}\n\n")
-    return (f"\n\n🌐 Acesse e veja mais informações: {t['site']}"
+                f"\n📲 {_zap} no WhatsApp: {t['whats']}{_rod}\n\n")
+    # 18/11: as dicas da DL Mobilidade mandavam para a home do despachante; a página da loja é /mobilidade
+    return (f"\n\n🌐 Acesse e veja mais informações: {t.get('site_info') or t['site']}"
             f"\n📲 Fala com a gente no WhatsApp: {t['whats']}\n\n")
 
 
@@ -868,8 +924,10 @@ def groq_caption(t, item):
     if item.get("serie"):
         from dlm import series_despachante as _sd
         travas = _sd.TRAVAS + " "
+        _zap = ("pra chamar no WhatsApp (NÃO peça a placa: a pessoa ainda vai comprar o carro)"
+                if item.get("sem_placa") else "pra mandar a placa no WhatsApp")
         serie_ctx = (f"SÉRIE: {item.get('serie_nome')} (passo {item.get('passo')}/{item.get('total')}). "
-                     f"Termine dizendo que tem mais no site {t['site']}{item['link']} e pra mandar a placa no WhatsApp. ")
+                     f"Termine dizendo que tem mais no site {t['site']}{item['link']} e {_zap}. ")
     else:
         serie_ctx = (f"Termine convidando a acessar o site {t['site']} pra ver mais informações "
                      "e a falar no WhatsApp. ")
