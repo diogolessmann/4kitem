@@ -30,6 +30,14 @@
 .sec{padding:30px 0 6px;scroll-margin-top:66px}
 .sec h2{font-size:2.15rem;text-transform:uppercase;line-height:.95}
 .sec .nota{margin-top:6px;color:var(--texto-2);font-size:.93rem}
+.dias-hh{list-style:none;margin:10px 0 0;padding:0}
+.dia-hh{padding:13px 0;border-bottom:1px solid var(--linha)}
+.dia-hh:last-child{border-bottom:0}
+.dia-hh.hoje{margin:0 -10px;padding:13px 10px;border-radius:10px;border:1px solid rgba(255,181,58,.55);background:rgba(255,181,58,.07)}
+.dia-hh h3{font:700 1.2rem/1.2 var(--f-disp);letter-spacing:.03em;text-transform:uppercase;color:var(--osso)}
+.dia-hh .tag-hoje{display:inline-block;margin-left:6px;padding:.18rem .42rem .14rem;border-radius:5px;background:var(--ambar);color:var(--ambar-tinta);font:700 .78rem/1.1 var(--f-disp);letter-spacing:.09em;vertical-align:.12em}
+.dia-hh .dh-quando{margin-top:3px;color:var(--ambar);font-size:.97rem;font-weight:600}
+.dia-hh .dh-txt{margin-top:3px;font-size:1rem;color:var(--texto);line-height:1.4}
 .itens{list-style:none;margin:10px 0 0;padding:0}
 .item{display:grid;grid-template-columns:1fr auto;gap:2px 14px;align-items:start;padding:15px 0;border-bottom:1px solid var(--linha)}
 .item:last-child{border-bottom:0}
@@ -76,7 +84,7 @@
     <div class="info">
       {% if aviso %}<p class="av">{{ ico('megafone', 20) }}<span>{{ aviso }}</span></p>{% endif %}
       {% if hoje_semana %}<p class="on">{{ ico('estrela', 20) }}<span><b>Hoje:</b> {{ hoje_semana }}</span></p>{% endif %}
-      {% if hh %}<p class="{{ 'on' if hh.rolando }}">{{ ico('relogio', 20) }}<span>{% if hh.rolando %}<b>Happy hour rolando até {{ hh.ate }}.</b>{% else %}<b>Happy hour das {{ hh.faixa }}</b>, {{ hh.dias }}.{% endif %} O preço em âmbar vale no happy hour.{% if hh.obs %} {{ hh.obs }}{% endif %}</span></p>{% endif %}
+      {% if hh %}<p class="{{ 'on' if hh.rolando }}">{{ ico('relogio', 20) }}<span>{% if hh.rolando %}<b>Happy hour rolando até {{ hh.ate }}.</b>{% else %}<b>Happy hour {{ hh.resumo }}.</b>{% endif %} O preço em âmbar vale no happy hour.{% if hh.obs %} {{ hh.obs }}{% endif %}</span></p>{% endif %}
     </div>
   </div>
 </header>
@@ -88,6 +96,20 @@
 <main class="in">
   {% set ns = namespace(dica=false) %}
   {% for s in secs %}
+  {% if s.agenda %}
+  <section class="sec agenda" id="{{ s.chave }}" aria-labelledby="t-{{ s.chave }}">
+    <h2 id="t-{{ s.chave }}">{{ s.nome }}</h2>
+    {% if s.nota %}<p class="nota">{{ s.nota }}</p>{% endif %}
+    <ul class="dias-hh">
+      {% for it in s.itens %}{% set hd = hh.por_dia.get(it.dia) if (hh and it.dia) else none %}
+      <li class="dia-hh{{ ' hoje' if it.dia and it.dia == dia_hoje }}">
+        <h3>{{ it.titulo }}{% if it.dia and it.dia == dia_hoje %} <span class="tag-hoje">hoje</span>{% endif %}</h3>
+        {% if hd %}<p class="dh-quando">Happy hour {{ hd.txt }}</p>{% endif %}
+        {% if it.desc.strip() %}<p class="dh-txt">{{ it.desc }}</p>{% endif %}
+      </li>{% endfor %}
+    </ul>
+  </section>
+  {% else %}
   <section class="sec" id="{{ s.chave }}" aria-labelledby="t-{{ s.chave }}">
     <h2 id="t-{{ s.chave }}">{{ s.nome }}</h2>
     {% if s.nota %}<p class="nota">{{ s.nota }}</p>{% endif %}
@@ -106,6 +128,7 @@
       </li>{% endfor %}
     </ul>
   </section>
+  {% endif %}
   {% else %}
   <p class="sec">O cardápio está sendo montado. Pergunta no balcão.</p>
   {% endfor %}

@@ -40,7 +40,8 @@ html:not(.js) .foto-box input[type=file]{position:static;opacity:1}
   <form class="form card" id="item" method="post" enctype="multipart/form-data" action="{{ url_for('vitrine.bar_item_salvar', slug=loja.slug, pid=p.id if p else 'novo') }}">
     <input type="hidden" name="_csrf" value="{{ csrf }}">
     <label class="cp">Nome (com a medida, se tiver)<input type="text" name="titulo" value="{{ p.titulo if p else '' }}" maxlength="80" required placeholder="Ex.: Chopp Pilsen 500 ml"></label>
-    <label class="cp">Descrição curta (opcional)<textarea name="descricao" maxlength="200" placeholder="Ex.: Acompanha pão e vinagrete">{{ p.descricao if p else '' }}</textarea></label>
+    <label class="cp">{{ 'O que está na promoção nesse dia' if dia_item else 'Descrição curta (opcional)' }}<textarea name="descricao" maxlength="200" placeholder="{{ 'Ex.: Chopp sujo R$ 9,90 a noite toda' if dia_item else 'Ex.: Acompanha pão e vinagrete' }}">{{ p.descricao if p else '' }}</textarea></label>
+    {% if dia_item %}<p class="dica" style="color:var(--tinta-2);font-size:.92rem">Os horários do happy hour ficam na aba "O bar". Se apagar o texto e o dia não tiver happy hour, ele some do cardápio.</p>{% else %}
     <label class="cp">Seção do cardápio
       <select name="secao" required>
         {% if not sec_atual %}<option value="" selected disabled>Escolhe a seção</option>{% endif %}
@@ -64,10 +65,11 @@ html:not(.js) .foto-box input[type=file]{position:static;opacity:1}
         </div>
       </div>
     </div>
+    {% endif %}
     <button class="btn btn-p btn-grande" type="submit">{{ ico('check', 20) }}{{ 'Salvar o item' if p else 'Pôr no cardápio' }}</button>
   </form>
 
-  {% if p %}
+  {% if p and not dia_item %}
   <section class="card zona" aria-labelledby="t-tirar">
     <h2 id="t-tirar">Tirar do cardápio</h2>
     <p class="dica">Acabou só hoje? Usa o "Acabou hoje" na lista: amanhã volta sozinho. Aqui é pra tirar de vez.</p>
@@ -84,7 +86,7 @@ html:not(.js) .foto-box input[type=file]{position:static;opacity:1}
 <script>
 (function(){
   var form=document.getElementById('item'),arq=document.getElementById('arq'),info=document.getElementById('info'),prev=document.getElementById('prev'),pronta=null,orig=0;
-  arq.addEventListener('change',async function(){
+  if(arq)arq.addEventListener('change',async function(){
     var f=arq.files[0];pronta=null;if(!f)return;orig=f.size;info.textContent='Preparando a foto…';
     pronta=await vbEncolhe(f);
     info.textContent=vbTam(f.size)+' no celular → '+vbTam(pronta.size)+' pra enviar. O site guarda ainda menor.';

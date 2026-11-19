@@ -123,7 +123,8 @@ html:not(.js) .sobe input[type=file]{position:static;opacity:1}
   <nav class="saltos" aria-label="Seções">{% for s in secs %}<a href="#s-{{ s.chave }}">{{ s.nome.split(' · ')[0] }}</a>{% endfor %}</nav>
   {% for s in secs %}
   <section class="sec-adm" id="s-{{ s.chave }}">
-    <h2>{{ s.nome }} <a href="{{ url_for('vitrine.bar_item_pagina', slug=loja.slug, pid='novo', secao=s.chave) }}">{{ ico('mais', 18) }}item</a></h2>
+    <h2>{{ s.nome }}{% if not s.agenda %} <a href="{{ url_for('vitrine.bar_item_pagina', slug=loja.slug, pid='novo', secao=s.chave) }}">{{ ico('mais', 18) }}item</a>{% endif %}</h2>
+    {% if s.agenda %}<p class="dica">Toca no lápis do dia e escreve a promoção (ex.: "Chopp sujo R$ 9,90 a noite toda"). Dia sem texto e sem happy hour some do cardápio. Os horários do happy hour ficam na aba "O bar".</p>{% endif %}
     <ul class="lista">
     {% for i in s.itens %}
       <li class="it{{ ' acabou' if i.acabou }}" id="i{{ i.id }}">
@@ -132,6 +133,7 @@ html:not(.js) .sobe input[type=file]{position:static;opacity:1}
           <div class="it-nome"><b>{{ i.titulo }}</b>{% if i.desc %}<small>{{ i.desc }}</small>{% endif %}</div>
           <a class="ed" href="{{ url_for('vitrine.bar_item_pagina', slug=loja.slug, pid=i.id) }}" aria-label="Editar {{ i.titulo }}">{{ ico('lapis', 20) }}</a>
         </div>
+        {% if not s.agenda %}
         <div class="it-precos">
           {% for campo, rotulo, v in [('preco', 'Preço', i.preco), ('hh', 'Happy hour', i.hh)] %}
           <form class="pf {{ campo }}" method="post" action="{{ url_for('vitrine.bar_preco', slug=loja.slug, pid=i.id) }}" data-ajax>
@@ -153,6 +155,7 @@ html:not(.js) .sobe input[type=file]{position:static;opacity:1}
             <button class="estrela" name="on" value="{{ '0' if i.mais else '1' }}" aria-pressed="{{ 'true' if i.mais else 'false' }}">{{ ico('estrela', 18) }}Mais pedido</button>
           </form>
         </div>
+        {% endif %}
       </li>
     {% else %}
       <li class="it"><p>Nenhum item nessa seção ainda.</p></li>
@@ -245,10 +248,14 @@ html:not(.js) .sobe input[type=file]{position:static;opacity:1}
           <label class="cp">Começa<input type="time" name="hh_ini" value="{{ (c.happy or {}).get('ini', '') }}"></label>
           <label class="cp">Termina<input type="time" name="hh_fim" value="{{ (c.happy or {}).get('fim', '') }}"></label>
         </div>
-        <fieldset style="border:0;padding:0;margin:0"><legend class="cp" style="font-weight:600;font-size:.95rem">Dias</legend>
-          <div class="dsem">{% for d in DIAS %}<label><input type="checkbox" name="hh_dias" value="{{ d }}"{% if d in (c.happy or {}).get('dias', []) %} checked{% endif %}><span>{{ DIA_CURTO[d] }}</span></label>{% endfor %}</div>
+        <fieldset style="border:0;padding:0;margin:0"><legend class="cp" style="font-weight:600;font-size:.95rem">Dias com happy hour (na faixa acima)</legend>
+          <div class="dsem">{% for d in DIAS %}<label><input type="checkbox" name="hh_dias" value="{{ d }}"{% if d in (c.happy or {}).get('dias', []) or d in (c.happy or {}).get('todo', []) %} checked{% endif %}><span>{{ DIA_CURTO[d] }}</span></label>{% endfor %}</div>
         </fieldset>
-        {% if hh %}<p class="dica">No site: happy hour das {{ hh.faixa }}, {{ hh.dias }}.</p>{% endif %}
+        <fieldset style="border:0;padding:0;margin:0"><legend class="cp" style="font-weight:600;font-size:.95rem">Dias com happy hour o dia todo (da abertura ao fechamento)</legend>
+          <div class="dsem">{% for d in DIAS %}<label><input type="checkbox" name="hh_todo" value="{{ d }}"{% if d in (c.happy or {}).get('todo', []) %} checked{% endif %}><span>{{ DIA_CURTO[d] }}</span></label>{% endfor %}</div>
+        </fieldset>
+        {% if hh %}<p class="dica">No site: happy hour {{ hh.resumo }}.</p>{% endif %}
+        <p class="dica">A promoção de cada dia (o que está valendo na segunda, na terça…) você escreve na aba "Cardápio", na seção Happy hour.</p>
       </div>
     </section>
 

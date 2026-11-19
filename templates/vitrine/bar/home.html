@@ -174,8 +174,8 @@
 <section class="sec hh" aria-labelledby="t-hh">
   <div class="in">
     <div class="hh-topo">
-      <h2 class="sec-t" id="t-hh">Happy hour <em class="num">{{ hh.faixa }}</em></h2>
-      <div class="hh-quando">{% if hh.rolando %}<span class="status aberto"><i></i>Rolando agora · até {{ hh.ate }}</span>{% endif %}<p>{{ hh.dias|capitalize }}.{% if hh.obs %} {{ hh.obs }}{% endif %}</p></div>
+      <h2 class="sec-t" id="t-hh">Happy hour <em class="num">{{ hh.faixa_txt }}</em></h2>
+      <div class="hh-quando">{% if hh.rolando %}<span class="status aberto"><i></i>Rolando agora · até {{ hh.ate }}</span>{% endif %}<p>{{ hh.quando|capitalize }}.{% if hh.obs %} {{ hh.obs }}{% endif %}</p></div>
     </div>
     <ul class="placas">
       {% for p in placas %}<li><a class="placa" href="{{ u_cardapio }}#{{ p.secao }}">
@@ -220,10 +220,10 @@
         <div><h3>{{ r.t }}</h3>{% if r.d %}<p>{{ r.d }}</p>{% endif %}</div>
       </li>{% endfor %}
     </ul>
-    {% if c.semana %}
+    {% if semana_lista %}
     <div class="semana">
       <h3>{{ titulos.semana or 'Na semana' }}</h3>
-      <ul>{% for d in DIAS if c.semana.get(d) %}<li class="{{ 'hoje' if d == dia_hoje }}"><span class="dia">{{ DIA_CURTO[d] }}</span><span>{{ c.semana[d] }}{% if d == dia_hoje %}<span class="tag-hoje">hoje</span>{% endif %}</span></li>{% endfor %}</ul>
+      <ul>{% for d, txt in semana_lista %}<li class="{{ 'hoje' if d == dia_hoje }}"><span class="dia">{{ DIA_CURTO[d] }}</span><span>{{ txt }}{% if d == dia_hoje %}<span class="tag-hoje">hoje</span>{% endif %}</span></li>{% endfor %}</ul>
     </div>
     {% endif %}
   </div>
@@ -257,7 +257,7 @@
       <table><tbody>
         {% for h in horario %}<tr class="{{ 'hoje' if h.hoje }}{{ ' fechado' if not h.aberto }}"><th scope="row">{{ h.nome }}{% if h.hoje %}<span class="tag-hoje">hoje</span>{% endif %}</th><td class="num">{{ h.txt }}</td></tr>{% endfor %}
       </tbody></table>
-      {% if hh %}<p class="obs">Happy hour das {{ hh.faixa }}, {{ hh.dias }}. Horário de Manaus.</p>{% endif %}
+      {% if hh %}<p class="obs">Happy hour {{ hh.resumo }}. Horário de Manaus.</p>{% endif %}
     </div>
   </div>
 </section>

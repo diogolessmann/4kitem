@@ -41,7 +41,7 @@
   <div class="linhas">
     {% if aviso %}<p class="av">{{ ico('megafone', 20) }}<span>{{ aviso }}</span></p>{% endif %}
     {% if hoje_semana %}<p>{{ ico('estrela', 20) }}<span>Hoje: {{ hoje_semana }}</span></p>{% endif %}
-    {% if hh %}<p>{{ ico('relogio', 20) }}<span>{% if hh.rolando %}Happy hour rolando até {{ hh.ate }}.{% else %}Happy hour das {{ hh.faixa }}, {{ hh.dias }}.{% endif %}</span></p>{% endif %}
+    {% if hh %}<p>{{ ico('relogio', 20) }}<span>{% if hh.rolando %}Happy hour rolando até {{ hh.ate }}.{% else %}Happy hour {{ hh.resumo }}.{% endif %}</span></p>{% endif %}
   </div>
   <nav class="atalhos" aria-label="Mais do bar">
     <a href="{{ url_for('vitrine.site', slug=loja.slug) }}">{{ ico('caneca', 20) }}Conhecer o bar</a>

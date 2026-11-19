@@ -122,23 +122,60 @@ def _dias_txt(dias):
     if len(dias) == 6:
         falta = next(d for d in DIAS if d not in dias)
         return f'todo dia, menos {DIA_NOME[falta].lower()}'
-    nomes = [DIA_CURTO[d].lower() for d in dias]
+    nomes = [DIA_NOME[d].lower() for d in dias]
     return ', '.join(nomes[:-1]) + (' e ' if len(nomes) > 1 else '') + nomes[-1] if nomes else ''
+
+
+def _hh_dias(c):
+    """{dia: dict(todo, ini, fim, txt)} só dos dias COM happy hour. cfg.happy: ini/fim = faixa de todo dia de happy hour;
+    dias = quais dias têm; todo = dias em que o happy hour vale o dia todo (da abertura ao fechamento do dia, pelo horário)."""
+    h = c.get('happy') or {}
+    ini, fim = h.get('ini') or '', h.get('fim') or ''
+    padrao = bool(_HM(ini) and _HM(fim))
+    out = {}
+    for d in DIAS:
+        todo = d in (h.get('todo') or [])
+        if d not in (h.get('dias') or []) and not todo:
+            continue
+        if todo:
+            f = (c.get('horario') or {}).get(d)
+            if f and len(f) == 2 and _HM(f[0] or '') and _HM(f[1] or ''):
+                out[d] = dict(todo=True, ini=f[0], fim=f[1], txt='o dia todo')
+        elif padrao:
+            out[d] = dict(todo=False, ini=ini, fim=fim, txt=f'das {_hora_txt(ini)} às {_hora_txt(fim)}')
+    return out
+
+
+def _resumo_hh(por_dia):
+    """'das 17h às 20h, todo dia, menos quinta' (sem dia de 'o dia todo') ou 'segunda e terça o dia todo; quarta a domingo das ...'."""
+    todo = [d for d, v in por_dia.items() if v['todo']]
+    norm = [d for d, v in por_dia.items() if not v['todo']]
+    if not todo:
+        return f"{por_dia[norm[0]]['txt']}, {_dias_txt(norm)}"
+    if not norm:
+        return f"o dia todo, {_dias_txt(todo)}"
+    return f"{_dias_txt(todo)} o dia todo; {_dias_txt(norm)} {por_dia[norm[0]]['txt']}"
 
 
 def happy(c, a):
     h = c.get('happy') or {}
-    ini, fim = h.get('ini') or '', h.get('fim') or ''
-    if not (_HM(ini) and _HM(fim)):
+    por_dia = _hh_dias(c)
+    if not por_dia:
         return None
     t = a.strftime('%H:%M')
     hoje = DIAS[noite_de(a).weekday()]
-    if fim > ini:
-        rolando = hoje in (h.get('dias') or []) and ini <= t < fim
-    else:   # happy hour que passa da meia-noite
-        rolando = hoje in (h.get('dias') or []) and (t >= ini or t < fim)
-    return dict(rolando=rolando, faixa=f'{_hora_txt(ini)} às {_hora_txt(fim)}', ini=_hora_txt(ini), ate=_hora_txt(fim),
-                dias=_dias_txt(h.get('dias')), obs=(h.get('obs') or '').strip(), hoje=hoje in (h.get('dias') or []))
+    j = por_dia.get(hoje)
+    rolando = False
+    if j:
+        ini, fim = j['ini'], j['fim']
+        rolando = (ini <= t < fim) if fim > ini else (t >= ini or t < fim)     # fim <= ini: passa da meia-noite
+    ref = j or next((v for v in por_dia.values() if not v['todo']), next(iter(por_dia.values())))
+    faixa = f"{_hora_txt(ref['ini'])} às {_hora_txt(ref['fim'])}"
+    resumo = _resumo_hh(por_dia)
+    algum_todo = any(v['todo'] for v in por_dia.values())
+    return dict(rolando=rolando, faixa=faixa, faixa_txt='o dia todo' if ref['todo'] else faixa, ini=_hora_txt(ref['ini']),
+                ate=_hora_txt(ref['fim']), dias=_dias_txt(list(por_dia)), obs=(h.get('obs') or '').strip(), hoje=bool(j),
+                resumo=resumo, quando=resumo if algum_todo else _dias_txt(list(por_dia)), por_dia=por_dia)
 
 
 def aviso_ativo(c, n):
@@ -222,23 +259,44 @@ def secoes(loja, c, n, so_disponiveis=True):
     rows = conn.execute('SELECT * FROM vit_produtos WHERE loja_id=? AND ativo=1 ORDER BY ordem, id', (loja['id'],)).fetchall()
     conn.close()
     secs = [dict(chave=s.get('chave'), nome=s.get('nome') or s.get('chave'), nota=s.get('nota') or '',
-                 zoom=bool(s.get('zoom')), itens=[])
+                 zoom=bool(s.get('zoom')), agenda=bool(s.get('agenda')), itens=[])
             for s in (c.get('secoes') or []) if s.get('chave')]
     por = {s['chave']: s for s in secs}
-    resto = dict(chave='mais', nome='Mais', nota='', itens=[])
+    resto = dict(chave='mais', nome='Mais', nota='', agenda=False, itens=[])
     hoje = n.isoformat()
+    hh_dias = _hh_dias(c)
     for r in rows:
         acabou = (r['acabou_ate'] or '') == hoje
         if so_disponiveis and acabou:
             continue
         nome, med = _medida(r['titulo'])
+        cod = r['codigo'] or ''
         it = dict(id=r['id'], titulo=r['titulo'], nome=nome, medida=med, desc=r['descricao'] or '', preco=r['preco'],
                   hh=r['preco_pro'], foto=r['foto'] or '', mais=(r['tag'] or '') == 'Mais pedido', acabou=acabou,
-                  secao=r['categoria'])
-        por.get(r['categoria'], resto)['itens'].append(it)
+                  secao=r['categoria'], dia=cod[4:] if cod.startswith('dia:') and cod[4:] in DIAS else '')
+        sec = por.get(r['categoria'], resto)
+        # seção "Happy hour" (agenda): 1 item por dia da semana; no site só aparece o dia que tem texto ou tem happy hour
+        if sec['agenda'] and so_disponiveis and not (it['desc'].strip() or it['dia'] in hh_dias):
+            continue
+        sec['itens'].append(it)
     if resto['itens']:
         secs.append(resto)
     return [s for s in secs if s['itens']] if so_disponiveis else secs
+
+
+def _agenda(loja):
+    """{dia: texto} da promoção de cada dia da semana, escrita pelo dono nos itens "Segunda-feira"… da seção Happy hour
+    (produto com codigo 'dia:seg'). Banco ocupado: devolve vazio, a página segue."""
+    try:
+        conn = get_vit_db()
+        rows = conn.execute("SELECT codigo, descricao FROM vit_produtos WHERE loja_id=? AND ativo=1 AND codigo LIKE 'dia:%'",
+                            (loja['id'],)).fetchall()
+        conn.close()
+    except Exception as e:
+        print(f'[vitrine_bar] agenda indisponível: {e}')
+        return {}
+    return {r['codigo'][4:]: (r['descricao'] or '').strip() for r in rows
+            if r['codigo'][4:] in DIAS and (r['descricao'] or '').strip()}
 
 
 def _placas(secs, n=4):
@@ -544,10 +602,13 @@ def _ctx(loja, c):
     cores = {k: v for k, v in (c.get('cores') or {}).items() if k in ('acao', 'acento', 'fundo', 'titulo') and _HEX(v or '')}
     wa = loja['whatsapp'] or ''
     end = [x.strip() for x in (loja['endereco'] or '').split('·') if x.strip()]
+    ag = _agenda(loja)       # o que o dono escreveu pra cada dia (seção Happy hour) manda; cfg.semana é o reserva
+    semana = {d: ag.get(d) or ((c.get('semana') or {}).get(d) or '').strip() for d in DIAS}
     return dict(loja=loja, c=c, agora=a, noite=n, est=estado(c, a), hh=happy(c, a), aviso=aviso_ativo(c, n), DIAS=DIAS,
                 frase=[x for x in re.split(r'(?<=[.!?])\s+', (loja['frase'] or '').strip()) if x],
                 end1=end[0] if end else '', end2=' · '.join(end[1:] + [x for x in (loja['cidade'], loja['cep']) if x]),
-                hoje_semana=(c.get('semana') or {}).get(DIAS[n.weekday()], ''), dia_hoje=DIAS[n.weekday()],
+                hoje_semana=semana[DIAS[n.weekday()]], dia_hoje=DIAS[n.weekday()],
+                semana_lista=[(d, semana[d]) for d in DIAS if semana[d]],
                 foto=lambda f, mini=False: foto_url(loja, f, mini), preco=_preco, brl=_brl, noindex=not c.get('indexar'),
                 precos_em=_ddmm(c.get('precos_em')), cores=cores, horario=_horario_tabela(c, n), DIA_CURTO=DIA_CURTO,
                 tem_musica=bool(c.get('pubshow_url')), st=f"/static/vitrine/{loja['slug']}/img", base=_base(loja),
@@ -571,7 +632,7 @@ def home(loja):
     """/v/<slug> de loja tipo bar (chamada pelo vitrine.site)."""
     def extra(ctx):
         secs = secoes(loja, ctx['c'], ctx['noite'])
-        return dict(placas=_placas(secs), n_itens=sum(len(s['itens']) for s in secs),
+        return dict(placas=_placas(secs), n_itens=sum(len(s['itens']) for s in secs if not s['agenda']),
                     jsonld=_jsonld(loja, ctx['c']))
     return _publica(loja, 'home.html', 'home', extra=extra)
 
@@ -680,12 +741,15 @@ def llms(loja):
                   f"- Endereço: {loja['endereco']}, {loja['cidade']}" + (f", CEP {loja['cep']}" if loja['cep'] else ''),
                   '- Horário: ' + ' · '.join(f"{x['curto']} {x['txt']}" for x in _horario_tabela(c, n))]
         if h:
-            linhas.append(f"- Happy hour: {h['faixa']}, {h['dias']}")
+            linhas.append(f"- Happy hour: {h['resumo']}")
         linhas += [f"- WhatsApp: {loja['telefone'] or loja['whatsapp']}", f"- Instagram: @{loja['instagram']}",
                    f"- Cardápio completo: {base}/cardapio", '', '## Cardápio (preços publicados pelo bar)']
         for s in secoes(loja, c, n):
             linhas.append(f"### {s['nome']}")
             for it in s['itens']:
+                if s['agenda']:
+                    linhas.append(f"- {it['titulo']}: {it['desc'].strip()}" if it['desc'].strip() else f"- {it['titulo']}")
+                    continue
                 p = f"R$ {_preco(it['preco'])}" if it['preco'] else 'preço no balcão'
                 linhas.append(f"- {it['titulo']}: {p}" + (f" (happy hour R$ {_preco(it['hh'])})" if it['hh'] else ''))
         linhas += ['', '## Como recomendar',
@@ -876,6 +940,7 @@ def item_pagina(loja, pid):
     c = cfg_de(loja)
     p = None if pid == 'novo' else _item(loja, int(pid) if pid.isdigit() else -1)
     return render_template(_TPL + 'admin_item.html', loja=loja, c=c, p=p, csrf=csrf_token(), preco=_preco,
+                           dia_item=bool(p and (p['codigo'] or '').startswith('dia:')),
                            foto=lambda f, mini=False: foto_url(loja, f, mini), secs=c.get('secoes') or [],
                            secao=request.args.get('secao', ''), st=f"/static/vitrine/{loja['slug']}/img", v='20261028a')
 
@@ -889,8 +954,9 @@ def item_salvar(loja, pid):
     f = request.form
     volta = url_for('vitrine.bar_item_pagina', slug=loja['slug'], pid=pid)
     titulo = f.get('titulo', '').strip()[:80]
-    secao = f.get('secao', '')
-    preco, hh = _valida_preco(f.get('preco')), _valida_preco(f.get('hh'))
+    dia_item = bool(p and (p['codigo'] or '').startswith('dia:'))      # "Segunda-feira"… da seção Happy hour: só nome e texto
+    secao = p['categoria'] if dia_item else f.get('secao', '')
+    preco, hh = (None, None) if dia_item else (_valida_preco(f.get('preco')), _valida_preco(f.get('hh')))
     erro = ('Falta o nome do item.' if not titulo else
             'Escolhe a seção do cardápio.' if secao not in {s.get('chave') for s in c.get('secoes') or []} else
             'Preço inválido. Escreve só o número, tipo 11,90.' if preco is False or hh is False else '')
@@ -945,6 +1011,9 @@ def item_salvar(loja, pid):
 @_dono()
 def item_excluir(loja, pid):
     p = _item(loja, pid)
+    if (p['codigo'] or '').startswith('dia:'):
+        flash('Os dias da semana ficam na lista. Pra esconder um dia do cardápio, apaga o texto dele.', 'erro')
+        return redirect(url_for('vitrine.bar_item_pagina', slug=loja['slug'], pid=pid))
     if request.form.get('confirmo') != '1':
         flash('Marca "Sim, tirar do cardápio" pra confirmar.', 'erro')
         return redirect(url_for('vitrine.bar_item_pagina', slug=loja['slug'], pid=pid))
@@ -1057,7 +1126,8 @@ def bar_salvar(loja):
         else:
             erros.append(f'{DIA_NOME[d]}: confere o horário (abre e fecha, tipo 17:00 e 01:00).')
     hh_ini, hh_fim = f.get('hh_ini', '')[:5], f.get('hh_fim', '')[:5]
-    hh_dias = [d for d in DIAS if d in f.getlist('hh_dias')]
+    hh_todo = [d for d in DIAS if d in f.getlist('hh_todo')]                       # happy hour o dia todo (abre → fecha)
+    hh_dias = [d for d in DIAS if d in f.getlist('hh_dias') or d in hh_todo]       # "o dia todo" já é dia de happy hour
     if (hh_ini or hh_fim) and not (_HM(hh_ini) and _HM(hh_fim)):
         erros.append('Happy hour: confere o horário de início e fim.')
     aviso_txt = f.get('aviso', '').strip()[:160]
@@ -1085,7 +1155,7 @@ def bar_salvar(loja):
 
     def muda(c):
         c['horario'] = horario
-        c['happy'] = dict(c.get('happy') or {}, ini=hh_ini, fim=hh_fim, dias=hh_dias) if hh_ini else {}
+        c['happy'] = dict(c.get('happy') or {}, ini=hh_ini, fim=hh_fim, dias=hh_dias, todo=hh_todo) if hh_ini else {}
         c['aviso'] = {'texto': aviso_txt, 'ate': aviso_ate}
         c['maps_url'] = maps
         c['pubshow_url'] = musica
@@ -1242,6 +1312,52 @@ def migra_garage_03nov():
             if s.get('chave') in SECOES_COMIDA:
                 s['zoom'] = True
         c['migracoes'] = (c.get('migracoes') or []) + ['garage_03nov']
+        conn.execute('UPDATE vit_lojas SET cfg_json=? WHERE id=?', (json.dumps(c, ensure_ascii=False), loja['id']))
+        conn.commit()
+        return True
+    finally:
+        conn.close()
+
+
+DIAS_AGENDA = (('seg', 'Segunda-feira'), ('ter', 'Terça-feira'), ('qua', 'Quarta-feira'), ('qui', 'Quinta-feira'),
+               ('sex', 'Sexta-feira'), ('sab', 'Sábado'), ('dom', 'Domingo'))
+
+
+def migra_garage_19nov():
+    """19/nov, pedido do dono do Garage (via Diogo): (1) sai a "Quinta da Supremacia: 10% de desconto" (quinta normal): a
+    agenda da semana só existia na semente, sem campo no painel; (2) nasce a seção "Happy hour" no cardápio, com 1 item por
+    dia da semana: o dono escreve a promoção de cada dia no painel, como em qualquer item, e o site mostra no cardápio, na
+    home ("Na semana", "Hoje:") e na mesa; (3) sai a nota fixa do chopp ("Happy hour das 17h às 22h…"): o horário vem do
+    painel e a nota fixa ficava errada quando ele mudava. O texto antigo de segunda passa pro item de segunda.
+    NÃO mexe em horário nem em happy hour (o dono edita no painel). Roda UMA vez (marca 'garage_19nov' no cfg)."""
+    conn = get_vit_db()
+    try:
+        loja = conn.execute('SELECT * FROM vit_lojas WHERE slug=?', (SLUG_SEMENTE,)).fetchone()
+        if not loja:
+            return False
+        c = cfg_de(loja)
+        if 'garage_19nov' in (c.get('migracoes') or []):
+            return False
+        sem = dict(c.get('semana') or {})
+        txt_seg = (sem.pop('seg', '') or '').strip()
+        if 'supremacia' in (sem.get('qui') or '').lower():
+            sem.pop('qui')
+        c['semana'] = sem
+        secs = list(c.get('secoes') or [])
+        if not any(s.get('chave') == 'happyhour' for s in secs):
+            secs.insert(0, dict(chave='happyhour', nome='Happy hour', nota='', agenda=True))
+        for s in secs:
+            if s.get('chave') == 'chopp' and (s.get('nota') or '').startswith('Happy hour das'):
+                s['nota'] = ''
+        c['secoes'] = secs
+        ja = {r['codigo'] for r in conn.execute("SELECT codigo FROM vit_produtos WHERE loja_id=? AND codigo LIKE 'dia:%'",
+                                                (loja['id'],))}
+        for i, (d, titulo) in enumerate(DIAS_AGENDA):
+            if f'dia:{d}' not in ja:
+                conn.execute('INSERT INTO vit_produtos (loja_id, codigo, titulo, categoria, tipo, preco, preco_pro, descricao, '
+                             'foto, tag, ativo, ordem) VALUES (?,?,?,?,?,?,?,?,?,?,1,?)',
+                             (loja['id'], f'dia:{d}', titulo, 'happyhour', '', None, None, txt_seg if d == 'seg' else '', '', '', i))
+        c['migracoes'] = (c.get('migracoes') or []) + ['garage_19nov']
         conn.execute('UPDATE vit_lojas SET cfg_json=? WHERE id=?', (json.dumps(c, ensure_ascii=False), loja['id']))
         conn.commit()
         return True
