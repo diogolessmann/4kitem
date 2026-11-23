@@ -2286,7 +2286,7 @@
   "validade": "conferir no dia",
   "obs": "Valores do art. 258 conferidos no texto compilado em 13/11/2026; mudam só por lei/portaria.",
   "status": "pronta",
-  "tema": "multas"
+  "tema": "lei_celular"
  },
  {
   "id": "DESP-LEIS-02",
@@ -2309,10 +2309,11 @@
   "validade": "conferir no dia",
   "obs": "",
   "status": "pronta",
-  "tema": "multas"
+  "tema": "lei_cinto"
  },
  {
   "id": "DESP-LEIS-03",
+  "tema": "lei_farol",
   "marca": "despachante",
   "linha": "leis",
   "formato": "dica",
@@ -2398,7 +2399,7 @@
   "validade": "conferir no dia",
   "obs": "Competência de fiscalização do art. 181: do município (art. 24, §4º). Remoção em todos os três incisos conforme texto lido.",
   "status": "pronta",
-  "tema": "multas"
+  "tema": "lei_estacionar"
  },
  {
   "id": "DESP-LEIS-07",
@@ -2421,7 +2422,7 @@
   "validade": "conferir no dia",
   "obs": "",
   "status": "pronta",
-  "tema": "multas"
+  "tema": "lei_sinal"
  },
  {
   "id": "DESP-LEIS-08",
@@ -2444,7 +2445,7 @@
   "validade": "conferir no dia",
   "obs": "Percentuais lidos por resumo do texto (leitura em trechos); os valores seguem o art. 258.",
   "status": "pronta",
-  "tema": "multas"
+  "tema": "lei_velocidade"
  },
  {
   "id": "DESP-LEIS-09",
@@ -2467,10 +2468,11 @@
   "validade": "conferir no dia",
   "obs": "Enquadramento 'grave + retenção para regularização' lido pela estrutura do art. 230 (incisos VII a XIX).",
   "status": "pronta",
-  "tema": "multas"
+  "tema": "lei_equipamento"
  },
  {
   "id": "DESP-LEIS-10",
+  "tema": "lei_valor",
   "marca": "despachante",
   "linha": "leis",
   "formato": "numero",
@@ -2512,7 +2514,7 @@
   "validade": "conferir no dia",
   "obs": "Há minuta em consulta pública (gov.br/participamaisbrasil) para mudar o art. 2º e o Anexo da 819; não achei publicação. Reconferir antes de postar. Art. 2º, §2º: exigência do dispositivo (até 7,5 anos) não vale para táxi/aplicativo em serviço, escolar, coletivo: não destacar. | CRÍTICA (TRAVA leve): 'com cinto ou dispositivo de retenção' sugeria escolha livre; a Res. 819, art. 2º, manda seguir o Anexo (dispositivo por idade até 7,5 anos) e o CTB, art. 64, fala em dispositivo adequado a idade, peso e altura.",
   "status": "pronta",
-  "tema": "multas"
+  "tema": "lei_crianca"
  },
  {
   "id": "DESP-REG-02",
@@ -2535,7 +2537,7 @@
   "validade": "conferir no dia",
   "obs": "Regras da credencial (quem emite, formato) não foram lidas: não detalhadas.",
   "status": "pronta",
-  "tema": "multas"
+  "tema": "lei_vaga"
  },
  {
   "id": "DESP-REG-03",
@@ -2583,6 +2585,7 @@
  },
  {
   "id": "DESP-REG-05",
+  "tema": "lei_seta",
   "marca": "despachante",
   "linha": "regras",
   "formato": "mito",
@@ -2647,7 +2650,7 @@
   "validade": "permanente",
   "obs": "Multa por esse descumprimento (art. 244) não foi lida: pauta sem valor de multa.",
   "status": "pronta",
-  "tema": "multas"
+  "tema": "lei_garupa"
  },
  {
   "id": "DESP-REG-08",
@@ -2670,7 +2673,7 @@
   "validade": "permanente",
   "obs": "Art. 27 lido em resumo/trecho: a parte do combustível veio de resumo, não de citação literal.",
   "status": "pronta",
-  "tema": "multas"
+  "tema": "lei_antes_de_sair"
  },
  {
   "id": "DESP-REG-09",
@@ -2693,7 +2696,7 @@
   "validade": "permanente",
   "obs": "Sem valor de multa (art. 224 não lido). | Crítica: o selo falava em pisca-alerta, que a pauta não trata (é o art. 40, V).",
   "status": "pronta",
-  "tema": "multas"
+  "tema": "lei_luz_alta"
  },
  {
   "id": "DESP-BLZ-01",
@@ -2963,6 +2966,7 @@
  },
  {
   "id": "DESP-CNHD-05",
+  "tema": "cnh_renovacao",
   "marca": "despachante",
   "linha": "cnh_digital",
   "formato": "consequencia",

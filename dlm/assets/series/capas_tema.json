@@ -71,6 +71,10 @@
 0.48,
 0.64
 ],
+"t_cnh_renovacao/cnh_renovacao_1.jpg": [
+0.47,
+0.603
+],
 "t_cnh_suspensa/cnh_suspensa_1.jpg": [
 0.43,
 0.71
@@ -90,6 +94,14 @@
 "t_cnh_vencida/cnh_vencida_2.jpg": [
 0.4,
 0.63
+],
+"t_cnh_vencida/cnh_vencida_3.jpg": [
+0.474,
+0.63
+],
+"t_cnh_vencida/cnh_vencida_4.jpg": [
+0.509,
+0.643
 ],
 "t_comunicacao_venda/comunicacao_venda_1.jpg": [
 0.38,
@@ -203,6 +215,42 @@
 0.33,
 0.64
 ],
+"t_lei_antes_de_sair/lei_antes_de_sair_1.jpg": [
+0.52,
+0.607
+],
+"t_lei_celular/lei_celular_1.jpg": [
+0.409,
+0.554
+],
+"t_lei_cinto/lei_cinto_1.jpg": [
+0.521,
+0.637
+],
+"t_lei_crianca/lei_crianca_1.jpg": [
+0.416,
+0.538
+],
+"t_lei_equipamento/lei_equipamento_1.jpg": [
+0.522,
+0.616
+],
+"t_lei_estacionar/lei_estacionar_1.jpg": [
+0.497,
+0.579
+],
+"t_lei_farol/lei_farol_1.jpg": [
+0.475,
+0.646
+],
+"t_lei_garupa/lei_garupa_1.jpg": [
+0.488,
+0.619
+],
+"t_lei_luz_alta/lei_luz_alta_1.jpg": [
+0.467,
+0.665
+],
 "t_lei_seca/lei_seca_1.jpg": [
 0.29,
 0.69
@@ -210,6 +258,26 @@
 "t_lei_seca/lei_seca_2.jpg": [
 0.41,
 0.52
+],
+"t_lei_seta/lei_seta_1.jpg": [
+0.527,
+0.627
+],
+"t_lei_sinal/lei_sinal_1.jpg": [
+0.472,
+0.566
+],
+"t_lei_vaga/lei_vaga_1.jpg": [
+0.423,
+0.511
+],
+"t_lei_valor/lei_valor_1.jpg": [
+0.447,
+0.555
+],
+"t_lei_velocidade/lei_velocidade_1.jpg": [
+0.44,
+0.522
 ],
 "t_leilao/leilao_1.jpg": [
 0.4,
@@ -350,6 +418,14 @@
 "t_restricao/restricao_3.jpg": [
 0.4,
 0.49
+],
+"t_restricao/restricao_4.jpg": [
+0.468,
+0.53
+],
+"t_restricao/restricao_5.jpg": [
+0.471,
+0.536
 ],
 "t_retencao/retencao_1.jpg": [
 0.45,
