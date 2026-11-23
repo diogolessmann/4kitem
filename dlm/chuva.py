@@ -158,6 +158,11 @@ def _pools(marca, item):
     if marca != "dl_mobilidade":
         propria = POOL_DESP.get(item.get("linha"), "trocar_carro")
         irmas = next((f for f in _FAMILIA if propria in f), ())
+        # 23/11: a imagem que MOSTRA o assunto da pauta (marcas.fotos_do_tema). Tendo imagem do assunto, a capa
+        # nunca cai na pasta antiga (fachada, caderno): se todas já saíram, repete a que saiu há mais tempo.
+        tema = marcas.fotos_do_tema(item)
+        if tema:
+            return [tema]
         return [_pasta(propria), [p for n in irmas if n != propria for p in _pasta(n)]]
     from dlm import dl_material
     try:
@@ -199,10 +204,14 @@ def foto(marca, item, recentes=None):
         if p:
             ULTIMA_FOTO[marca] = d
             return p
-    # todas repetem (banco de fotos pequeno): sai a primeira da ordem, que ainda é melhor que card liso
+    # todas repetem (banco de fotos pequeno): sai a que apareceu há mais tempo, que ainda é melhor que card liso
+    def _vez(p):
+        d = dl_material.digital(p)
+        return max([k for k, r in enumerate(recentes) if d is not None and dl_material.gemeas(d, r)], default=-1)
+
     for pool in pools:
         if pool:
-            p = _ordem(item["id"], pool)[0]
+            p = min(_ordem(item["id"], pool), key=_vez)
             ULTIMA_FOTO[marca] = dl_material.digital(p)
             return p
     ULTIMA_FOTO[marca] = None

@@ -41,7 +41,8 @@
   "conferido_em": "2026-11-13",
   "validade": "permanente",
   "obs": "O bullet 3 decorre da frase 'multas vencidas' do DETRAN/SC; o CTB fala em 'multas' sem o adjetivo. Se o dono quiser só o texto legal, apagar o bullet 3. | Crítica: o bullet 3 tem apoio no CTB, art. 284, §3º (nenhuma restrição para licenciar enquanto a instância administrativa da multa não termina).",
-  "status": "pronta"
+  "status": "pronta",
+  "tema": "multas"
  },
  {
   "id": "DESP-LIC-03",
@@ -311,7 +312,8 @@
   "validade": "ano 2026",
   "obs": "Regra derivada da tabela (vale para as 10 linhas lidas em 2026). Não é regra de lei; pode mudar em 2027. | Crítica: título e bullet 3 generalizavam uma coincidência da tabela de 2026; agora dizem o ano.",
   "status": "pronta",
-  "ate": "2026-12-30"
+  "ate": "2026-12-30",
+  "tema": "licenciamento"
  },
  {
   "id": "DESP-CAL-07",
@@ -334,7 +336,8 @@
   "validade": "ano 2026",
   "obs": "Bullet 1 é leitura da tabela da SEF (usados, por final de placa). O 'último número' em placa Mercosul = último caractere numérico: não achei fonte oficial lida, por isso o título é sobre o 'final da placa' sem detalhar. Rever título antes de postar.",
   "status": "pronta",
-  "ate": "2026-12-31"
+  "ate": "2026-12-31",
+  "tema": "licenciamento"
  },
  {
   "id": "DESP-IPVA-01",
@@ -402,7 +405,8 @@
   "validade": "ano 2026",
   "obs": "Confere com memória (08/09: IPVA à vista não tem desconto em SC). Sem desconto à vista: não afirmado na pauta.",
   "status": "pronta",
-  "ate": "2026-12-31"
+  "ate": "2026-12-31",
+  "tema": "ipva"
  },
  {
   "id": "DESP-IPVA-04",
@@ -446,7 +450,8 @@
   "conferido_em": "2026-11-13",
   "validade": "permanente",
   "obs": "O trecho usa 'apreensão' (é a lei); nos bullets usei 'reter' e 'remoção'. Mantém o tom: não incentiva o atraso. Lei estadual, texto lido via ferramenta (resumo).",
-  "status": "pronta"
+  "status": "pronta",
+  "tema": "ipva"
  },
  {
   "id": "DESP-IPVA-06",
@@ -472,6 +477,7 @@
  },
  {
   "id": "DESP-IPVA-07",
+  "tema": "ipva",
   "marca": "despachante",
   "linha": "ipva",
   "formato": "dica",
@@ -865,7 +871,8 @@
   "conferido_em": "2026-11-13",
   "validade": "conferir no dia",
   "obs": "NÃO achei fonte oficial de 2026 confirmando que não saiu nova lei; fontes de terceiros divergem (um blog diz SPVAT em vigor: descartado). Bullet 3 é alerta de golpe, sem fonte oficial lida: se o dono não quiser, tirar. Reconfirmar a situação no dia. | Crítica: busca de 13/11 não achou lei nova; há projeto no Congresso (PLP 233/2023) para um seguro sucessor. Reconferir antes de postar se a pauta ficar na fila por meses.",
-  "status": "pronta"
+  "status": "pronta",
+  "tema": ""
  },
  {
   "id": "DESP-PLM-01",
@@ -1881,6 +1888,7 @@
  },
  {
   "id": "DESP-RES-04",
+  "tema": "restricao",
   "marca": "despachante",
   "linha": "restricoes",
   "formato": "consequencia",
@@ -2031,7 +2039,8 @@
   "conferido_em": "2026-11-13",
   "validade": "permanente",
   "obs": "Quem lança: o órgão executivo de trânsito do estado onde o veículo está registrado, após tomar conhecimento da suspeita (art. 3º). Ligar com a pauta 'Boleto de IPVA no WhatsApp' já existente. A resolução tem 90 dias de vacatio de 2017, já vencidos.",
-  "status": "pronta"
+  "status": "pronta",
+  "tema": "restricao"
  },
  {
   "id": "DESP-RAD-03",
@@ -2097,7 +2106,8 @@
   "conferido_em": "2026-11-13",
   "validade": "permanente",
   "obs": "Classificação de pontos do art. 230, VII não lida com segurança: não citar. Peça pode mencionar 'infração', sem gravidade. [trecho conferido via leitura da página/Planalto, sem arquivo local]",
-  "status": "pronta"
+  "status": "pronta",
+  "tema": "vistoria"
  },
  {
   "id": "DESP-SRV-03",
@@ -2163,7 +2173,8 @@
   "conferido_em": "2026-11-13",
   "validade": "ano 2026",
   "obs": "",
-  "status": "pronta"
+  "status": "pronta",
+  "tema": "segunda_via"
  },
  {
   "id": "DESP-SRV-06",
@@ -2229,7 +2240,8 @@
   "conferido_em": "2026-11-13",
   "validade": "ano 2026",
   "obs": "",
-  "status": "pronta"
+  "status": "pronta",
+  "tema": "transferencia"
  },
  {
   "id": "DESP-SRV-09",
@@ -2273,7 +2285,8 @@
   "conferido_em": "2026-11-13",
   "validade": "conferir no dia",
   "obs": "Valores do art. 258 conferidos no texto compilado em 13/11/2026; mudam só por lei/portaria.",
-  "status": "pronta"
+  "status": "pronta",
+  "tema": "multas"
  },
  {
   "id": "DESP-LEIS-02",
@@ -2295,7 +2308,8 @@
   "conferido_em": "2026-11-13",
   "validade": "conferir no dia",
   "obs": "",
-  "status": "pronta"
+  "status": "pronta",
+  "tema": "multas"
  },
  {
   "id": "DESP-LEIS-03",
@@ -2383,7 +2397,8 @@
   "conferido_em": "2026-11-13",
   "validade": "conferir no dia",
   "obs": "Competência de fiscalização do art. 181: do município (art. 24, §4º). Remoção em todos os três incisos conforme texto lido.",
-  "status": "pronta"
+  "status": "pronta",
+  "tema": "multas"
  },
  {
   "id": "DESP-LEIS-07",
@@ -2405,7 +2420,8 @@
   "conferido_em": "2026-11-13",
   "validade": "conferir no dia",
   "obs": "",
-  "status": "pronta"
+  "status": "pronta",
+  "tema": "multas"
  },
  {
   "id": "DESP-LEIS-08",
@@ -2427,7 +2443,8 @@
   "conferido_em": "2026-11-13",
   "validade": "conferir no dia",
   "obs": "Percentuais lidos por resumo do texto (leitura em trechos); os valores seguem o art. 258.",
-  "status": "pronta"
+  "status": "pronta",
+  "tema": "multas"
  },
  {
   "id": "DESP-LEIS-09",
@@ -2449,7 +2466,8 @@
   "conferido_em": "2026-11-13",
   "validade": "conferir no dia",
   "obs": "Enquadramento 'grave + retenção para regularização' lido pela estrutura do art. 230 (incisos VII a XIX).",
-  "status": "pronta"
+  "status": "pronta",
+  "tema": "multas"
  },
  {
   "id": "DESP-LEIS-10",
@@ -2493,7 +2511,8 @@
   "conferido_em": "2026-11-13",
   "validade": "conferir no dia",
   "obs": "Há minuta em consulta pública (gov.br/participamaisbrasil) para mudar o art. 2º e o Anexo da 819; não achei publicação. Reconferir antes de postar. Art. 2º, §2º: exigência do dispositivo (até 7,5 anos) não vale para táxi/aplicativo em serviço, escolar, coletivo: não destacar. | CRÍTICA (TRAVA leve): 'com cinto ou dispositivo de retenção' sugeria escolha livre; a Res. 819, art. 2º, manda seguir o Anexo (dispositivo por idade até 7,5 anos) e o CTB, art. 64, fala em dispositivo adequado a idade, peso e altura.",
-  "status": "pronta"
+  "status": "pronta",
+  "tema": "multas"
  },
  {
   "id": "DESP-REG-02",
@@ -2515,7 +2534,8 @@
   "conferido_em": "2026-11-13",
   "validade": "conferir no dia",
   "obs": "Regras da credencial (quem emite, formato) não foram lidas: não detalhadas.",
-  "status": "pronta"
+  "status": "pronta",
+  "tema": "multas"
  },
  {
   "id": "DESP-REG-03",
@@ -2603,7 +2623,8 @@
   "conferido_em": "2026-11-13",
   "validade": "conferir no dia",
   "obs": "Regras de transporte de animais DENTRO do carro não foram lidas: não cobertas. | Crítica: o selo dizia 'no carro', mas a regra é da parte externa do veículo.",
-  "status": "pronta"
+  "status": "pronta",
+  "tema": "multas"
  },
  {
   "id": "DESP-REG-07",
@@ -2625,7 +2646,8 @@
   "conferido_em": "2026-11-13",
   "validade": "permanente",
   "obs": "Multa por esse descumprimento (art. 244) não foi lida: pauta sem valor de multa.",
-  "status": "pronta"
+  "status": "pronta",
+  "tema": "multas"
  },
  {
   "id": "DESP-REG-08",
@@ -2647,7 +2669,8 @@
   "conferido_em": "2026-11-13",
   "validade": "permanente",
   "obs": "Art. 27 lido em resumo/trecho: a parte do combustível veio de resumo, não de citação literal.",
-  "status": "pronta"
+  "status": "pronta",
+  "tema": "multas"
  },
  {
   "id": "DESP-REG-09",
@@ -2669,7 +2692,8 @@
   "conferido_em": "2026-11-13",
   "validade": "permanente",
   "obs": "Sem valor de multa (art. 224 não lido). | Crítica: o selo falava em pisca-alerta, que a pauta não trata (é o art. 40, V).",
-  "status": "pronta"
+  "status": "pronta",
+  "tema": "multas"
  },
  {
   "id": "DESP-BLZ-01",
@@ -2757,7 +2781,8 @@
   "conferido_em": "2026-11-13",
   "validade": "permanente",
   "obs": "A Portaria DETRAN/SC 108/2002 vale só para o pátio da SSP na Grande Florianópolis: não citar para Schroeder (checagem 05). Res. 1.025 revogou a 623/2016.",
-  "status": "pronta"
+  "status": "pronta",
+  "tema": "patio"
  },
  {
   "id": "DESP-BLZ-05",

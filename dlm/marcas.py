@@ -592,6 +592,77 @@ def _footer(d, t):
 
 SERIES_IMG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "series")
 
+# 18/11 e 23/11 — capas do Despachante que MOSTRAM o assunto. O dono: "a imagem precisa transmitir a informação:
+# imagine a pessoa ver a imagem e entender o que é" (17/11) e "deixa tudo BEM escancarado: clareza > realismo >
+# beleza" (22/11). Antes, a fachada aparecia em 8 de 15 capas e o "caderno com carimbo" em 4 de 15.
+# Agora a imagem vem do ASSUNTO da pauta: assets/series/t_<tema>/*.jpg (folha com a palavra gigante, catálogo de
+# 22/11 conferido no olho em 23/11; palavra errada do Vulcano ficou de fora).
+# O campo "tema" da pauta manda quando o título engana a tabela ("" = sem tema, segue a pasta da linha).
+# A tabela é lida de cima para baixo: vale a primeira que casar com o título (sem acento, minúsculo).
+# Imagem de GRAVAME só existe como "baixa" ou "quitado": título de gravame sem baixa vai para RESTRIÇÃO.
+# Tema com sentido oposto é separado: "CNH SUSPENSA" numa pauta de CNH digital diria o contrário do texto.
+_TEMAS = [
+    (r"golpe|boleto.*(whatsapp|desconf|fals)", "golpe"),
+    (r"alcool|bafometro|lei seca", "lei_seca"),
+    (r"blitz|auto de infracao|fui parado", "blitz"),
+    (r"reciclagem", "reciclagem"),
+    (r"toxicologico", "toxicologico"),
+    (r"\beta\b|etiqueta|chassi|vidros|\bselo\b", "chassi"),
+    (r"vistoria|\bcsv\b|\bgnv\b", "vistoria"),
+    (r"mercosul|placa cinza|placa furtada|quem faz a placa|troc\w+ a placa|placa traseira|resolucao 780",
+     "placa_mercosul"),
+    (r"divida ativa|certidao", "divida_ativa"),
+    (r"^debitos|com debito", "debitos"),
+    (r"assinatura|assinar|atpv|contrato digital", "assinatura_digital"),
+    (r"\b0 km|zero km|emplacamento", "emplacamento"),
+    (r"(baix\w*|quit\w*).*(gravame|financi)|(gravame|financi\w*).*(baix|quit)", "gravame"),
+    (r"dar baixa|baixa no registro|baixa de veiculo|irrecuperavel|sucat|nao roda mais", "baixa"),
+    (r"\bpcd\b", "pcd"),
+    (r"renajud", "renajud"),
+    (r"restric|bloque|intencao de venda|prontuario|recall|gravame|financiad|alienac", "restricao"),
+    (r"mudou de (cidade|municipio)|de estado|endereco", "endereco"),
+    (r"leilao", "leilao"),
+    (r"comunicacao de venda|vendeu|comprador sumiu", "comunicacao_venda"),
+    (r"consult\w* (a |da |de |pela )?(placa|veiculo)|carro usado", "consulta_placa"),
+    (r"2a via|segunda via|perdeu o crlv", "segunda_via"),
+    (r"transferencia de pontos", "indicacao_condutor"),
+    (r"transfer|comprou o carro|fechou negocio|\bcrv\b|desistiu da venda|firmas", "transferencia"),
+    (r"retencao", "retencao"),
+    (r"patio|removid|remocao|recolhimento|guincho", "patio"),
+    (r"atrasad|juros|spvat|dpvat", "debitos"),
+    (r"ipva", "ipva"),
+    (r"crlv|documento do carro", "crlv_digital"),
+    (r"licenci", "licenciamento"),
+    (r"\bcnh\b.*(\bjari\b|cetran)|recurso da cnh", "recurso_cnh"),
+    (r"cassa[dc]", "cnh_cassada"),
+    (r"suspens|sem cnh", "cnh_suspensa"),
+    (r"indic\w* o condutor|indicacao de condutor", "indicacao_condutor"),
+    (r"pontos", "pontos_cnh"),
+    (r"cnh digital|documento de identidade", "cnh_digital"),
+    (r"permissao para dirigir", "permissao"),
+    (r"\bcnh\b.*(venc|renov)|(venc|renov).*\bcnh\b", "cnh_vencida"),
+    (r"recurso|recorr|\bjari\b|cetran|defesa", "recurso_multa"),
+    (r"desconto|pagou com|pagamento", "pagamento_multa"),
+    (r"multa|infracao|notificacao|penalidade|advertencia", "multas"),
+]
+
+
+def tema_da_pauta(item):
+    """Nome do tema da pauta (None = sem tema)."""
+    if "tema" in item:
+        return item["tema"] or None
+    import unicodedata
+    n = unicodedata.normalize("NFKD", item.get("titulo") or "").encode("ascii", "ignore").decode("ascii").lower()
+    return next((tema for rx, tema in _TEMAS if re.search(rx, n)), None)
+
+
+def fotos_do_tema(item):
+    """Imagens que mostram o assunto da pauta. Lista vazia = não há: segue a pasta da linha ou da série."""
+    if not isinstance(item, dict):
+        return []
+    tema = tema_da_pauta(item)
+    return sorted(glob.glob(os.path.join(SERIES_IMG_DIR, "t_" + tema, "*.jp*g"))) if tema else []
+
 
 def _foto_fundo(img, t, item, y0):
     """15/set — foto da SÉRIE (assets/series/<serie>.webp, gerada 1x) cobrindo do y0 até o pé do
@@ -694,9 +765,150 @@ def _capa_tech(t, item, outdir, n=1):
     return p
 
 
+_CAPA_TEMA = {}        # marca → imagem de tema usada na última capa de série (run() grava na memória de fotos)
+
+
+def _foto_tema_da_vez(item, brand_key="despachante"):
+    """Imagem do tema para a capa de SÉRIE, sem repetir as últimas capas do perfil (a memória é a da chuva)."""
+    pool = fotos_do_tema(item)
+    if not pool:
+        return None
+    try:
+        from dlm import chuva, dl_material
+        rec = [int(r, 16) for r in chuva._estado().get(brand_key, {}).get("fotos_recentes", [])
+               if isinstance(r, str)]
+        ordem = chuva._ordem("%s|%s|%s" % (item.get("serie"), item.get("passo"),
+                                           datetime.now().strftime("%Y-%j")), pool)
+        for fp in ordem:
+            dg = dl_material.digital(fp)
+            if dg is not None and not any(dl_material.gemeas(dg, r) for r in rec):
+                return fp
+        return ordem[0]
+    except Exception as e:
+        print(f"[marcas] sorteio da imagem do tema falhou, vai a primeira: {e}")
+        return pool[0]
+
+
+def _lembra_capa(brand_key):
+    """Depois de publicar: a imagem da capa entra na memória das últimas fotos do perfil (a mesma da chuva)."""
+    fp = _CAPA_TEMA.pop(brand_key, None)
+    if not fp:
+        return
+    try:
+        from dlm import chuva, dl_material
+        dg = dl_material.digital(fp)
+        if dg is None:
+            return
+        est = chuva._estado()
+        e = est.setdefault(brand_key, {})
+        e["fotos_recentes"] = (e.get("fotos_recentes", []) + ["%016x" % dg])[-chuva.FOTOS_LEMBRADAS:]
+        chuva._grava(est)
+    except Exception as ex:
+        print(f"[marcas] não gravei a capa na memória de fotos (segue): {ex}")
+
+
+_POS_PALAVRA = None
+
+
+def _palavra_da_capa(caminho):
+    """(topo, pé) da palavra na imagem de tema, em fração da altura. Sem anotação: (0.40, 0.60)."""
+    global _POS_PALAVRA
+    if _POS_PALAVRA is None:
+        try:
+            import json
+            with open(os.path.join(SERIES_IMG_DIR, "capas_tema.json"), encoding="utf-8") as f:
+                _POS_PALAVRA = json.load(f)
+        except Exception:
+            _POS_PALAVRA = {}
+    rel = os.path.basename(os.path.dirname(caminho)) + "/" + os.path.basename(caminho)
+    topo, pe = _POS_PALAVRA.get(rel, (0.40, 0.60))
+    return float(topo), float(pe)
+
+
+def slide_capa_tema(t, item, outdir, n=1):
+    """23/11 — capa com a IMAGEM DO ASSUNTO ocupando o quadro inteiro e o título em cima (Despachante).
+    O dono, 22/11: a imagem ficava "pequena e escura", só na metade de baixo e sob um degradê. As imagens de tema
+    são em pé (4:5), com a palavra gigante no meio; o título do motor ocupa o terço de cima, sobre o navy."""
+    from PIL import Image, ImageDraw
+    ph = Image.open(item["foto_path"]).convert("RGB")
+    r = max(W / ph.width, H / ph.height)
+    ph = ph.resize((round(ph.width * r), round(ph.height * r)), Image.LANCZOS)
+    l, tp = (ph.width - W) // 2, (ph.height - H) // 2
+    ph = ph.crop((l, tp, l + W, tp + H))
+    d = ImageDraw.Draw(ph)
+    serie = bool(item.get("serie_nome"))
+    y_selo = 140
+    fb, fc = _font(32), _font(26)
+    # série: nome + passo numa linha; o selo do passo vai na mesma linha quando cabe (cabeçalho mais baixo)
+    selo2 = False
+    if serie:
+        larg = d.textlength(gi._semoji(item["serie_nome"]), font=fb) + 52
+        if item.get("total", 1) > 1:
+            larg += 14 + d.textlength(f"{item['passo']}/{item['total']}", font=fb) + 52
+        selo2 = 56 + larg + 14 + d.textlength(gi._semoji(item["cat"]), font=fc) + 52 > W - 40
+    y_tit = y_selo + (126 if selo2 else 74)
+    # o maior corpo que cabe em 3 linhas; título comprido desce para 54 px em até 4 (o bloco acaba em ~1/3 do quadro)
+    for px in (72, 62, 54):
+        ft = _font(px, impact=True)
+        lines = gi.wrap(d, item["titulo"], ft, W - 112)
+        if len(lines) <= 3:
+            break
+    passo = int(ft.size * 1.05)
+    y_fim = y_tit + len(lines) * passo
+    # A PALAVRA nunca fica debaixo do título: se o cabeçalho alcançaria o topo dela, a imagem DESCE o que faltar
+    # (até onde o pé da palavra ainda cabe). As posições vêm de assets/series/capas_tema.json (anotadas no olho).
+    topo, pe = _palavra_da_capa(item["foto_path"])
+    desce = int(max(0, min((y_fim + 100) - topo * H, 0.95 * H - pe * H, 260)))
+    if desce:
+        fundo = Image.new("RGB", (W, H), t["bg"])
+        fundo.paste(ph.crop((0, 0, W, H - desce)), (0, desce))
+        ph = fundo
+    # navy firme atrás do texto e degradê curto para a imagem: a palavra da folha (no meio) fica limpa
+    grad = Image.new("L", (1, H), 0)
+    for y in range(H):
+        a = 0.93 if y <= y_fim + 6 else max(0.0, 0.93 * (1 - (y - y_fim - 6) / 110.0))
+        grad.putpixel((0, y), int(255 * a))
+    ph = Image.composite(Image.new("RGB", (W, H), t["bg"]), ph, grad.resize((W, H)))
+    d = ImageDraw.Draw(ph)
+    _brand_header(d, t)
+    if serie:
+        x = gi.pill(d, 56, y_selo, item["serie_nome"], fb, t["accent"], (10, 10, 10))
+        if item.get("total", 1) > 1:
+            x = gi.pill(d, x + 14, y_selo, f"{item['passo']}/{item['total']}", fb, t["card"], t["white"])
+        if selo2:
+            gi.pill(d, 56, y_selo + 62, item["cat"], fc, t["accent2"], t["white"])
+        else:
+            gi.pill(d, x + 14, y_selo + 4, item["cat"], fc, t["accent2"], t["white"])
+    else:
+        gi.pill(d, 56, y_selo, item["cat"], fb, t["accent"], (10, 10, 10))
+    y = y_tit
+    for ln in lines:
+        d.text((56, y), ln, font=ft, fill=t["white"], stroke_width=2, stroke_fill=(0, 0, 0))
+        y += passo
+    gi.pill(d, 56, H - 132, "ARRASTA PARA O LADO  ->", _font(34), t["accent"], (10, 10, 10))
+    p = os.path.join(outdir, f"slide_{n}.png")
+    ph.save(p, quality=92)
+    return p
+
+
 def slide_capa(t, item, outdir, n=1):
     if t.get("capa_tech"):
         return _capa_tech(t, item, outdir, n)
+    # 23/11: no Despachante, a capa é a imagem do ASSUNTO, inteira (pasta t_<tema>). A chuva já manda a foto
+    # escolhida; a série sorteia aqui. Sem imagem de tema, segue a capa clássica com a pasta da série.
+    if isinstance(item, dict) and t.get("rodape_legal"):
+        _CAPA_TEMA.pop("despachante", None)      # não herda a capa de uma prévia ou de um post que falhou
+        fp = item.get("foto_path")
+        if "foto_path" not in item and item.get("serie") != "scooter":
+            fp = _foto_tema_da_vez(item)
+            if fp:
+                _CAPA_TEMA["despachante"] = fp
+        if fp and os.path.basename(os.path.dirname(fp)).startswith("t_"):
+            try:
+                return slide_capa_tema(t, dict(item, foto_path=fp), outdir, n)
+            except Exception as e:           # imagem que não abre não derruba o post: sai a capa clássica
+                print(f"[marcas] capa de tema falhou ({e}); vai a capa clássica")
+                _CAPA_TEMA.pop("despachante", None)
     img, d = _canvas(t)
     _foto_fundo(img, t, item, 640)
     _brand_header(d, t)
@@ -1130,6 +1342,8 @@ def run(brand_key, post=False, slot=None):
         else:
             r = publish_brand(t, prefix, paths, caption)
         _log_post(brand_key, slot, item, r)
+        if slot != "noite":
+            _lembra_capa(brand_key)
         print(f"[{brand_key}] publicado: {r}")
     return paths, caption
 

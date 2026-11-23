@@ -1,0 +1,410 @@
+{
+"t_assinatura_digital/assinatura_digital_1.jpg": [
+0.39,
+0.55
+],
+"t_assinatura_digital/assinatura_digital_2.jpg": [
+0.4,
+0.55
+],
+"t_baixa/baixa_1.jpg": [
+0.49,
+0.67
+],
+"t_baixa/baixa_2.jpg": [
+0.41,
+0.6
+],
+"t_baixa/baixa_3.jpg": [
+0.42,
+0.8
+],
+"t_baixa/baixa_4.jpg": [
+0.29,
+0.5
+],
+"t_blitz/blitz_1.jpg": [
+0.55,
+0.78
+],
+"t_blitz/blitz_2.jpg": [
+0.5,
+0.74
+],
+"t_blitz/blitz_3.jpg": [
+0.44,
+0.74
+],
+"t_blitz/blitz_4.jpg": [
+0.57,
+0.8
+],
+"t_blitz/blitz_5.jpg": [
+0.4,
+0.6
+],
+"t_chassi/chassi_1.jpg": [
+0.42,
+0.56
+],
+"t_chassi/chassi_2.jpg": [
+0.31,
+0.39
+],
+"t_chassi/chassi_3.jpg": [
+0.28,
+0.37
+],
+"t_cnh_cassada/cnh_cassada_1.jpg": [
+0.37,
+0.55
+],
+"t_cnh_cassada/cnh_cassada_2.jpg": [
+0.36,
+0.47
+],
+"t_cnh_digital/cnh_digital_1.jpg": [
+0.48,
+0.64
+],
+"t_cnh_digital/cnh_digital_2.jpg": [
+0.48,
+0.64
+],
+"t_cnh_suspensa/cnh_suspensa_1.jpg": [
+0.43,
+0.71
+],
+"t_cnh_suspensa/cnh_suspensa_2.jpg": [
+0.37,
+0.57
+],
+"t_cnh_suspensa/cnh_suspensa_3.jpg": [
+0.37,
+0.57
+],
+"t_cnh_suspensa/cnh_suspensa_4.jpg": [
+0.4,
+0.57
+],
+"t_cnh_vencida/cnh_vencida_2.jpg": [
+0.4,
+0.63
+],
+"t_comunicacao_venda/comunicacao_venda_1.jpg": [
+0.38,
+0.53
+],
+"t_comunicacao_venda/comunicacao_venda_2.jpg": [
+0.36,
+0.56
+],
+"t_comunicacao_venda/comunicacao_venda_3.jpg": [
+0.38,
+0.52
+],
+"t_consulta_placa/consulta_placa_1.jpg": [
+0.32,
+0.49
+],
+"t_crlv_digital/crlv_digital_1.jpg": [
+0.38,
+0.6
+],
+"t_crlv_digital/crlv_digital_2.jpg": [
+0.39,
+0.6
+],
+"t_debitos/debitos_1.jpg": [
+0.43,
+0.53
+],
+"t_debitos/debitos_2.jpg": [
+0.37,
+0.48
+],
+"t_debitos/debitos_4.jpg": [
+0.31,
+0.38
+],
+"t_divida_ativa/divida_ativa_1.jpg": [
+0.31,
+0.56
+],
+"t_divida_ativa/divida_ativa_2.jpg": [
+0.41,
+0.63
+],
+"t_divida_ativa/divida_ativa_3.jpg": [
+0.33,
+0.63
+],
+"t_emplacamento/emplacamento_1.jpg": [
+0.55,
+0.78
+],
+"t_emplacamento/emplacamento_2.jpg": [
+0.41,
+0.49
+],
+"t_emplacamento/emplacamento_3.jpg": [
+0.3,
+0.35
+],
+"t_endereco/endereco_1.jpg": [
+0.36,
+0.53
+],
+"t_golpe/golpe_1.jpg": [
+0.47,
+0.61
+],
+"t_golpe/golpe_2.jpg": [
+0.32,
+0.65
+],
+"t_golpe/golpe_3.jpg": [
+0.3,
+0.51
+],
+"t_golpe/golpe_4.jpg": [
+0.32,
+0.59
+],
+"t_gravame/gravame_1.jpg": [
+0.41,
+0.59
+],
+"t_gravame/gravame_2.jpg": [
+0.3,
+0.59
+],
+"t_gravame/gravame_3.jpg": [
+0.32,
+0.49
+],
+"t_indicacao_condutor/indicacao_condutor_1.jpg": [
+0.42,
+0.57
+],
+"t_indicacao_condutor/indicacao_condutor_2.jpg": [
+0.3,
+0.52
+],
+"t_ipva/ipva_1.jpg": [
+0.39,
+0.56
+],
+"t_ipva/ipva_2.jpg": [
+0.39,
+0.52
+],
+"t_ipva/ipva_3.jpg": [
+0.33,
+0.64
+],
+"t_lei_seca/lei_seca_1.jpg": [
+0.29,
+0.69
+],
+"t_lei_seca/lei_seca_2.jpg": [
+0.41,
+0.52
+],
+"t_leilao/leilao_1.jpg": [
+0.4,
+0.68
+],
+"t_leilao/leilao_2.jpg": [
+0.44,
+0.57
+],
+"t_licenciamento/licenciamento_1.jpg": [
+0.47,
+0.56
+],
+"t_licenciamento/licenciamento_2.jpg": [
+0.42,
+0.49
+],
+"t_licenciamento/licenciamento_3.jpg": [
+0.45,
+0.56
+],
+"t_licenciamento/licenciamento_4.jpg": [
+0.42,
+0.49
+],
+"t_multas/multas_1.jpg": [
+0.47,
+0.62
+],
+"t_multas/multas_2.jpg": [
+0.5,
+0.77
+],
+"t_multas/multas_3.jpg": [
+0.46,
+0.59
+],
+"t_multas/multas_4.jpg": [
+0.38,
+0.64
+],
+"t_multas/multas_5.jpg": [
+0.43,
+0.54
+],
+"t_pagamento_multa/pagamento_multa_1.jpg": [
+0.34,
+0.49
+],
+"t_patio/patio_1.jpg": [
+0.37,
+0.8
+],
+"t_patio/patio_2.jpg": [
+0.45,
+0.76
+],
+"t_patio/patio_3.jpg": [
+0.4,
+0.82
+],
+"t_patio/patio_4.jpg": [
+0.42,
+0.8
+],
+"t_pcd/pcd_1.jpg": [
+0.33,
+0.55
+],
+"t_pcd/pcd_2.jpg": [
+0.3,
+0.5
+],
+"t_permissao/permissao_1.jpg": [
+0.46,
+0.6
+],
+"t_placa_mercosul/placa_mercosul_1.jpg": [
+0.33,
+0.5
+],
+"t_placa_mercosul/placa_mercosul_2.jpg": [
+0.31,
+0.5
+],
+"t_pontos_cnh/pontos_cnh_1.jpg": [
+0.33,
+0.55
+],
+"t_pontos_cnh/pontos_cnh_2.jpg": [
+0.34,
+0.56
+],
+"t_reciclagem/reciclagem_1.jpg": [
+0.37,
+0.44
+],
+"t_reciclagem/reciclagem_2.jpg": [
+0.42,
+0.49
+],
+"t_recurso_cnh/recurso_cnh_1.jpg": [
+0.32,
+0.5
+],
+"t_recurso_cnh/recurso_cnh_2.jpg": [
+0.31,
+0.49
+],
+"t_recurso_cnh/recurso_cnh_3.jpg": [
+0.32,
+0.54
+],
+"t_recurso_multa/recurso_multa_1.jpg": [
+0.32,
+0.5
+],
+"t_recurso_multa/recurso_multa_2.jpg": [
+0.31,
+0.49
+],
+"t_recurso_multa/recurso_multa_3.jpg": [
+0.32,
+0.53
+],
+"t_renajud/renajud_1.jpg": [
+0.41,
+0.51
+],
+"t_renajud/renajud_2.jpg": [
+0.35,
+0.5
+],
+"t_restricao/restricao_1.jpg": [
+0.37,
+0.74
+],
+"t_restricao/restricao_3.jpg": [
+0.4,
+0.49
+],
+"t_retencao/retencao_1.jpg": [
+0.45,
+0.55
+],
+"t_retencao/retencao_2.jpg": [
+0.36,
+0.46
+],
+"t_segunda_via/segunda_via_1.jpg": [
+0.36,
+0.59
+],
+"t_segunda_via/segunda_via_2.jpg": [
+0.33,
+0.55
+],
+"t_segunda_via/segunda_via_3.jpg": [
+0.3,
+0.49
+],
+"t_toxicologico/toxicologico_1.jpg": [
+0.38,
+0.48
+],
+"t_toxicologico/toxicologico_2.jpg": [
+0.33,
+0.44
+],
+"t_toxicologico/toxicologico_3.jpg": [
+0.3,
+0.36
+],
+"t_transferencia/transferencia_1.jpg": [
+0.44,
+0.68
+],
+"t_transferencia/transferencia_2.jpg": [
+0.39,
+0.48
+],
+"t_transferencia/transferencia_3.jpg": [
+0.3,
+0.35
+],
+"t_vistoria/vistoria_1.jpg": [
+0.44,
+0.8
+],
+"t_vistoria/vistoria_2.jpg": [
+0.34,
+0.7
+],
+"t_vistoria/vistoria_3.jpg": [
+0.41,
+0.51
+]
+}
