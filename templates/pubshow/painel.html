@@ -94,7 +94,8 @@
   .pedido-tipo{font-size:13px;color:var(--text2);word-break:break-word}
   .pedido-valor{font-size:14px;font-weight:800;color:var(--green);white-space:nowrap}
   .pedido-gratis{font-size:13px;font-weight:700;color:var(--text2)}
-  .selo-prox{font-size:10px;font-weight:800;color:#22c55e;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:2px}
+  .selo-prox{font-size:10px;font-weight:800;color:#22c55e;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:2px}{% if karaoke_ok %}
+  .k-mesa{font-size:24px;font-weight:900;color:#f59e0b;line-height:1.2;margin:2px 0}   /* 🎤 18/11/26: a mesa do cantor, de longe */{% endif %}
   .selo-pago{font-size:10px;font-weight:800;color:#fbbf24;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.35);padding:1px 7px;border-radius:100px;margin-left:6px;white-space:nowrap}
   .pedido-dispensar{background:none;border:1px solid var(--border2);color:var(--text2);min-width:44px;min-height:44px;border-radius:10px;font-size:17px;cursor:pointer;font-family:inherit}
   .pedido-dispensar:hover,.pedido-dispensar[aria-expanded="true"]{color:#ef4444;border-color:#ef444466}
@@ -595,7 +596,8 @@
           <span class="pedido-emoji">{{ t.get('emoji','🎵') }}</span>
           <div class="pedido-info">
             {% if loop.first %}<span class="selo-prox">▶ Próximo</span>{% endif %}
-            <div class="pedido-nome">{{ p.nome_cliente }}{% if p.tipo in ('flash', 'vip', 'pular_espera') and p.pago_em %}<span class="selo-pago">⚡ PAGO</span>{% elif p.karaoke_pago and p.pago_em %}<span class="selo-pago">🎤 PAGO</span>{% endif %}</div>
+            <div class="pedido-nome">{{ p.nome_cliente }}{% if p.tipo in ('flash', 'vip', 'pular_espera') and p.pago_em %}<span class="selo-pago">⚡ PAGO</span>{% elif p.karaoke_pago and p.pago_em %}<span class="selo-pago">🎤 PAGO</span>{% endif %}</div>{% if karaoke_on and p.karaoke and p.karaoke_mesa %}{# 🎤 18/11/26: a mesa do cantor (só com o modo ligado) #}
+            <div class="k-mesa">🪑 {{ 'Balcão' if p.karaoke_mesa == 'BALCÃO' else 'Mesa ' ~ p.karaoke_mesa }}</div>{% endif %}
             <div class="pedido-tipo">{% if p.titulo_pedido %}🎵 {{ p.titulo_pedido[:40] }}{% else %}{{ t.get('nome', p.tipo) }}{% endif %}{% if p.mensagem %} · "{{ p.mensagem[:30] }}"{% endif %}</div>{% if karaoke_on and p.karaoke %}
             {% if p.karaoke_nome_oculto %}<div class="pedido-tipo">🙈 Na TV: Convidado</div>{% else %}<button type="button" class="btn-k-esconder" style="margin-top:6px" onclick="karaokeEsconder({{ p.id|int }}, this)">🙈 Esconder</button>{% endif %}{% endif %}
           </div>
@@ -2196,7 +2198,8 @@ function renderFila(fila) {
         <span class="pedido-emoji">${emoji}</span>
         <div class="pedido-info">
           ${proxLabel}
-          <div class="pedido-nome">${_escHtml(p.nome_cliente)}${seloPago}</div>
+          <div class="pedido-nome">${_escHtml(p.nome_cliente)}${seloPago}</div>{% if karaoke_ok %}
+          ${p.karaoke && p.karaoke_mesa ? `<div class="k-mesa">🪑 ${p.karaoke_mesa === 'BALCÃO' ? 'Balcão' : 'Mesa ' + _escHtml(p.karaoke_mesa)}</div>` : ''}{% endif %}
           <div class="pedido-tipo">${musica || nome_tipo}${msg}</div>{% if karaoke_ok %}
           ${p.karaoke ? (p.karaoke_nome_oculto ? '<div class="pedido-tipo">🙈 Na TV: Convidado</div>'
             : `<button type="button" class="btn-k-esconder" style="margin-top:6px" onclick="karaokeEsconder(${Number(p.id) || 0}, this)">🙈 Esconder</button>`) : ''}{% endif %}

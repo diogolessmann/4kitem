@@ -4117,7 +4117,8 @@ def _pix_pendente_de_pedido(b, row, precos_bar):
     if row.get('karaoke_pago'):
         # 🎤 03/11/26 (V2a): validade também na ponte; música e nome pro "Gerar outro PIX" depois de recarregar
         efi_tela = dict(efi_tela, **_karaoke_pix_validade(row), kara_vid=row.get('youtube_id') or '',
-                        kara_tit=row.get('titulo_pedido') or '', kara_nome=row.get('nome_cliente') or '')
+                        kara_tit=row.get('titulo_pedido') or '', kara_nome=row.get('nome_cliente') or '',
+                        kara_mesa=row.get('karaoke_mesa') or '')   # 🎤 18/11/26: a mesa do cantor (antes do deploy: '')
     t = precos_bar.get(row.get('tipo')) or TIPOS_PEDIDO.get(row.get('tipo')) or {}
     payload = row.get('pix_payload') or ''
     return {**efi_tela,
@@ -4166,6 +4167,7 @@ def jukebox(token, pix_id=None):
     pix_pendente = None
     status_http  = 200
     _nome_lembrar = ''   # o nome que o celular lembra (no parabéns é o de quem MANDA, não o do aniversariante)
+    _kara_mesa    = ''   # 🎤 18/11/26: a mesa do cantor ('7' / 'BALCÃO'): o microfone vai até ela
     ip_cliente   = request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip()
     # Identidade por CELULAR (11/09/26): no Wi-Fi do bar todos os clientes saem com o mesmo IP, então
     # limite/hora e dedup de 60 s por IP barravam o 2º cliente. O celular manda um client_id
@@ -4222,6 +4224,9 @@ def jukebox(token, pix_id=None):
             nome_cliente  = _nome_tv(_sem_invisiveis(request.form.get('nome_cliente', '')))
             if _kara:
                 nome_cliente = _K.nome_curto(nome_cliente)   # 🎤 "Teu nome na TV": até 14 letras (apelido)
+                # 🎤 18/11/26 (mesa do cantor): "Tô no balcão" = BALCÃO; senão só o número ('mesa 07' → '7', o mesmo do 🙋)
+                _kara_mesa = (_K.BALCAO if request.form.get('balcao') == '1'
+                              else _mesa_garcom(request.form.get('mesa', '')))
             if tipo == 'garcom':
                 nome_cliente = _mesa_garcom(request.form.get('nome_cliente', ''))   # 🙋 15/11/26: a MESA vai no nome
             mensagem      = _sem_invisiveis(request.form.get('mensagem', '')).strip()[:RECADO_MAX]   # 16/11/26 (L2): 80 → 60
@@ -4257,10 +4262,24 @@ def jukebox(token, pix_id=None):
             elif _kara and _karaoke_nome_repetido(b, nome_cliente, ip_cliente):
                 # 🎤 dois "João" na fila: a TV diria "Próximo: João" e subiriam os dois
                 erro, erro_tipo = _K.msg_nome_repetido(nome_cliente), 'karaoke_nome'
+            elif _kara and not _karaoke_mesa_ok(_kara_mesa):
+                # 🎤 18/11/26 (mesa do cantor): sem mesa (nem balcão), sem PIX. Antes da trava: reenviar com PIX aberto
+                # também pede a mesa (o "Gerar outro PIX" do celular manda a do PIX)
+                erro, erro_tipo = _K.MSG_MESA, 'karaoke_mesa'
             elif _kara_pix and (_kt := _karaoke_trava_pix(b, ip_cliente, _cid)):
                 # 🎤 03/11/26 (V2a): as travas ANTES do QR (o _teto_pedidos com PIX não olha fila nem o "1 por vez")
                 if _kt.get('reabrir'):
-                    pix_pendente = _pix_pendente_de_pedido(b, _kt['reabrir'], precos_bar)   # 1 PIX aberto: o mesmo
+                    _rr = dict(_kt['reabrir'])
+                    if _rr.get('karaoke_mesa') != _kara_mesa:
+                        # 🎤 18/11/26: o PIX aberto volta com a mesa que a pessoa acabou de pôr (trocou de lugar)
+                        _cm = get_pubshow_db()
+                        try:
+                            if _karaoke_mesa_grava(_cm, _rr['id'], _kara_mesa, so_aberto=True):
+                                _cm.commit()
+                                _rr['karaoke_mesa'] = _kara_mesa
+                        finally:
+                            _cm.close()
+                    pix_pendente = _pix_pendente_de_pedido(b, _rr, precos_bar)   # 1 PIX aberto: o mesmo
                 else:
                     erro, erro_tipo, _kara_meu = _kt['erro'], _kt['erro_tipo'], _kt.get('meu')
             elif (tipo not in tipos_bar and not _kara) or tipo not in precos_bar:
@@ -4487,6 +4506,7 @@ def jukebox(token, pix_id=None):
                         # 🎤 03/11/26 (V2a): a marca nasce aqui e manda até o fim, mesmo que a env mude depois
                         conn2.execute('UPDATE pubshow_pedidos SET karaoke=1, karaoke_pago=1, karaoke_nome_oculto=? WHERE id=?',
                                       (1 if _karaoke_cid_oculto(conn2, b['id'], ip_cliente) else 0, pedido_id))
+                        _karaoke_mesa_grava(conn2, pedido_id, _kara_mesa)   # 🎤 18/11/26: a mesa do cantor (UPDATE à parte)
                     conn2.commit(); conn2.close()
 
                     # ── Tenta Asaas primeiro (confirmação automática) ──────────
@@ -4651,7 +4671,8 @@ def jukebox(token, pix_id=None):
                             if not _efi_ok:
                                 pix_pendente.update(_efi_validade(
                                     (datetime.utcnow() + timedelta(minutes=15)).strftime('%Y-%m-%d %H:%M:%S')))
-                            pix_pendente.update(kara_vid=youtube_id or '', kara_tit=titulo_pedido or '', kara_nome=nome_cliente)
+                            pix_pendente.update(kara_vid=youtube_id or '', kara_tit=titulo_pedido or '', kara_nome=nome_cliente,
+                                                kara_mesa=_kara_mesa)   # 🎤 18/11/26: o "Gerar outro PIX" leva a mesa
                             _karaoke_pix_falhou(b['id'], limpar=True)
                         sucesso = None
                 elif not erro and not usar_pix:
@@ -5036,6 +5057,25 @@ def _mesa_garcom_ok(mesa):
     return bool(re.fullmatch(r'[0-9]{1,%d}' % GARCOM_MESA_MAX_DIGITOS, mesa or ''))
 
 
+def _karaoke_mesa_ok(mesa):
+    """🎤 18/11/26 (mesa do cantor): a mesa do cantor, já limpa pelo _mesa_garcom, vale se é o BALCÃO ou de 1 a
+    GARCOM_MESA_MAX_DIGITOS dígitos SEM a mesa 0 (19/11, revisão). O 🙋 garçom segue no _mesa_garcom_ok."""
+    return mesa == _K.BALCAO or bool(re.fullmatch(r'[1-9][0-9]{0,%d}' % (GARCOM_MESA_MAX_DIGITOS - 1), mesa or ''))
+
+
+def _karaoke_mesa_grava(conn, pid, mesa, so_aberto=False):
+    """🎤 18/11/26 (mesa do cantor): grava a mesa do pedido de karaokê ('7' / 'BALCÃO'; '' = NULL). UPDATE à parte: banco
+    sem a coluna (migração falhou) perde só a mesa, nunca a marca do karaokê. so_aberto = só o PIX ainda aberto (a trava
+    que reabre). Quem chama faz o commit. True = mudou a linha (19/11: o PIX que já caiu no meio não muda: False)."""
+    try:
+        cur = conn.execute('UPDATE pubshow_pedidos SET karaoke_mesa=? WHERE id=?'
+                           + (" AND status='aguardando_pix'" if so_aberto else ''), (mesa or None, pid))
+        return cur.rowcount > 0
+    except sqlite3.OperationalError as ex:
+        log.warning('[PUBSHOW] karaokê: a mesa do pedido %s não gravou: %s', pid, ex)
+        return False
+
+
 def _garcom_bar_espera_min(b):
     """15/11/26 (travas): minutos até o BAR aceitar outro 🙋 (0 = pode). Conta os chamados PAGOS do bar (pago_em,
     UTC), esperando a TV ou já mostrados: 1 a cada GARCOM_BAR_INTERVALO_SEG e até GARCOM_BAR_HORA_MAX por hora. PIX
@@ -5284,6 +5324,102 @@ def _grupo_fila(r):
     if t not in TIPOS_MUSICA_PEDIDO:
         return 0
     return 3 if _kpago(r) else 4
+
+
+# 📺 18/11/26 (chamadas na TV, pacote 1; cham/trocas_cham_srv.py): a NOITE do bar e as marcas da PRÓXIMA. A noite corta
+# ao meio-dia de Brasília (15h UTC): o 17h–2h do Garage (Manaus) e todo bar que fecha antes das 11h, sem fuso por bar.
+# Uma consulta por poll na faixa do índice (business_id, status, created_at); as contas em Python. O celular é o
+# client_id do ip_cliente ('IP#cid'): sem '#' fica fora (o IP do Wi-Fi juntaria a mesa) e nunca vai pra TV.
+def _noite_corte(agora=None):
+    """(início da noite em UTC, no formato do created_at; a chave da noite 'AAAA-MM-DD')."""
+    a = agora or datetime.utcnow()
+    ini = a.replace(hour=15, minute=0, second=0, microsecond=0)
+    if a < ini:
+        ini -= timedelta(days=1)
+    return ini.strftime('%Y-%m-%d %H:%M:%S'), ini.strftime('%Y-%m-%d')
+
+
+def _noite_linhas(conn, bid, agora=None):
+    """Os pedidos de música da noite do bar, por (created_at, id). O ⚡ só entra depois do PIX."""
+    corte, chave = _noite_corte(agora)
+    tipos = ('vip', 'flash', 'musica', 'musica_especifica', 'musica_externa', 'pular_espera')
+    return chave, [dict(r) for r in conn.execute(
+        f"""SELECT id, tipo, ip_cliente, nome_cliente, status, created_at, pago_em, exibido_at FROM pubshow_pedidos
+             WHERE business_id=? AND status IN ('pendente','aguardando_ok','exibido','recusado') AND created_at >= ?
+               AND tipo IN ({','.join('?' * len(tipos))}) ORDER BY created_at, id""", (bid, corte, *tipos))]
+
+
+def _noite_cid(r):
+    ip = r.get('ip_cliente') or ''
+    return ip.split('#', 1)[1] if '#' in ip else ''
+
+
+def _noite_quem(r):
+    """Quem pediu: o celular + o 1º nome (celular emprestado com outro nome não vira "de novo"); '' sem um dos dois."""
+    cid, n = _noite_cid(r), ((r.get('nome_cliente') or '').strip().split(' ') + [''])[0].lower()
+    return cid + '|' + n if cid and n else ''
+
+
+def _noite_vale(r):
+    """Conta: pendente, aguardando_ok, exibido; o recusado só se começou a tocar (o ⏭️ do pago)."""
+    return r['status'] != 'recusado' or bool(r['exibido_at'])
+
+
+def _noite_tocou(r):
+    """Quando começou a tocar, em UTC (o exibido_at é Brasília); '' se não começou."""
+    try:
+        return (datetime.strptime(r['exibido_at'][:19], '%Y-%m-%d %H:%M:%S')
+                + timedelta(hours=3)).strftime('%Y-%m-%d %H:%M:%S')
+    except Exception:
+        return ''
+
+
+def _noite_entrou(r):
+    """Quando entrou na fila: o pago (👑 ⚡) na hora do PIX, o resto na hora do pedido."""
+    return (r['pago_em'] or r['created_at']) if r['tipo'] in ('vip', 'flash') else r['created_at']
+
+
+def _noite_resumo(chave, rows, agora=None):
+    v = [r for r in rows if _noite_vale(r)]
+    m30 = 0
+    if v:
+        try:
+            m30 = int((agora or datetime.utcnow()) - datetime.strptime(v[0]['created_at'][:19], '%Y-%m-%d %H:%M:%S')
+                      >= timedelta(minutes=30))
+        except Exception:
+            pass
+    return {'k': chave, 'cel': len({_noite_cid(r) for r in v} - {''}),
+            'toc': sum(1 for r in v if r['exibido_at']), 'm30': m30}
+
+
+def _noite_marcas(rows, pid):
+    """As marcas da PRÓXIMA (só números; o celular não sai daqui). {} se ela não está na noite."""
+    v = [r for r in rows if _noite_vale(r)]
+    eu = next((r for r in v if r['id'] == pid), None)
+    if not eu:
+        return {}
+    cid, quem = _noite_cid(eu), _noite_quem(eu)
+    ch = {'p1': int(v[0]['id'] == pid),
+          'np': sum(1 for r in v if _noite_quem(r) == quem and (r['created_at'], r['id']) <= (eu['created_at'], pid))
+          if quem else 0}
+    if eu['tipo'] == 'flash':
+        def pg(r):
+            return (r['pago_em'] or r['created_at'], r['id'])
+        fl = sorted((r for r in v if r['tipo'] == 'flash'), key=pg)
+        t = pg(eu)[0]
+        ch['f1'] = int(fl[0]['id'] == pid)
+        ch['nf'] = sum(1 for r in fl if _noite_quem(r) == quem and pg(r) <= pg(eu)) if quem else 0
+        # ninguém esperando no PIX: nenhuma outra tinha entrado antes e ainda não tinha começado a tocar
+        try:   # 19/11 (revisão): o t vai 1 vez pro fuso do exibido_at (Brasília) e o resto compara texto, sem strptime por linha
+            tb = (datetime.strptime(t[:19], '%Y-%m-%d %H:%M:%S') - timedelta(hours=3)).strftime('%Y-%m-%d %H:%M:%S')
+        except Exception:
+            tb = ''
+        ch['fv'] = int(not any(r['id'] != pid and _noite_entrou(r) < t and not (r['exibido_at'] and r['exibido_at'][:19] <= tb)
+                               for r in v))
+        ant = max((r for r in v if r['exibido_at'] and r['id'] != pid), key=lambda r: (r['exibido_at'][:19], r['id']),
+                  default=None)
+        ch['disp'] = int(bool(cid and ant and ant['tipo'] == 'flash' and _noite_cid(ant) not in ('', cid)))
+    return ch
 
 
 def _ultimas_tocadas(conn, bid):
@@ -5626,6 +5762,14 @@ def api_status(code):
         'aniversariantes': aniversariantes,   # 🎂 24/10/26 (momentos no telão): o pino da coluna
         'precos_canto':   _precos_canto_tv(b),   # 24/10/26 (momentos no telão, visual): o preço no canto das cenas
     }
+    # 📺 18/11/26 (chamadas, pacote 1): a noite do bar e as marcas da PRÓXIMA (só números: o celular não sai daqui)
+    try:
+        _nk, _nl = _noite_linhas(conn, b['id'])
+        result['noite'] = _noite_resumo(_nk, _nl)
+        if result['pedido_musica']:
+            result['pedido_musica']['ch'] = _noite_marcas(_nl, pedido_musica['id'])
+    except Exception as ex:
+        log.warning('[PUBSHOW] chamadas: bar %s sem a noite: %s', b['id'], ex)
     if _K.ligado(b):
         # 🎤 29/10/26 (modo karaokê): agora no palco, a fila por NOME e o Rei da noite (cache de 5 s). Sem o modo a chave
         # nem existe (o JSON do Garage fica igual). Nome escondido pelo dono vira "Convidado" também no pedido_musica
@@ -5645,6 +5789,10 @@ def api_status(code):
                 if pedido_musica['karaoke_nome_oculto']:
                     result['pedido_musica']['nome_cliente'] = _K.CONVIDADO
                 result['pedido_musica'].update(k=1, n=_K.nome_exibido(dict(pedido_musica), _vot))
+                if (_mesa := _K.mesa_txt(pedido_musica)):
+                    # 🎤 18/11/26: "· mesa 7" / "· balcão" no aviso do cantor e na PRÓXIMA. Só aqui: o
+                    # _karaoke_bloco vai pros celulares (a mesa não vaza); 'Convidado' (nome escondido) segue com a mesa
+                    result['pedido_musica']['mesa'] = _mesa
             # 09/11/26 (V2b): na fila misturada só a linha de cantor (karaoke=1) leva 'k' e o NOME (a TV escreve
             # "🎤 Nome"); ⚡ e grátis seguem com o título, como no bar sem o modo. Mesmas linhas, mesma ordem; no dia da
             # votação o nome vai vazio e a TV escreve "alguém" (a regra que já existe)
@@ -9761,7 +9909,7 @@ def painel_fila_json():
     # depois do ⚡ como a TV (D2), mesmo com as envs vazias. Banco sem a coluna (migração falhou) = a consulta de antes.
     # LIMIT 20 → 200 e o corte em 20 só DEPOIS da trava (a mesma ordem da TV)
     try:
-        fila = _fila_sql((', karaoke, karaoke_nome_oculto' if _K.ligado(b) else '')
+        fila = _fila_sql((', karaoke, karaoke_nome_oculto, karaoke_mesa' if _K.ligado(b) else '')   # 🎤 18/11/26: + a mesa
                          + ', COALESCE(karaoke_pago,0) AS karaoke_pago'
                          + (', karaoke_faltas' if _K.pix_bares() else ''), _SQL_GRUPO_FILA)
     except sqlite3.OperationalError:

@@ -67,6 +67,7 @@
        color:var(--txt);font:inherit;font-size:22px;font-weight:800}
   .nome:focus{outline:none;border-color:var(--lar)}
   .erro{color:var(--erro);font-weight:800;font-size:16px;margin-top:8px}
+  .nome.mesa{width:150px}   /* 🎤 18/11/26: a mesa do cantor (até 3 números) */
   .marca{display:flex;align-items:center;gap:12px;margin:18px 0 8px;font-size:17px;min-height:44px;cursor:pointer}
   .marca input{width:26px;height:26px;accent-color:var(--lar);flex:none}
   .pequeno{font-size:14px;color:var(--txt2);margin:4px 0 18px}
@@ -166,6 +167,13 @@
       <input class="nome" type="text" id="nome" name="nome_cliente" maxlength="14" autocomplete="given-name"
              enterkeyhint="done" placeholder="Primeiro nome ou apelido">
       <p class="erro" id="nome-erro" role="alert" hidden></p>
+      {#- 🎤 18/11/26 (mesa do cantor; cham/mesa/trocas_mesa_cel.py): o dono leva o microfone até a mesa #}
+      <label class="campo" for="mesa" style="margin-top:16px">Número da tua mesa *</label>
+      <input class="nome mesa" type="text" id="mesa" name="mesa" maxlength="3" inputmode="numeric" pattern="[0-9]*"
+             autocomplete="off" enterkeyhint="done" placeholder="Ex.: 12" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,3)">
+      <p class="pequeno" style="margin-bottom:0">Aparece na TV junto do teu nome, pra levarem o microfone até ti.</p>
+      <label class="marca"><input type="checkbox" name="balcao" value="1" id="balcao" onchange="_mesaBalcao()"> Tô no balcão (sem mesa)</label>
+      <p class="erro" id="mesa-erro" role="alert" hidden></p>
       {% if karaoke_pix %}<p class="msg forte" id="t2-pos" hidden></p>
       {% endif %}<button type="submit" class="btn cheio" id="btn-entrar" style="margin-top:16px"{% if not karaoke_cobra %} disabled data-kp="1"{% endif %}>{% if karaoke_cobra %}{{ karaoke_txt.botao }}{% else %}Karaokê pausado{% endif %}</button>
       {% if karaoke_pix %}<p class="pequeno" id="t2-peq-pago" style="margin-top:10px;margin-bottom:0"{% if not karaoke_cobra %} hidden{% endif %}>{{ karaoke_txt.t2_pago }}</p>
@@ -262,14 +270,16 @@ const MEU_ID_SERVIDOR = {{ (karaoke_meu_id or 0)|int }};
 const FORM_VID = {{ (request.form.get('youtube_id', '') if request.method == 'POST' else '')|tojson }};
 const FORM_TIT = {{ (request.form.get('titulo_pedido', '') if request.method == 'POST' else '')|tojson }};
 const FORM_NOME = {{ (request.form.get('nome_cliente', '') if request.method == 'POST' else '')|tojson }};
+const FORM_MESA = {{ (('BALCÃO' if request.form.get('balcao') == '1' else request.form.get('mesa', '')[:3]) if request.method == 'POST' else '')|tojson }};   // 🎤 18/11/26: a mesa que veio no POST
 const KMAIS = {{ (karaoke_mais or [])|tojson }};   // "As mais cantadas" do acervo (sem gastar busca)
 {% if karaoke_pix %}const KARA_PIX = {{ (karaoke_cobra or False)|tojson }};   // 🎤 03/11/26 (V2a): o pedido novo paga? (o polling corrige)
 const KTXT = {{ karaoke_txt|tojson }};   // 🎤 04/11/26: os textos da cobrança vêm do pubshow_karaoke.py
 const PIX = {{ ({'id': pix_pendente.pedido_id, 'payload': pix_pendente.payload, 'vale': pix_pendente.get('expira_min', ''),
                  'vid': pix_pendente.get('kara_vid', ''), 'tit': pix_pendente.get('kara_tit', ''),
-                 'nome': pix_pendente.get('kara_nome', '')} if pix_pendente else none)|tojson }};
+                 'nome': pix_pendente.get('kara_nome', ''), 'mesa': pix_pendente.get('kara_mesa', '')} if pix_pendente else none)|tojson }};
 {% endif %}const T = {   // os textos do PLANO_FINAL §6 (um lugar só)
   nomeVazio: 'Põe teu nome ou apelido pra gente chamar na TV.',
+  mesaVazia: 'Põe o número da tua mesa. Sem mesa? Marca "Tô no balcão".',   // 🎤 18/11/26 (= _K.MSG_MESA)
   nada: 'Não achei essa com letra. Tenta só o nome da música.',
   lotou: 'A busca de hoje lotou. Escolhe um dos clássicos:',
   semBusca: 'A busca não respondeu. Tenta de novo.',
@@ -301,6 +311,22 @@ function _meu() {   // o pedido de karaokê deste celular: {id, nome, t}
   return null;
 }
 function _nomeLembrado() { return (_ler('jk_nome') || '').slice(0, 14); }
+// 🎤 18/11/26 (mesa do cantor): a mesa vale a noite (12 h) e vem preenchida no 2º pedido; quem mudou de lugar troca
+function _mesaLembrada() {
+  try { const o = JSON.parse(_ler('jk_mesa') || 'null'); if (o && o.m && o.b === BAR_TOKEN && Date.now() - (o.t || 0) < VALE_MS) return String(o.m); } catch (e) {}
+  return '';
+}
+function _mesaGuarda(m) { if (m) _gravar('jk_mesa', JSON.stringify({m: String(m).slice(0, 6), t: Date.now(), b: BAR_TOKEN})); }
+function _mesaBalcao() {   // "Tô no balcão" marcado: a caixa da mesa apaga e trava (input travado não vai no POST)
+  const b = $('balcao').checked, me = $('mesa');
+  me.disabled = b;
+  if (b) { me.value = ''; $('mesa-erro').hidden = true; }
+}
+function _mesaPoe(m) {   // '7' / 'BALCÃO' / ''
+  $('balcao').checked = m === 'BALCÃO';
+  $('mesa').value = String(m || '').replace(/[^0-9]/g, '').slice(0, 3);
+  _mesaBalcao();
+}
 const $ = id => document.getElementById(id);
 function _txt(id, t) { const el = $(id); if (el && el.textContent !== t) el.textContent = t; }
 function _vibra(p) { try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {} }   // iPhone não tem
@@ -387,7 +413,8 @@ function escolher(vid, titulo) {
   _txt('t2-musica', titulo || 'Música escolhida');
   const n = $('nome');
   if (!n.value) n.value = _nomeLembrado();
-  $('nome-erro').hidden = true;
+  $('nome-erro').hidden = true; $('mesa-erro').hidden = true;
+  if (!$('mesa').value && !$('balcao').checked) _mesaPoe(_mesaLembrada());   // 🎤 18/11/26: a mesa da noite
   irPara('t2');
 }
 function entrarNaFila() {
@@ -397,6 +424,14 @@ function entrarNaFila() {
     const e = $('nome-erro'); e.textContent = T.nomeVazio; e.hidden = false; n.focus();
     return false;
   }
+  $('nome-erro').hidden = true;
+  const me = $('mesa');   // 🎤 18/11/26 (mesa do cantor): obrigatória, ou o "Tô no balcão" (o servidor confere de novo)
+  me.value = (me.value || '').replace(/[^0-9]/g, '').replace(/^0+/, '').slice(0, 3);   // mesa 0 não existe
+  if (!me.value && !$('balcao').checked) {
+    const e = $('mesa-erro'); e.textContent = T.mesaVazia; e.hidden = false; me.focus();
+    return false;
+  }
+  $('mesa-erro').hidden = true;
   if (!$('f-vid').value) { irPara('t1'); return false; }
   $('f-cid').value = CID;
   const bt = $('btn-entrar'); bt.disabled = true; bt.textContent = {% if karaoke_pix %}_kCobraAgora ? 'Abrindo o PIX…' : {% endif %}'Entrando…';
@@ -642,6 +677,7 @@ function _kCopiar() {
 function _kJaPaguei() { _kPediuConferir = true; agendar(0); }
 function _kOutroPix() {
   $('f-vid').value = PIX.vid; $('f-tit').value = PIX.tit; $('nome').value = PIX.nome; $('f-cid').value = CID;
+  _mesaPoe(PIX.mesa || '');   // 🎤 18/11/26: sem a mesa o servidor recusa o reenvio
   _apagar('jk_kara');
   $('f-pedido').submit();
 }
@@ -785,6 +821,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) agen
     _gravar('jk_kara', JSON.stringify({id: PIX.id, nome: PIX.nome || NOME_ACEITO, t: (antes && antes.id === PIX.id && antes.t) || Date.now(),
                                        tit: String(PIX.tit || '').slice(0, 80)}));
     if (PIX.nome || NOME_ACEITO) _gravar('jk_nome', PIX.nome || NOME_ACEITO);
+    _mesaGuarda(PIX.mesa);   // 🎤 18/11/26: a mesa da noite (a que o servidor aceitou)
     try { history.replaceState(null, '', `/pubshow/jukebox/${encodeURIComponent(BAR_TOKEN)}/pix/${PIX.id}?c=${encodeURIComponent(CID)}`); } catch (e) {}
     if (PIX.vale) { _txt('pix-vale', `Vale por ${Number(PIX.vale)} min`); $('pix-vale').hidden = false; }
     if (PIX.nome) _txt('pix-tit', `Falta pouco, ${PIX.nome}. Paga e a vez é tua.`);
@@ -795,6 +832,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) agen
     // TRILHO_PIX item 6: a pessoa não fica presa: volta pra confirmar, com o aviso, e pode tentar de novo
     escolher(FORM_VID, FORM_TIT);
     $('nome').value = (FORM_NOME || '').slice(0, 14);
+    _mesaPoe(FORM_MESA);
     const e = $('nome-erro'); e.textContent = ERRO; e.hidden = false;
     return;
   }
@@ -806,9 +844,17 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) agen
     irPara('t3');
     return;
   }
+  if (ERRO && ERRO_TIPO === 'karaoke_mesa' && FORM_VID) {   // 🎤 18/11/26: faltou a mesa: volta, com o aviso embaixo dela
+    escolher(FORM_VID, FORM_TIT);
+    $('nome').value = (FORM_NOME || '').slice(0, 14);
+    _mesaPoe(FORM_MESA);
+    const e = $('mesa-erro'); e.textContent = ERRO; e.hidden = false;
+    return;
+  }
   if (ERRO && ERRO_TIPO === 'karaoke_nome' && FORM_VID) {
     escolher(FORM_VID, FORM_TIT);
     $('nome').value = (FORM_NOME || '').slice(0, 14);
+    _mesaPoe(FORM_MESA);
     const e = $('nome-erro'); e.textContent = ERRO; e.hidden = false;
     return;
   }

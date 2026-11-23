@@ -273,6 +273,8 @@ def init_pubshow_db():
         'ALTER TABLE pubshow_pedidos ADD COLUMN devolvido_dinheiro_em TEXT DEFAULT NULL',
         # 🙋 16/11/26 (L1): quando o celular de quem pagou leu "fala no balcão" (UTC): sem isso o dono não marca a devolução
         'ALTER TABLE pubshow_pedidos ADD COLUMN garcom_aviso_em TEXT DEFAULT NULL',
+        # 🎤 18/11/26 (mesa do cantor): '7' ou 'BALCÃO'. Só no pedido de karaokê; NULL nos outros e nos de antes
+        'ALTER TABLE pubshow_pedidos ADD COLUMN karaoke_mesa TEXT DEFAULT NULL',
     ]:
         try:
             conn.execute(m); conn.commit()

@@ -68,6 +68,8 @@ OK_RE = re.compile(r'\b(karaoke|playback|com letra|videoke|sing ?along)\b')
 # ── Textos do celular (PLANO_FINAL §6) ──────────────────────────────────────────────────────────────────────────────
 MSG_NOME_VAZIO = 'Põe teu nome ou apelido pra gente chamar na TV.'
 MSG_NOME_RUIM = 'Esse nome não dá pra pôr na TV. Tenta outro.'
+MSG_MESA = 'Põe o número da tua mesa. Sem mesa? Marca "Tô no balcão".'   # 🎤 18/11/26 (mesa do cantor)
+BALCAO = 'BALCÃO'   # 🎤 18/11/26: o "Tô no balcão" do celular, gravado no lugar da mesa
 MSG_JA_NA_FILA = 'Tua música já tá na fila. Cantou, pode pedir outra.'
 MSG_SO_MUSICA = '🎤 Hoje é karaokê: escolhe a música que tu vai cantar.'
 MSG_LOTOU = 'A busca de hoje lotou. Escolhe um dos clássicos:'
@@ -329,6 +331,16 @@ def cid(ip_cliente):
     """O id do celular gravado no pedido ('IP#client_id' → 'client_id'; sem '#', o IP inteiro)."""
     ip = ip_cliente or ''
     return ip.split('#', 1)[1] if '#' in ip else ip
+
+
+def mesa_txt(linha):
+    """🎤 18/11/26 (mesa do cantor): o que a TV escreve depois do nome: 'mesa 7' / 'balcão' / '' (pedido de antes, sem
+    mesa, ou banco sem a coluna: a TV fica como era)."""
+    try:
+        m = str(dict(linha).get('karaoke_mesa') or '').strip()
+    except (TypeError, ValueError):
+        return ''
+    return 'balcão' if m == BALCAO else ('mesa ' + m if m else '')
 
 
 def nome_exibido(linha, votacao=False):
