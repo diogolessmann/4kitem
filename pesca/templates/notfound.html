@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>Page not found</h1>
+<p class="sub">This spot isn't on our map (yet).</p>
+<div class="card list">
+{% for r in results %}<a href="{{ root }}{{ r.url }}">{{ r.place.name }}</a>
+{% endfor %}
+</div>
+{% endblock %}

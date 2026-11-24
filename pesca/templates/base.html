@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{{ title }}</title>
+<meta name="description" content="{{ description }}">
+{% if canonical %}<link rel="canonical" href="{{ canonical }}">{% endif %}
+<style>
+:root{--bg:#f6f8f7;--card:#fff;--ink:#14211c;--mute:#5b6b64;--line:#dfe6e2;--accent:#0f6b4f;--great:#0b6e4c;--good:#3b7a1f;--fair:#9a6a00;--poor:#b3412a;--none:#7a8781;--past:#c9d2ce;--tint:rgba(15,107,79,.09)}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1513;--card:#17201d;--ink:#e6efeb;--mute:#9db0a8;--line:#26332e;--accent:#4fc596;--past:#2f3b36;--tint:rgba(79,197,150,.14)}}
+*{box-sizing:border-box}a,button{-webkit-tap-highlight-color:transparent}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body.has-tabs{padding-bottom:calc(86px + env(safe-area-inset-bottom))}
+a{color:var(--accent)}header,main,footer{max-width:960px;margin:0 auto;padding:0 16px}
+header{padding-top:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{font-weight:700;text-decoration:none;color:var(--ink)}.brand span{color:var(--accent)}
+h1{font-size:1.6rem;line-height:1.2;margin:16px 0 4px}h2{font-size:1.2rem;margin:24px 0 10px}
+.sub{color:var(--mute);margin:0 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin:12px 0}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:56px;padding:10px 12px;border-radius:14px;background:var(--card);border:2px solid var(--accent);color:var(--ink);font:700 1.1rem/1.2 inherit;text-decoration:none;cursor:pointer;margin:12px 0 6px}
+.btn:active{transform:scale(.98)}
+.score{display:inline-flex;align-items:baseline;gap:8px;color:#fff;border-radius:14px;padding:6px 18px;font-size:1.5rem;font-weight:700}
+.score b{font-size:3rem;line-height:1.1}
+.facts{list-style:none;margin:12px 0 0;padding:0;font-size:1.15rem}.facts li{margin:6px 0}.facts li.mute{font-size:1rem}
+.now{font-size:1.1rem}
+.warnline{color:var(--poor)}
+.s-great{background:var(--great)}.s-good{background:var(--good)}.s-fair{background:var(--fair)}.s-poor{background:var(--poor)}
+.pill{display:inline-block;min-width:2.2em;text-align:center;border-radius:999px;color:#fff;font-weight:700;padding:1px 8px;white-space:nowrap}
+table{width:100%;border-collapse:collapse;font-size:.95rem}th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mute);font-weight:600;font-size:.85rem}
+.scroll{overflow-x:auto}
+.bars{display:grid;grid-template-columns:repeat(24,1fr);gap:3px;align-items:end;height:120px;margin-top:8px}
+.bars div{border-radius:4px 4px 0 0;min-height:4px}.bars .past{background:var(--past)!important}
+.hours{display:grid;grid-template-columns:repeat(24,1fr);gap:3px;font-size:.62rem;color:var(--mute);text-align:center}
+.mute{color:var(--mute)}.small{font-size:.85rem}
+.grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.fish h3{margin:0 0 4px;font-size:1.1rem}.fish p{margin:6px 0}
+.warn{border-left:4px solid var(--fair)}.alert{border-left:4px solid var(--poor)}.alert p{margin:4px 0}
+.pill.none{background:var(--none)}.closed{color:var(--poor)}
+footer{color:var(--mute);font-size:.82rem;padding:24px 16px 40px}
+.day{display:grid;grid-template-columns:1fr auto;column-gap:12px;row-gap:2px;padding:10px 0;border-bottom:1px solid var(--line)}
+.day>.pill{grid-column:2;grid-row:1/span 2;align-self:center;font-size:1.05rem;padding:4px 10px}
+.day>div{grid-column:1}.days .day:last-of-type{border-bottom:0}
+.list a{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 4px;border-bottom:1px solid var(--line);text-decoration:none;color:var(--ink)}
+.list a .pill{flex:0 0 auto}.list a:last-child{border-bottom:0}.list a:hover{background:var(--tint)}.list a.here{background:var(--tint);border-radius:10px}
+/* abas: sem JS tudo aparece (o Google lê tudo); com JS, uma aba por vez */
+.js .tab{display:none}.js .tab.on{display:block}
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:10;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:var(--card);border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom));box-shadow:0 -2px 12px rgba(0,0,0,.07)}
+.tabbar a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:62px;font-size:1.6rem;line-height:1;text-decoration:none;color:var(--mute);border-radius:12px}
+.tabbar a span{font-size:.8rem;font-weight:700;line-height:1.1;text-align:center}
+.tabbar a.on{color:var(--accent);background:var(--tint)}
+@media (min-width:700px){.tabbar{left:50%;right:auto;transform:translateX(-50%);width:600px;border:1px solid var(--line);border-radius:18px 18px 0 0}}
+</style>
+</head>
+<body class="{% block bodyclass %}{% endblock %}">
+<script>document.documentElement.className += " js";</script>
+<header><a class="brand" href="{{ root }}{{ idx }}">{{ brand }} <span>· Texas</span></a><nav class="small"><a href="{{ root }}how-we-score{{ ext }}">How we score</a></nav></header>
+<main>
+{% block body %}{% endblock %}
+</main>
+<footer>
+<p>Weather: National Weather Service (api.weather.gov). Tides: NOAA CO-OPS. Lakes, species and limits: Texas Parks &amp; Wildlife Department (TPWD). Lake points: USGS. Sun, moon and solunar: computed with Skyfield and JPL DE421.</p>
+<p>Information courtesy Texas Parks and Wildlife Department.</p>
+<p>This is a fishing guide, not a promise: fish don't read forecasts. Regulations change: always check the official TPWD rules before you fish.</p>
+<p>{% if canonical %}Updated {{ built }}. New data every 2 hours.{% else %}Prototype built {{ built }} · data collected {{ collected }}{% endif %}</p>
+</footer>
+{% block tabbar %}{% endblock %}
+<script>
+/* A página é gerada a cada 2 h; isto acerta "Today", a manchete, o tempo agora e as barras para a hora de quem lê. */
+(function () {
+  try {
+    var now = new Date();
+    var parts = {};
+    new Intl.DateTimeFormat("en-US", {timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit"})
+      .formatToParts(now).forEach(function (p) { parts[p.type] = p.value; });
+    var ct = parts.year + "-" + parts.month + "-" + parts.day;
+    var today = new Date(ct + "T12:00:00Z");
+    function label(iso) {
+      var d = new Date(iso + "T12:00:00Z"), diff = Math.round((d - today) / 864e5);
+      if (diff === 0) return "Today";
+      if (diff === 1) return "Tomorrow";
+      return d.toLocaleDateString("en-US", {weekday: "short", month: "short", day: "numeric", timeZone: "UTC"});
+    }
+    function relabel(root) {
+      root.querySelectorAll(".dn[data-d]").forEach(function (e) { e.textContent = label(e.getAttribute("data-d")); });
+    }
+    function pick(list) {
+      var p = null;
+      for (var i = 0; i < list.length; i++) { if (new Date(list[i].t) <= now) p = list[i]; }
+      return p;
+    }
+    var hj = document.getElementById("heroes"), hero = document.getElementById("hero");
+    if (hj && hero) {
+      var list = JSON.parse(hj.textContent), p = pick(list);
+      if (p) hero.innerHTML = p.h;
+      var vu = hj.getAttribute("data-valid-until");
+      if (vu && now > new Date(vu))
+        hero.innerHTML = '<p class="facts">⏳ <b>This forecast is out of date.</b> Reload the page in a few minutes.</p>';
+    }
+    var nj = document.getElementById("nows"), nw = document.getElementById("now");
+    if (nj && nw) {
+      var nl = JSON.parse(nj.textContent), np = pick(nl);
+      if (np && now - new Date(np.t) < 2 * 36e5) nw.innerHTML = np.h;
+      else if (nl.length && now > new Date(nl[nl.length - 1].t)) nw.style.display = "none";
+    }
+    var rj = document.getElementById("rows");
+    if (rj) {
+      var rows = JSON.parse(rj.textContent);
+      Object.keys(rows).forEach(function (id) {
+        var el = document.getElementById("row-" + id), p = pick(rows[id]);
+        if (el && p) el.innerHTML = p.h;
+      });
+    }
+    document.querySelectorAll(".al[data-end]").forEach(function (e) {
+      if (new Date(e.getAttribute("data-end")) <= now) e.style.display = "none";
+    });
+    var al = document.getElementById("alerts");
+    if (al && !al.querySelector('.al:not([style*="none"])')) al.style.display = "none";
+    document.querySelectorAll(".day[data-d], .day-row[data-d]").forEach(function (e) {
+      if (e.getAttribute("data-d") < ct) e.style.display = "none";
+    });
+    document.querySelectorAll(".bars div[data-t]").forEach(function (e) {
+      if (new Date(e.getAttribute("data-t")).getTime() + 36e5 <= now.getTime()) e.classList.add("past");
+    });
+    relabel(document);
+  } catch (e) {}
+})();
+/* Abas da barra de baixo: Today, Week, Places, What to bring. */
+(function () {
+  var bar = document.getElementById("tabbar");
+  if (!bar) return;
+  var tabs = document.querySelectorAll(".tab");
+  function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
+  if (tabs.length) {                       /* página de lugar: troca de aba sem sair da página */
+    store("hdp_last", location.pathname);
+    var show = function () {
+      var id = (location.hash || "#today").slice(1), found = false;
+      tabs.forEach(function (t) { var on = t.id === id; t.classList.toggle("on", on); found = found || on; });
+      if (!found) { id = "today"; document.getElementById("today").classList.add("on"); }
+      bar.querySelectorAll("a").forEach(function (a) { a.classList.toggle("on", a.getAttribute("data-tab") === id); });
+    };
+    window.addEventListener("hashchange", function () { show(); window.scrollTo(0, 0); });
+    show();
+  } else {                                 /* índice: as outras abas abrem o último lugar visto */
+    var last = store("hdp_last");
+    bar.querySelectorAll("a[data-tab]").forEach(function (a) {
+      var t = a.getAttribute("data-tab");
+      if (t === "places") { a.classList.add("on"); return; }
+      if (last) { a.href = last + "#" + t; return; }
+      a.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        var m = document.getElementById("nearmsg");
+        if (m) { m.hidden = false; m.textContent = "📍 Pick a spot first: tap a lake or a coast spot below."; }
+        window.scrollTo(0, 0);
+      });
+    });
+  }
+})();
+/* "Near me": os 5 lugares mais perto. A localização fica no aparelho: nada é enviado. */
+(function () {
+  var nb = document.getElementById("nearbtn");
+  if (!nb) return;
+  var msg = document.getElementById("nearmsg"), box = document.getElementById("near");
+  function say(t) { msg.hidden = false; msg.textContent = t; }
+  function near() {
+    if (!navigator.geolocation) { say("Location isn't available on this device. Pick a spot below."); return; }
+    say("📍 Finding spots near you…");
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      var la = pos.coords.latitude, lo = pos.coords.longitude, rad = Math.PI / 180;
+      var rows = Array.prototype.slice.call(document.querySelectorAll(".spots a[data-lat]")).map(function (a) {
+        var la2 = parseFloat(a.getAttribute("data-lat")), lo2 = parseFloat(a.getAttribute("data-lon"));
+        var h = Math.pow(Math.sin((la2 - la) * rad / 2), 2) +
+                Math.cos(la * rad) * Math.cos(la2 * rad) * Math.pow(Math.sin((lo2 - lo) * rad / 2), 2);
+        return {a: a, mi: 2 * 3958.8 * Math.asin(Math.sqrt(h))};
+      }).sort(function (x, y) { return x.mi - y.mi; }).slice(0, 5);
+      box.innerHTML = "";
+      rows.forEach(function (r) {
+        var c = r.a.cloneNode(true), b = c.querySelector("b");
+        c.removeAttribute("id");
+        if (b) b.insertAdjacentText("afterend", " · " + Math.round(r.mi) + " mi");
+        box.appendChild(c);
+      });
+      box.hidden = false;
+      say("📍 The 5 spots closest to you. Your location stays on your phone.");
+    }, function () { say("We couldn't get your location. Pick a spot below."); },
+    {timeout: 10000, maximumAge: 600000});
+  }
+  nb.addEventListener("click", near);
+  if (location.hash === "#near") near();
+})();
+</script>
+</body>
+</html>

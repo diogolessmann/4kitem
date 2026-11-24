@@ -1,0 +1,23 @@
+{% macro dn(d) %}<span class="dn" data-d="{{ d.isoformat() }}">{{ d|dayname }}</span>{% endmacro %}
+
+{% macro grade(s) %}<span class="pill {{ s|scls }}">{{ s|sc }} · {{ s|sword }}</span>{% endmacro %}
+
+{% macro hero(h) %}<div class="score {{ h.score|scls }}">🎣 <b>{{ h.score|sc }}</b> · {{ h.score|sword }}</div>
+<ul class="facts">
+<li>⏰ <b>{{ dn(h.date) }}, {{ h.best_start|hm }}</b> <span class="mute">to {{ h.best_end|hm }}</span></li>
+<li>🐟 {{ fishname(h.species) }}</li>
+{% if h.bait.short %}<li>🐛 {{ h.bait.short|capitalize }}</li>{% endif %}
+{% if h.weak %}<li class="mute">😴 Slow day: no strong signal</li>{% elif h.why %}<li class="mute">💡 {{ h.why|join(" + ") }}</li>{% endif %}
+{% if h.against %}<li class="warnline">⚠️ {{ h.against|join(", ") }}</li>{% endif %}
+</ul>{% endmacro %}
+
+{% macro nowwx(w) %}<b>Now</b> · {{ w.short|sky }} {{ w.temp_f }}°F · 💨 {{ w.wind }}{% if w.wind_dir %} {{ w.wind_dir }}{% endif %}{% if w['pop'] and w['pop'] >= 20 %} · 💧 {{ w['pop'] }}%{% endif %}{% endmacro %}
+
+{% macro tabbar(here, root, idx) %}<nav class="tabbar" id="tabbar">
+<a href="{% if here %}#today{% else %}#{% endif %}" data-tab="today">🎣<span>Today</span></a>
+<a href="{% if here %}#week{% else %}#{% endif %}" data-tab="week">📅<span>Week</span></a>
+<a href="{% if here %}#places{% else %}{{ root }}{{ idx }}{% endif %}" data-tab="places">📍<span>Places</span></a>
+<a href="{% if here %}#bring{% else %}#{% endif %}" data-tab="bring">🎒<span>What to bring</span></a>
+</nav>{% endmacro %}
+
+{% macro row(r, h) %}<span><b>{{ r.place.name }}</b><br><span class="small mute">{% if h %}⏰ {{ dn(h.date) }} {{ h.best_start|hm }} · 🐟 {{ fishname(h.species) }}{% if h.weak %} · 😴 slow day{% endif %}{% elif r.no_lake_data %}No lake data right now{% else %}No forecast right now{% endif %}</span></span>{% if h %}{{ grade(h.score) }}{% endif %}{% endmacro %}

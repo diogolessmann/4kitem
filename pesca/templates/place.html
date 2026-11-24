@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% import "macros.html" as m with context %}
+{% block bodyclass %}has-tabs{% endblock %}
+{% block body %}
+{% set p = r.place %}
+<h1>{{ title_h1 }}</h1>
+<p class="sub">📍 {{ p.near }}, Texas{% if r.lake and r.lake.surface_acres %} · {{ "{:,}".format(r.lake.surface_acres) }} acres{% endif %}</p>
+
+{# ───────── 🎣 TODAY ───────── #}
+<section class="tab" id="today">
+{% if r.alerts %}<div class="card alert" id="alerts">{% for a in r.alerts %}<p class="al" data-end="{{ a.end.isoformat() }}">⚠️ <b>{{ a.event }}</b> until {{ m.dn(a.end.date()) }} {{ a.end|hm }}{% if a.water %} · hours inside it lose 4 points{% endif %}</p>{% endfor %}<p class="small mute">From the National Weather Service. <a href="https://forecast.weather.gov/MapClick.php?lat={{ p.lat }}&lon={{ p.lon }}" rel="nofollow">Check the forecast</a> before you go out.</p></div>{% endif %}
+
+{% if r.no_lake_data %}
+<div class="card warn"><p>⚠️ <b>We couldn't read the TPWD page for {{ p.name }} right now,</b> so there's no fish list or best time. We never guess which fish live in a lake.</p></div>
+{% elif r.head %}
+<div class="card hero" id="hero">{{ m.hero(r.head) }}</div>
+<script type="application/json" id="heroes" data-valid-until="{{ r.valid_until.isoformat() }}">{{ r.hero_json|tojson }}</script>
+{% endif %}
+{% if now_first %}<div class="card now" id="now">{{ m.nowwx(now_first) }}</div>
+<script type="application/json" id="nows">{{ now_json|tojson }}</script>{% endif %}
+{% if r.raw_errors %}<div class="card warn small">Some data is missing right now ({{ r.raw_errors|join("; ") }}). The score uses what is available.</div>{% endif %}
+
+{% if r.timeline %}
+<h2>⏰ {{ m.dn(r.head.date) }} hour by hour · {{ fishname(r.head.species) }}</h2>
+<div class="card">
+  <div class="bars">{% for t, s in r.timeline %}<div class="{{ s|scls }}{% if t|is_past(r.now) %} past{% endif %}" data-t="{{ t.isoformat() }}" style="height:{{ (s*10)|round|int }}%" title="{{ t|hm }}: {{ s|sc }}"></div>{% endfor %}</div>
+  <div class="hours">{% for t, s in r.timeline %}<span>{% if t.hour % 3 == 0 %}{{ t|hshort }}{% endif %}</span>{% endfor %}</div>
+  <p class="small mute">Grey bars: hours already gone. <a href="{{ root }}how-we-score{{ ext }}">How we score</a></p>
+</div>
+{% endif %}
+</section>
+
+{# ───────── 📅 WEEK ───────── #}
+<section class="tab" id="week">
+<h2>📅 Best time to fish, next 7 days</h2>
+<div class="card days">
+{% for d in r.days %}{% set o = d.opt %}
+<div class="day" data-d="{{ d.date.isoformat() }}">
+  <div><b>{{ m.dn(d.date) }}</b>{% if o %} · ⏰ {{ o.best_start|hm }}{% endif %}</div>
+  {% if o %}{{ m.grade(o.score) }}{% else %}<span class="pill none">–</span>{% endif %}
+  {% if o %}<div>🐟 {{ fishname(o.species) }}{% if o.bait.short %} · 🐛 {{ o.bait.short }}{% endif %}{% if o.weak %} · 😴 slow day{% endif %}</div>
+  {% if o.against %}<div class="small warnline">⚠️ {{ o.against|join(", ") }}</div>{% endif %}
+  {% elif d.no_forecast %}<div class="small mute">No forecast yet, so no score.</div>
+  {% elif r.no_lake_data %}<div class="small mute">No fish list right now, so no score.</div>
+  {% else %}<div class="small mute">No full hour left today.</div>{% endif %}
+  {% if d.weather %}<div class="small">{{ d.weather.short|sky }} {{ d.weather.hi }}° / {{ d.weather.lo }}°F · 💨 {{ d.weather.wind_max }} mph{% if d.weather.pop_max >= 20 %} · 💧 {{ d.weather.pop_max }}%{% endif %}</div>{% endif %}
+</div>
+{% endfor %}
+<p class="small mute">Central Time. Weather from the National Weather Service.</p>
+</div>
+
+<h2>🌙 Solunar table {{ p.short or p.name }}</h2>
+<div class="card scroll">
+<table>
+<tr><th>Day</th><th>Sun</th><th>Moon</th><th>Major (2 h)</th><th>Minor (1 h)</th><th>Moon phase</th></tr>
+{% for d in r.days %}
+<tr class="day-row" data-d="{{ d.date.isoformat() }}">
+  <td><b>{{ m.dn(d.date) }}</b></td>
+  <td class="small">{% for t, k in d.sun %}{{ '↑' if k == 'sunrise' else '↓' }} {{ t|hm }}<br>{% endfor %}</td>
+  <td class="small">{% for t, k in d.moon %}{{ '↑' if k == 'moonrise' else '↓' }} {{ t|hm }}<br>{% endfor %}</td>
+  <td class="small">{% for a, b, k in d.solunar if k == 'major' %}{{ a|hm }}{% if a.date() != d.date %} ({{ a.strftime('%a') }}){% endif %} to {{ b|hm }}{% if b.date() != d.date %} ({{ b.strftime('%a') }}){% endif %}<br>{% endfor %}</td>
+  <td class="small">{% for a, b, k in d.solunar if k == 'minor' %}{{ a|hm }}{% if a.date() != d.date %} ({{ a.strftime('%a') }}){% endif %} to {{ b|hm }}{% if b.date() != d.date %} ({{ b.strftime('%a') }}){% endif %}<br>{% endfor %}</td>
+  <td class="small">{% if d.phase %}{{ d.phase[0]|phasename }} · {{ (d.phase[1]*100)|round|int }}%{% endif %}</td>
+</tr>
+{% endfor %}
+</table>
+<p class="small mute">Central Time. Solunar is an old angler theory with little scientific support, so it only adds a little to the score.</p>
+</div>
+
+{% if p.kind == 'coast' %}
+<h2>🌊 Tides {{ p.name }}</h2>
+<div class="card scroll">
+<table>
+<tr><th>Day</th><th>High and low tide (NOAA, ft {{ r.tide_datum }})</th></tr>
+{% for d in r.days %}<tr class="day-row" data-d="{{ d.date.isoformat() }}"><td><b>{{ m.dn(d.date) }}</b></td><td class="small">{% for t, ft, ty in d.tides %}{{ 'High' if ty == 'H' else 'Low' }} {{ t|hm }} ({{ '%.1f'|format(ft) }} ft){% if not loop.last %} · {% endif %}{% endfor %}</td></tr>{% endfor %}
+</table>
+<p class="small mute">NOAA station {{ r.tide_station }} (<a href="https://tidesandcurrents.noaa.gov/noaatidepredictions.html?id={{ r.tide_station }}" rel="nofollow">NOAA page</a>). {% if r.tide_tiny %}<b>Tides are tiny this week:</b> wind moves the water more, so the tide doesn't change the score.{% else %}Wind can move the water more than the tide.{% endif %}</p>
+</div>
+{% endif %}
+</section>
+
+{# ───────── 📍 PLACES (regras deste lugar + lista perto de mim / Texas) ───────── #}
+<section class="tab" id="places">
+<h2>📜 {{ p.short or p.name }} fishing regulations</h2>
+<div class="card warn">
+{% if p.kind == 'coast' %}
+  <p>Statewide saltwater limits (TPWD). Check the official rules before you fish: <a href="https://tpwd.texas.gov/regulations/outdoor-annual/fishing/saltwater-fishing/bag-length-limits" rel="nofollow">TPWD saltwater limits</a>.</p>
+  {% set show_table = true %}
+{% elif r.lake and r.lake.special_regs and r.lake.regs_url %}
+  <p><b>{{ p.name }} has its own size and bag limits for some fish,</b> different from the statewide rules. Check them before you keep a fish: <a href="{{ r.lake.regs_url }}" rel="nofollow"><b>TPWD limits for {{ p.name }}</b></a>.</p>
+  <p class="small mute">We link to the official page instead of copying it, so you always see the current rules.</p>
+  {% set show_table = false %}
+{% elif r.lake and r.lake.statewide_only %}
+  <p>TPWD says every species on {{ p.name }}{% if r.lake.mexico_license %} (Texas side){% endif %} follows the statewide rules. Check them before you fish: <a href="https://tpwd.texas.gov/regulations/outdoor-annual/fishing/freshwater-fishing/bag-length-limits" rel="nofollow">TPWD freshwater limits</a>.</p>
+  {% set show_table = true %}
+{% else %}
+  <p><b>{{ p.name }} may have its own limits.</b> We couldn't read them, so we show no numbers here. Check <a href="{{ (r.lake and r.lake.regs_url) or 'https://tpwd.texas.gov/regulations/outdoor-annual/fishing/freshwater-fishing/bag-length-limits' }}" rel="nofollow">TPWD</a> before you fish.</p>
+  {% set show_table = false %}
+{% endif %}
+{% if show_table %}
+  <div class="scroll"><table>
+  <tr><th>Fish</th><th>Statewide daily bag</th><th>Statewide length</th></tr>
+  {% for s in r.species %}{% set rg = s.sp.regs_statewide %}{% if rg %}
+  <tr><td>{{ fishname(s.id) }}</td><td>{% if s.closed_today %}<b>0 today: closed {{ s.closed_today.label }}</b>, then {{ rg.daily_bag }}{% elif s.closes_soon %}{{ rg.daily_bag }} today; <b>0 from {{ s.closes_soon.label }}</b>{% else %}{{ rg.daily_bag or "—" }}{% endif %}</td><td>{{ rg.min_length_in or "—" }}{% if rg.min_length_in and rg.min_length_in[0].isdigit() %} in.{% endif %}</td></tr>
+  {% endif %}{% endfor %}
+  </table></div>
+  <p class="small mute">Statewide limits from the TPWD Outdoor Annual 2026-27, checked Nov 23, 2026. A short summary only: the official TPWD page always wins.</p>
+{% endif %}
+{% if r.lake and r.lake.mexico_license %}<p><b>Mexican waters:</b> TPWD notes that fishing on the Mexico side needs a Mexico fishing license for everyone in the boat.</p>{% endif %}
+</div>
+
+<h2>📍 Other spots</h2>
+<button type="button" class="btn" id="nearbtn">📍 Near me</button>
+<p id="nearmsg" class="small mute" hidden></p>
+<div id="near" class="card list" hidden></div>
+{% for kind, label in (('lake', '🏞️ Lakes'), ('coast', '🌊 Coast')) %}
+<h2>{{ label }}</h2>
+<div class="card list spots">
+{% for s in spots if s.kind == kind %}<a href="{{ root }}{{ s.url }}" data-lat="{{ s.lat }}" data-lon="{{ s.lon }}"{% if s.id == p.id %} class="here"{% endif %}><span><b>{{ s.name }}</b><br><span class="small mute">{{ s.near }}</span></span>{% if s.id == p.id %}<span class="small mute">you're here</span>{% endif %}</a>
+{% endfor %}
+</div>
+{% endfor %}
+</section>
+
+{# ───────── 🎒 WHAT TO BRING ───────── #}
+<section class="tab" id="bring">
+{% if not r.no_lake_data %}
+<h2>🐟 What fish are in {{ p.short or p.name }}</h2>
+{% if r.lake %}<p class="small mute">🎒 Bait for each fish, and when it feeds. Fish list and ratings: <a href="{{ r.lake.url }}" rel="nofollow">TPWD</a>.</p>
+{% else %}<p class="small mute">🎒 Bait for each fish, and when it feeds. Common Texas coast fish (TPWD).</p>{% endif %}
+<div class="grid2">
+{% set feeds = {'crepuscular': ('🌅', 'at dawn and dusk'), 'nocturnal': ('🌙', 'at night'), 'diurnal': ('☀️', 'in daylight')} %}
+{% for s in r.species %}{% set sp = s.sp %}{% set act = sp.activity or {} %}
+<div class="card fish">
+  <h3>🐟 {{ fishname(s.id) }}{% if s.rating %} <span class="small mute">· TPWD: {{ s.rating }}</span>{% endif %}</h3>
+  {% if s.closed %}<p class="closed">⛔ <b>Closed {{ s.closed.label }}</b>{% if s.closes_soon %} from {{ m.dn(r.head.date) }}{% endif %}: you can't keep any. <a class="small" href="{{ s.closed.source_url }}" rel="nofollow">rule</a></p>
+  {% else %}
+  {% if s.bait.short %}<p>🐛 <b>Bring:</b> {{ s.bait.all[:3]|join(", ") }}{% if s.bait.source_url %} <a class="small" href="{{ s.bait.source_url }}" rel="nofollow">source</a>{% elif s.bait.from_lake_tip %} <span class="small mute">(TPWD tips)</span>{% endif %}</p>{% endif %}
+  {% if s.best %}<p>⏰ <b>{{ m.dn(s.best[0].date()) }} {{ s.best[0]|hm }}</b> {{ m.grade(s.best[1]) }}</p>
+  {% elif not s.signal %}<p class="small mute">⏰ No best hour: {% if p.kind == 'coast' and r.tide_tiny %}tide too small and {% endif %}no sourced feeding rule.</p>{% endif %}
+  {% endif %}
+  {% if s.tip_lures %}<p class="small">💬 TPWD tips for this lake: {{ s.tip_lures[:4]|join(", ") }}</p>{% endif %}
+  {% if act.pattern in feeds %}<p class="small">{{ feeds[act.pattern][0] }} Feeds most {{ feeds[act.pattern][1] }}{% if act.months %} ({{ act.months|monthrange }}){% endif %} <a href="{{ act.source_url }}" rel="nofollow">source</a></p>{% endif %}
+  {% set sw = sp.spawn_months_tx %}{% if sw and (sw.label or sw.months) %}<p class="small">🥚 Spawns: {{ sw.label or (sw.months|months) }} <a href="{{ sw.source_url }}" rel="nofollow">source</a></p>{% endif %}
+</div>
+{% endfor %}
+</div>
+{% else %}
+<div class="card warn"><p>⚠️ No fish list for {{ p.name }} right now, so we can't say what to bring. We never guess which fish live in a lake.</p></div>
+{% endif %}
+</section>
+{% endblock %}
+{% block tabbar %}{{ m.tabbar(true, root, idx) }}{% endblock %}

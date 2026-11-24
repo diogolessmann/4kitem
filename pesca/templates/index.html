@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% import "macros.html" as m with context %}
+{% block bodyclass %}has-tabs{% endblock %}
+{% block body %}
+<h1>Best Time to Fish in Texas Today</h1>
+<p class="sub">🎣 The best hour in the next 24 hours at 20 Texas spots. Tap a spot to open it.</p>
+<button type="button" class="btn" id="nearbtn">📍 Near me</button>
+<p id="nearmsg" class="small mute" hidden></p>
+<div id="near" class="card list" hidden></div>
+{% for kind, label in (('lake', '🏞️ Lakes'), ('coast', '🌊 Coast')) %}
+<h2>{{ label }}</h2>
+<div class="card list spots">
+{% for r in results if r.place.kind == kind %}
+<a href="{{ r.url }}" id="row-{{ r.place.id }}" data-lat="{{ r.place.lat }}" data-lon="{{ r.place.lon }}">{{ m.row(r, r.head) }}</a>
+{% endfor %}
+</div>
+{% endfor %}
+<script type="application/json" id="rows">{{ rows_json|tojson }}</script>
+{% endblock %}
+{% block tabbar %}{{ m.tabbar(false, root, idx) }}{% endblock %}

@@ -1,0 +1,1212 @@
+{
+ "amistad": {
+  "slug": "amistad",
+  "url": "https://tpwd.texas.gov/fishboat/fish/recreational/lakes/amistad/",
+  "location": "On the Rio Grande, 12 miles northwest of Del Rio in Val Verde County",
+  "surface_acres": 64900,
+  "predominant": [
+   "Largemouth bass",
+   "Smallmouth bass",
+   "Catfish",
+   "White & striped bass"
+  ],
+  "ratings": {},
+  "regs_url": null,
+  "regs_text": "On the Texas side of the lake, all species are managed under current statewide regulations . For recreational anglers fishing Mexican waters, a Mexico fishing license is required for everyone in the boat. Mexico boat permits are no longer required. Mexico licenses can be purchased in Del Rio at Amistad Marine (Highway 90 West, 830/775-0878) or Fisherman's Headquarters (Chevron at the intersection of 90 & 277 N, 830/774-5670.",
+  "special_regs": false,
+  "statewide_only": true,
+  "mexico_license": true,
+  "angling": "Largemouth bass are the most popular and most abundant sportfish in the reservoir. Channel and blue catfish are present in good numbers with an occasional flathead showing up. Striped bass are popular and sought by anglers due to their strong fighting characteristics and their potential for trophy sizes. Frequent stockings by the Texas Parks and Wildlife Department maintain the striper population because they have not successfully reproduced in this reservoir. White bass provide popular seasonal fishing during spring spawning runs. Smallmouth bass are present; anglers report better success with this species in the Devils River arm of the lake. Largemouth Bass Excellent Smallmouth Bass Fair Channel & Blue Catfish Good White & Striped Bass Good",
+  "tips": {
+   "largemouth_bass": {
+    "text": "anglers are most successful during the fall, winter, and spring months. Topwater baits, buzzbaits and spinner baits work well in the early morning and late evening. Crankbaits can be effective along rocky shorelines, points and dropoffs. At midday many anglers turn to plastics such as Texas and Carolina rigged worms or grubs to effectively fish the deeper waters near vegetation or rocky structure.",
+    "lures": [
+     "topwater lure",
+     "spinnerbait",
+     "crankbait",
+     "Carolina rig",
+     "worm"
+    ]
+   },
+   "white_bass": {
+    "text": "is during the spring spawning runs. These occur from late January through March as whites migrate up rivers to spawn. Effective baits include rattle traps, jigging spoons and live bait such as minnows. <div id=\"email-updates-tab\" ga-on=\"click\" ga-event-category=\"On-page Email Sign-up\" ga-event-action=\"tab click\" ga-event-label=\"",
+    "lures": [
+     "lipless crankbait",
+     "jigging spoon",
+     "live bait",
+     "live minnow"
+    ]
+   },
+   "channel_catfish": {
+    "text": "anglers can find channel and blue catfish throughout the lake. Stinkbait and cutbait work well for both species. Many anglers try to improve catch rates by \"baiting\" catfish holes with sour grain to attract the catfish. The best action for",
+    "lures": [
+     "stinkbait",
+     "cut bait"
+    ]
+   },
+   "blue_catfish": {
+    "text": "anglers can find channel and blue catfish throughout the lake. Stinkbait and cutbait work well for both species. Many anglers try to improve catch rates by \"baiting\" catfish holes with sour grain to attract the catfish. The best action for",
+    "lures": [
+     "stinkbait",
+     "cut bait"
+    ]
+   },
+   "flathead_catfish": {
+    "text": "anglers can find channel and blue catfish throughout the lake. Stinkbait and cutbait work well for both species. Many anglers try to improve catch rates by \"baiting\" catfish holes with sour grain to attract the catfish. The best action for",
+    "lures": [
+     "stinkbait",
+     "cut bait"
+    ]
+   }
+  },
+  "tips_all": "Largemouth bass anglers are most successful during the fall, winter, and spring months. Topwater baits, buzzbaits and spinner baits work well in the early morning and late evening. Crankbaits can be effective along rocky shorelines, points and dropoffs. At midday many anglers turn to plastics such as Texas and Carolina rigged worms or grubs to effectively fish the deeper waters near vegetation or rocky structure. Catfish anglers can find channel and blue catfish throughout the lake. Stinkbait and cutbait work well for both species. Many anglers try to improve catch rates by \"baiting\" catfish holes with sour grain to attract the catfish. The best action for white bass is during the spring spawning runs. These occur from late January through March as whites migrate up rivers to spawn. Effective baits include rattle traps, jigging spoons and live bait such as minnows. <div id=\"email-updates-tab\" ga-on=\"click\" ga-event-category=\"On-page Email Sign-up\" ga-event-action=\"tab click\" ga-event-label=\"",
+  "fetched": "2026-11-24T10:43-06:00"
+ },
+ "choke_canyon": {
+  "slug": "choke_canyon",
+  "url": "https://tpwd.texas.gov/fishboat/fish/recreational/lakes/choke_canyon/",
+  "location": "Frio River watershed in Live Oak and McMullen Counties, 4 miles west of Three Rivers",
+  "surface_acres": 25670,
+  "predominant": [
+   "Largemouth bass",
+   "White bass",
+   "Crappie",
+   "Blue, channel & flathead catfish",
+   "Bluegill & redear sunfish",
+   "Alligator gar"
+  ],
+  "ratings": {
+   "Alligator Gar": "Excellent",
+   "Largemouth Bass": "Excellent",
+   "Blue & Flathead Catfish": "Excellent",
+   "Channel Catfish": "Excellent",
+   "Crappie": "Good",
+   "White Bass": "Good",
+   "Sunfish": "Good"
+  },
+  "regs_url": "https://tpwd.texas.gov/fishboat/fish/action/fishregs2.php?water=0164",
+  "regs_text": "This reservoir has special regulations on some fishes. See bag and size limits for this lake.",
+  "special_regs": true,
+  "statewide_only": false,
+  "mexico_license": false,
+  "angling": "Largemouth bass and catfish are the most popular sportfish in the reservoir. Bass are abundant with frequent reports of double-digit fish being boated. Blue catfish are the most abundant catfish species, but flathead and channel catfish also provide excellent fisheries. White bass provide excellent angling opportunities in the main Frio River channel during the cooler months and along the northern shoreline during summer. Although crappie fishing has recently been poor, respectable catches are not uncommon. The reservoir offers ample Alligator Gar angling opportunity. Catches of trophy fish (> 6-ft) by anglers are frequent. Species Poor Fair Good Excellent Alligator Gar Largemouth Bass Blue & Flathead Catfish Channel Catfish Crappie White Bass Sunfish",
+  "tips": {
+   "largemouth_bass": {
+    "text": "anglers are most successful on Choke Canyon during the spring, fall, and winter months. Popular spring baits include spinnerbaits, buzzbaits, rattletraps, crankbaits, and unweighted soft plastic worms or jerkbaits. Summer bass fishing on Choke Canyon can be frustrating for even the most experienced angler. Topwater baits such as buzzbaits, Zara Spooks, or Pop-R's, presented very early or very late in the day near weedbeds, are popular and can be productive throughout the day if cloud cover is present. Flipping jigs, plastic worms, or tube baits in heavy shaded cover are often productive when nothing else seems to work. Remenber to spool up with a minimum of 20 lb. line or heavier when fishing thick cover: dead huisache and mesquite brush fray lighter line quickly. As summer temperatures rise, some anglers concentrate on shaded areas in submerged vegetation while many experienced anglers go deep. Deep water bass fishing is best using crankbaits , Texas-rigged worms, Carolina-rigged plastics, or jigging spoons. Brushy main-lake points, rocky shorelines, submerged roadbeds, and flooded brush near deep water or a dropoff are highly recommended targets for bass when temperatures reach 90°F or higher.",
+    "lures": [
+     "spinnerbait",
+     "crankbait",
+     "plastic worm",
+     "jerkbait",
+     "topwater lure",
+     "jig",
+     "worm",
+     "Carolina rig",
+     "jigging spoon"
+    ]
+   },
+   "white_bass": {
+    "text": "congregate in the Frio River channel from December through February to gradually head upstream to spawn. Although live minnows are popular baits during this annual \"e;run,\" many anglers catch their limit using small rattletraps, shad raps, small spinnerbaits, small grubs, and other minnow imitating artificial baits. As the weather warms, white bass will school in deeper water located near the northern shoreline of the main reservoir. Jigging spoons or small rattletraps trolled deep near main lake points and humps often put fish in the cooler when white bass are hard to find.",
+    "lures": [
+     "live minnow",
+     "small spinner",
+     "jigging spoon"
+    ]
+   },
+   "channel_catfish": {
+    "text": "anglers can find channel, blue, and flathead catfish throughout the reservoir. Although many catfish anglers prefer deeper water, catfish are often found in relatively shallow areas (8 feet or less) of flooded terrestrial vegetation. Cheesebait and cutbait produce impressive stringers of blue catfish, while the larger flathead and blue catfish seem to prefer live bluegill and shad. Experienced flathead anglers concentrate on creek channels and the main Frio River channel. Trotlines and juglines account for many of the larger catfish caught every year at Choke Canyon.",
+    "lures": [
+     "cut bait"
+    ]
+   },
+   "blue_catfish": {
+    "text": "anglers can find channel, blue, and flathead catfish throughout the reservoir. Although many catfish anglers prefer deeper water, catfish are often found in relatively shallow areas (8 feet or less) of flooded terrestrial vegetation. Cheesebait and cutbait produce impressive stringers of blue catfish, while the larger flathead and blue catfish seem to prefer live bluegill and shad. Experienced flathead anglers concentrate on creek channels and the main Frio River channel. Trotlines and juglines account for many of the larger catfish caught every year at Choke Canyon.",
+    "lures": [
+     "cut bait"
+    ]
+   },
+   "flathead_catfish": {
+    "text": "anglers can find channel, blue, and flathead catfish throughout the reservoir. Although many catfish anglers prefer deeper water, catfish are often found in relatively shallow areas (8 feet or less) of flooded terrestrial vegetation. Cheesebait and cutbait produce impressive stringers of blue catfish, while the larger flathead and blue catfish seem to prefer live bluegill and shad. Experienced flathead anglers concentrate on creek channels and the main Frio River channel. Trotlines and juglines account for many of the larger catfish caught every year at Choke Canyon.",
+    "lures": [
+     "cut bait"
+    ]
+   }
+  },
+  "tips_all": "Largemouth bass anglers are most successful on Choke Canyon during the spring, fall, and winter months. Popular spring baits include spinnerbaits, buzzbaits, rattletraps, crankbaits, and unweighted soft plastic worms or jerkbaits. Summer bass fishing on Choke Canyon can be frustrating for even the most experienced angler. Topwater baits such as buzzbaits, Zara Spooks, or Pop-R's, presented very early or very late in the day near weedbeds, are popular and can be productive throughout the day if cloud cover is present. Flipping jigs, plastic worms, or tube baits in heavy shaded cover are often productive when nothing else seems to work. Remenber to spool up with a minimum of 20 lb. line or heavier when fishing thick cover: dead huisache and mesquite brush fray lighter line quickly. As summer temperatures rise, some anglers concentrate on shaded areas in submerged vegetation while many experienced anglers go deep. Deep water bass fishing is best using crankbaits , Texas-rigged worms, Carolina-rigged plastics, or jigging spoons. Brushy main-lake points, rocky shorelines, submerged roadbeds, and flooded brush near deep water or a dropoff are highly recommended targets for bass when temperatures reach 90°F or higher. White bass congregate in the Frio River channel from December through February to gradually head upstream to spawn. Although live minnows are popular baits during this annual \"e;run,\" many anglers catch their limit using small rattletraps, shad raps, small spinnerbaits, small grubs, and other minnow imitating artificial baits. As the weather warms, white bass will school in deeper water located near the northern shoreline of the main reservoir. Jigging spoons or small rattletraps trolled deep near main lake points and humps often put fish in the cooler when white bass are hard to find. Catfish anglers can find channel, blue, and flathead catfish throughout the reservoir. Although many catfish anglers prefer deeper water, catfish are often found in relatively shallow areas (8 feet or less) of flooded terrestrial vegetation. Cheesebait and cutbait produce impressive stringers of blue catfish, while the larger flathead and blue catfish seem to prefer live bluegill and shad. Experienced flathead anglers concentrate on creek channels and the main Frio River channel. Trotlines and juglines account for many of the larger catfish caught every year at Choke Canyon. Alligator gar , although not present in large numbers, still provide great sport for the bow-fishing enthusiast. <div id=\"email-updates-tab\" ga-on=\"click\" ga-event-category=\"On-page Email Sign-up\" ga-event-action=\"tab click\" ga-event-label=\"",
+  "fetched": "2026-11-24T10:43-06:00",
+  "lake_regs": [
+   [
+    "Black bass",
+    "For largemouth and smallmouth bass, minimum length limit = 14 inches. No minimum length limit for Alabama, Guadalupe, and spotted bass. Daily bag limit for all black bass species is 5 in any combination."
+   ],
+   [
+    "Carp",
+    "There is no minimum length limit or daily bag limit for common carp."
+   ],
+   [
+    "Catfish",
+    "For blue and channel catfish, minimum length = 14 inches and combined daily bag limit = 15 fish. For flathead catfish, minimum length = 18 inches and daily bag = 5."
+   ],
+   [
+    "Crappie",
+    "For white and black crappie, their hybrids and subspecies, minimum length limit = 10 inches. Daily bag limit = 25 in any combination."
+   ],
+   [
+    "Gar",
+    "For alligator gar, daily bag limit is 1 fish of any size. No bag limits on other species of gar. Mandatory Harvest Reporting - All alligator gar harvested from the public waters of the state other than Falcon International Reservoir must be reported within 24 hours to the department via mobile app or online. Report your harvest with \"Texas Hunt & Fish\" app . Certain areas may be temporarily closed to alligator gar fishing when optimum spawning conditions occur. Get details ."
+   ],
+   [
+    "Sunfish",
+    "There is no minimum length or daily bag limit on bluegill, redear, warmouth or other species of sunfish."
+   ],
+   [
+    "Trout",
+    "For rainbow and brown trout, their hybrids and subspecies, there is no minimum length and daily bag limit = 5 trout in any combination."
+   ],
+   [
+    "White bass",
+    "For white bass, minimum length = 10 inches and daily bag is 25."
+   ],
+   [
+    "Striped bass and their Hybrids",
+    "For striped and hybrid striped bass, minimum length limit = 18 inches and daily bag limit = 5 in any combination."
+   ]
+  ],
+  "regs_fetched": "2026-11-24T10:44-06:00"
+ },
+ "conroe": {
+  "slug": "conroe",
+  "url": "https://tpwd.texas.gov/fishboat/fish/recreational/lakes/conroe/",
+  "location": "West Fork of San Jacinto River in Montgomery and Walker Counties",
+  "surface_acres": 20118,
+  "predominant": [
+   "Largemouth bass",
+   "Bluegill",
+   "Channel catfish",
+   "White & hybrid striped bass"
+  ],
+  "ratings": {
+   "Largemouth Bass": "Excellent",
+   "Catfish": "Excellent",
+   "Crappie": "Good",
+   "Hybrid Striped Bass": "Excellent",
+   "Bluegill": "Excellent"
+  },
+  "regs_url": "https://tpwd.texas.gov/fishboat/fish/action/fishregs2.php?water=0192",
+  "regs_text": "This reservoir has special regulations on largemouth bass. See bag and size limits . A Triploid Grass Carp Permit is in effect on this lake. If a grass carp is caught, it must be immediately returned to the water unharmed.",
+  "special_regs": true,
+  "statewide_only": false,
+  "mexico_license": false,
+  "angling": "Largemouth bass are the most sought after species in Lake Conroe. Catch rates are very good and the opportunity to catch a trophy bass is very high at Lake Conroe. In 1998, the biggest largemouth bass ever collected by TPWD in an electrofishing survey was taken from beneath a boat dock and weighed in at 14.1 pounds. The standing lake record caught in 2009 by angler Ricky Bearden weighed 15.93 pounds. Channel catfish are by far the most abundant sportfish in the lake, offering most any angler a good opportunity for good catches. Bluegill on Lake Conroe grow to enormous sizes. We have interviewed anglers with 12-inch bluegills in their creels. Crappie are also very popular and offer good opportunity for anglers seeking table fare. Black and white crappie made a comeback in the lake with the efforts of the Lake Conroe Restocking Association's spring stockings of advance juvenile crappie. Good catches of crappie can be had in early spring and in the fall. The introduction of hybrid striped bass in 1995 has added another dimension to the sport fishery, offering open-water opportunities for anglers who enjoy going after these hefty fighters. Species Poor Fair Good Excellent Largemouth Bass Catfish Crappie Hybrid Striped Bass Bluegill",
+  "tips": {
+   "largemouth_bass": {
+    "text": "anglers can expect to take bass in shallow water, particularly around marinas and boat docks, in the early spring and mid- to late fall. In other seasons, bass are taken around deeper cover. Anglers are most successful with a variety of shad imitation lures or soft plastic baits.",
+    "lures": [
+     "soft plastic"
+    ]
+   },
+   "hybrid_striped_bass": {
+    "text": "are growing in popularity among Lake Conroe anglers and can be caught most any time of year. Most are taken by anglers trolling in open water areas or vertically jigging spoons or live shad. They are occasionally found running up the river channel during the early spring spawning run or foraging beneath schools of white bass in summer.",
+    "lures": [
+     "jigging spoon",
+     "live shad"
+    ]
+   },
+   "channel_catfish": {
+    "text": "are caught year-round in good numbers. Most successful anglers use smelly baits or cut shad. Rod-and-reel anglers do just about as well as trotliners on this reservoir.",
+    "lures": []
+   },
+   "bluegill": {
+    "text": "of gigantic proportions can be had by the angler who wants to be patient and target them. They can be caught along rip rap, fishing deep near the toe of the slope (sometimes 8 feet or more). Baits must reach near bottom quickly to avoid the small bait-stealers that inhabit the shallower water. Live worms or crickets are the best producers. Some good fly-rod action can also be had using sinking insect imitation flies and sinking fly line. <div id=\"email-updates-tab\" ga-on=\"click\" ga-event-category=\"On-page Email Sign-up\" ga-event-action=\"tab click\" ga-event-label=\"",
+    "lures": [
+     "worm",
+     "cricket"
+    ]
+   }
+  },
+  "tips_all": "Largemouth bass anglers can expect to take bass in shallow water, particularly around marinas and boat docks, in the early spring and mid- to late fall. In other seasons, bass are taken around deeper cover. Anglers are most successful with a variety of shad imitation lures or soft plastic baits. Hybrid striped bass are growing in popularity among Lake Conroe anglers and can be caught most any time of year. Most are taken by anglers trolling in open water areas or vertically jigging spoons or live shad. They are occasionally found running up the river channel during the early spring spawning run or foraging beneath schools of white bass in summer. Channel catfish are caught year-round in good numbers. Most successful anglers use smelly baits or cut shad. Rod-and-reel anglers do just about as well as trotliners on this reservoir. Bluegills of gigantic proportions can be had by the angler who wants to be patient and target them. They can be caught along rip rap, fishing deep near the toe of the slope (sometimes 8 feet or more). Baits must reach near bottom quickly to avoid the small bait-stealers that inhabit the shallower water. Live worms or crickets are the best producers. Some good fly-rod action can also be had using sinking insect imitation flies and sinking fly line. <div id=\"email-updates-tab\" ga-on=\"click\" ga-event-category=\"On-page Email Sign-up\" ga-event-action=\"tab click\" ga-event-label=\"",
+  "fetched": "2026-11-24T10:43-06:00",
+  "lake_regs": [
+   [
+    "Black bass",
+    "For largemouth bass, minimum length limit = 16 inches. For smallmouth bass, minimum length limit = 14 inches. No minimum length limit for Alabama, Guadalupe, and spotted bass. Daily bag for all black bass species is 5 in any combination."
+   ],
+   [
+    "Carp",
+    "There is no minimum length limit or daily bag limit for common carp."
+   ],
+   [
+    "Catfish",
+    "For blue and channel catfish, no minimum length limit; daily bag and possession limit = 25 blue and channel catfish in any combination. In the 25-fish bag, no more than 5 fish 20 inches or greater in length may be retained, and no more than 1 of those can be 30 inches or longer. For flathead catfish, minimum length = 18 inches and daily bag = 5."
+   ],
+   [
+    "Crappie",
+    "For white and black crappie, their hybrids and subspecies, minimum length limit = 10 inches. Daily bag limit = 25 in any combination."
+   ],
+   [
+    "Gar",
+    "For alligator gar, daily bag limit is 1 fish of any size. No bag limits on other species of gar. Mandatory Harvest Reporting - All alligator gar harvested from the public waters of the state other than Falcon International Reservoir must be reported within 24 hours to the department via mobile app or online. Report your harvest with \"Texas Hunt & Fish\" app . Certain areas may be temporarily closed to alligator gar fishing when optimum spawning conditions occur. Get details ."
+   ],
+   [
+    "Sunfish",
+    "There is no minimum length or daily bag limit on bluegill, redear, warmouth or other species of sunfish."
+   ],
+   [
+    "Trout",
+    "For rainbow and brown trout, their hybrids and subspecies, there is no minimum length and daily bag limit = 5 trout in any combination."
+   ],
+   [
+    "White bass",
+    "For white bass, minimum length = 10 inches and daily bag is 25."
+   ],
+   [
+    "Striped bass and their Hybrids",
+    "For striped and hybrid striped bass, minimum length limit = 18 inches and daily bag limit = 5 in any combination."
+   ]
+  ],
+  "regs_fetched": "2026-11-24T10:43-06:00"
+ },
+ "falcon": {
+  "slug": "falcon",
+  "url": "https://tpwd.texas.gov/fishboat/fish/recreational/lakes/falcon/",
+  "location": "Mainstream reservoir on the Rio Grande River, located 40 miles east of Laredo on Highway 83 in Zapata and Starr counties",
+  "surface_acres": 83654,
+  "predominant": [
+   "Largemouth bass",
+   "Channel catfish"
+  ],
+  "ratings": {
+   "Largemouth Bass": "Excellent",
+   "Catfish": "Excellent",
+   "Crappie": "Poor",
+   "White Bass": "Poor"
+  },
+  "regs_url": "https://tpwd.texas.gov/fishboat/fish/action/fishregs2.php?water=0278",
+  "regs_text": "On the Texas side of the lake , the daily bag limit for alligator gar is 5 fish, with no minimum length limit. There are no bag or size limits on other species of gar. All other fishes are managed under statewide regulations. For recreational anglers fishing Mexican waters, a Mexico fishing license is required for everyone in the boat. Mexico boat permits are no longer required. For information on Mexico's fishing regulations, visit the National Aquaculture and Fishing Commission (CONAPESCA) website. Mexico licenses can be purchased in Zapata at Robert's Fish N' Tackle (2425 S. Highway 83, 956/765-1442) or from Falcon Lake Tackle (2195 S. Highway 83, 956/765-4866.)",
+  "special_regs": true,
+  "statewide_only": false,
+  "mexico_license": true,
+  "angling": "Several fishing guides are available at Falcon Reservoir. A list is available from the Zapata Chamber of Commerce. Falcon has long been regarded as one of the best largemouth bass lakes in the state. To win a bass tournament at Falcon, it often takes a 5-6 pound average/fish for your stringer. Channel catfish provide additional opportunities, with an occasional blue or flathead catfish. Recent drought conditions have adversely impacted the white bass and crappie populations. Species Poor Fair Good Excellent Largemouth Bass Catfish Crappie White Bass",
+  "tips": {
+   "largemouth_bass": {
+    "text": "anglers are more successful during the spring, fall and winter months. Popular baits include spinner baits, crank baits and Texas and Carolina rigged worms. These are used around flooded brush, points, and offshore structure which includes humps, rock piles, inundated buildings, and road beds. Summer fishing at Falcon can be tough, partially because of the South Texas heat. The same lures mentioned above along with top-water and buzz baits (fished early and late) are successful.",
+    "lures": [
+     "spinnerbait",
+     "Carolina rig",
+     "worm",
+     "topwater lure"
+    ]
+   },
+   "channel_catfish": {
+    "text": "can be caught almost any time during the year. Stink baits or natural baits such as shad, shrimp or sunfish are effective for catching catfish throughout the lake. <div id=\"email-updates-tab\" ga-on=\"click\" ga-event-category=\"On-page Email Sign-up\" ga-event-action=\"tab click\" ga-event-label=\"",
+    "lures": [
+     "stinkbait",
+     "shrimp"
+    ]
+   },
+   "flathead_catfish": {
+    "text": "can be caught almost any time during the year. Stink baits or natural baits such as shad, shrimp or sunfish are effective for catching catfish throughout the lake. <div id=\"email-updates-tab\" ga-on=\"click\" ga-event-category=\"On-page Email Sign-up\" ga-event-action=\"tab click\" ga-event-label=\"",
+    "lures": [
+     "stinkbait",
+     "shrimp"
+    ]
+   }
+  },
+  "tips_all": "Largemouth bass anglers are more successful during the spring, fall and winter months. Popular baits include spinner baits, crank baits and Texas and Carolina rigged worms. These are used around flooded brush, points, and offshore structure which includes humps, rock piles, inundated buildings, and road beds. Summer fishing at Falcon can be tough, partially because of the South Texas heat. The same lures mentioned above along with top-water and buzz baits (fished early and late) are successful. Catfish can be caught almost any time during the year. Stink baits or natural baits such as shad, shrimp or sunfish are effective for catching catfish throughout the lake. <div id=\"email-updates-tab\" ga-on=\"click\" ga-event-category=\"On-page Email Sign-up\" ga-event-action=\"tab click\" ga-event-label=\"",
+  "fetched": "2026-11-24T10:43-06:00",
+  "lake_regs": [
+   [
+    "Black bass",
+    "For largemouth and smallmouth bass, minimum length limit = 14 inches. No minimum length limit for Alabama, Guadalupe, and spotted bass. Daily bag limit for all black bass species is 5 in any combination."
+   ],
+   [
+    "Carp",
+    "There is no minimum length limit or daily bag limit for common carp."
+   ],
+   [
+    "Catfish",
+    "For channel and blue catfish, their hybrids and subspecies, 25 (in any combination - only 10 can be 20 inches or greater in length). For flathead catfish, minimum length = 18 inches and daily bag limit = 5."
+   ],
+   [
+    "Crappie",
+    "For white and black crappie, their hybrids and subspecies, minimum length limit = 10 inches. Daily bag limit = 25 in any combination."
+   ],
+   [
+    "Gar",
+    "For alligator gar, daily bag limit = 5 fish and possession limit = 10. No bag or possession limits on other species of gar. Mandatory harvest reporting of alligator gar harvested is not required for Falcon. Certain areas may be temporarily closed to alligator gar fishing when optimum spawning conditions occur. Get details ."
+   ],
+   [
+    "Sunfish",
+    "There is no minimum length or daily bag limit on bluegill, redear, warmouth or other species of sunfish."
+   ],
+   [
+    "Trout",
+    "For rainbow and brown trout, their hybrids and subspecies, there is no minimum length and daily bag limit = 5 trout in any combination."
+   ],
+   [
+    "White bass",
+    "For white bass, minimum length = 10 inches and daily bag is 25."
+   ],
+   [
+    "Striped bass and their Hybrids",
+    "For striped and hybrid striped bass, minimum length limit = 18 inches and daily bag limit = 5 in any combination."
+   ]
+  ],
+  "regs_fetched": "2026-11-24T10:43-06:00"
+ },
+ "fork": {
+  "slug": "fork",
+  "url": "https://tpwd.texas.gov/fishboat/fish/recreational/lakes/fork/",
+  "location": "On the Sabine River in Hopkins, Rains and Wood Counties, 5 miles northwest of Quitman",
+  "surface_acres": 27264,
+  "predominant": [
+   "Largemouth bass",
+   "White & black crappie",
+   "Channel catfish",
+   "White bass",
+   "Sunfish"
+  ],
+  "ratings": {
+   "Largemouth Bass": "Excellent",
+   "White Bass": "Fair",
+   "Catfish": "Excellent",
+   "Crappie": "Good",
+   "Sunfish": "Good"
+  },
+  "regs_url": "https://tpwd.texas.gov/fishboat/fish/action/fishregs2.php?water=0433",
+  "regs_text": "This reservoir has special regulations on some fishes. See bag and size limits for this lake .",
+  "special_regs": true,
+  "statewide_only": false,
+  "mexico_license": false,
+  "angling": "Largemouth bass is the most popular sportfish in this reservoir. A combination of restrictive harvest regulations, stocking of Florida strain largemouth, and abundant habitat has contributed to Lake Fork's development as one of the country's premier trophy bass lakes. More than 65% of the Texas Top 50 largest bass (including the current state record) and more than half of those entered in the Toyota ShareLunker Program, were caught from Lake Fork. Crappie fishing is generally good, especially in standing timber and under the lake's numerous bridges. Channel catfish provide an excellent sport fishery, which has increased in popularity and notoriety in recent years. White bass have been slowly increasing in abundance and provide an additional sportfish species in the reservoir. Yellow bass or “barfish” are often caught during the winter months, often associated with largemouth bass. These fish tend to be relatively small but they are great table fare and they are as tasty as crappie. Sunfish, primarily bluegill, offer additional opportunities for anglers during spring and summer. Species Poor Fair Good Excellent Largemouth Bass White Bass Catfish Crappie Sunfish",
+  "tips": {
+   "largemouth_bass": {
+    "text": "anglers are most successful on this reservoir during the spring, fall, and winter months. Spinnerbaits, plastic worms and lizards, jigs and lipless crankbaits are all popular lures during peak fishing in the spring (mid-February to April) when fishing is concentrated along the shoreline for spawning fish. Night fishing during the hot summer months can be very productive and a good way to beat the Texas heat. At this time, plastic worms, spinnerbaits, crankbaits and topwaters are often used. During late summer and early fall, when fish are schooling, crankbaits and topwater lures can be very effective. In winter jigging spoons, jigs and crankbaits are most productive.",
+    "lures": [
+     "spinnerbait",
+     "plastic worm",
+     "plastic lizard",
+     "jig",
+     "lipless crankbait",
+     "crankbait",
+     "topwater lure",
+     "jigging spoon"
+    ]
+   },
+   "crappie": {
+    "text": "anglers concentrate their efforts in deep water near the dam during the winter months. In late spring and early fall, most anglers fish for crappie under the bridges (Highway 154, Highway 515, CR 2946 and CR 514). Live minnows and crappie jigs are among the most popular baits used. The",
+    "lures": [
+     "live minnow",
+     "crappie jig"
+    ]
+   },
+   "bluegill": {
+    "text": "such as bluegill and redear can be caught in early summer, in shallow water, using crickets, earthworms and small spinners. During the remainder of the year they can be caught using the same baits around piers, boathouses and submerged humps.",
+    "lures": [
+     "cricket",
+     "earthworm",
+     "small spinner"
+    ]
+   },
+   "white_bass": {
+    "text": "can grow exceptionally large in Lake Fork due to abundant prey species. Jigging spoons and live baitfish work well for yellow and white bass. When white bass are schooling, topwater baits and small crankbaits can be especially effective. <div id=\"email-updates-tab\" ga-on=\"click\" ga-event-category=\"On-page Email Sign-up\" ga-event-action=\"tab click\" ga-event-label=\"",
+    "lures": [
+     "jigging spoon",
+     "live bait",
+     "topwater lure",
+     "crankbait"
+    ]
+   },
+   "channel_catfish": {
+    "text": "population is dominated by channel catfish, but also includes flathead and a few large blue cats. Stinkbait and cutbait work well for channel cats, while live bait is preferred for flatheads. Anglers occasionally catch large blue catfish.",
+    "lures": [
+     "stinkbait",
+     "cut bait",
+     "live bait"
+    ]
+   },
+   "blue_catfish": {
+    "text": "population is dominated by channel catfish, but also includes flathead and a few large blue cats. Stinkbait and cutbait work well for channel cats, while live bait is preferred for flatheads. Anglers occasionally catch large blue catfish.",
+    "lures": [
+     "stinkbait",
+     "cut bait",
+     "live bait"
+    ]
+   },
+   "flathead_catfish": {
+    "text": "population is dominated by channel catfish, but also includes flathead and a few large blue cats. Stinkbait and cutbait work well for channel cats, while live bait is preferred for flatheads. Anglers occasionally catch large blue catfish.",
+    "lures": [
+     "stinkbait",
+     "cut bait",
+     "live bait"
+    ]
+   }
+  },
+  "tips_all": "Largemouth bass anglers are most successful on this reservoir during the spring, fall, and winter months. Spinnerbaits, plastic worms and lizards, jigs and lipless crankbaits are all popular lures during peak fishing in the spring (mid-February to April) when fishing is concentrated along the shoreline for spawning fish. Night fishing during the hot summer months can be very productive and a good way to beat the Texas heat. At this time, plastic worms, spinnerbaits, crankbaits and topwaters are often used. During late summer and early fall, when fish are schooling, crankbaits and topwater lures can be very effective. In winter jigging spoons, jigs and crankbaits are most productive. Crappie anglers concentrate their efforts in deep water near the dam during the winter months. In late spring and early fall, most anglers fish for crappie under the bridges (Highway 154, Highway 515, CR 2946 and CR 514). Live minnows and crappie jigs are among the most popular baits used. The catfish population is dominated by channel catfish, but also includes flathead and a few large blue cats. Stinkbait and cutbait work well for channel cats, while live bait is preferred for flatheads. Anglers occasionally catch large blue catfish. Sunfish such as bluegill and redear can be caught in early summer, in shallow water, using crickets, earthworms and small spinners. During the remainder of the year they can be caught using the same baits around piers, boathouses and submerged humps. White bass can grow exceptionally large in Lake Fork due to abundant prey species. Jigging spoons and live baitfish work well for yellow and white bass. When white bass are schooling, topwater baits and small crankbaits can be especially effective. <div id=\"email-updates-tab\" ga-on=\"click\" ga-event-category=\"On-page Email Sign-up\" ga-event-action=\"tab click\" ga-event-label=\"",
+  "fetched": "2026-11-24T10:43-06:00",
+  "lake_regs": [
+   [
+    "Black bass",
+    "For largemouth bass, length limit is a 16–24” slot. Bass 16 inches and less or 24 inches or greater in length may be retained. Only one largemouth bass 24 inches or greater may be retained each day. For smallmouth bass (if present), minimum length limit = 14 inches. No minimum length limit on Alabama, Guadalupe, and spotted bass (if present). Daily bag limit for all black bass species is 5 in any combination."
+   ],
+   [
+    "Carp",
+    "There is no minimum length limit or daily bag limit for common carp."
+   ],
+   [
+    "Catfish",
+    "For channel and blue catfish, their hybrids and subspecies, 25 (in any combination - only 10 can be 20 inches or greater in length). For flathead catfish, minimum length = 18 inches and daily bag limit = 5."
+   ],
+   [
+    "Crappie",
+    "For black and white crappie caught from December 1 through the last day of February, there is no minimum length limit and all crappie caught must be retained. From March through November, minimum length is 10 inches. Year-round daily bag limit is 25 crappie in any combination."
+   ],
+   [
+    "Gar",
+    "For alligator gar, daily bag limit is 1 fish of any size. No bag limits on other species of gar. Mandatory Harvest Reporting - All alligator gar harvested from the public waters of the state other than Falcon International Reservoir must be reported within 24 hours to the department via mobile app or online. Report your harvest with \"Texas Hunt & Fish\" app . Certain areas may be temporarily closed to alligator gar fishing when optimum spawning conditions occur. Get details ."
+   ],
+   [
+    "Sunfish",
+    "There is no minimum length or daily bag limit on bluegill, redear, warmouth or other species of sunfish."
+   ],
+   [
+    "Trout",
+    "For rainbow and brown trout, their hybrids and subspecies, there is no minimum length and daily bag limit = 5 trout in any combination."
+   ],
+   [
+    "White bass",
+    "For white bass, minimum length = 10 inches and daily bag is 25."
+   ],
+   [
+    "Striped bass and their Hybrids",
+    "For striped and hybrid striped bass, minimum length limit = 18 inches and daily bag limit = 5 in any combination."
+   ]
+  ],
+  "regs_fetched": "2026-11-24T10:43-06:00"
+ },
+ "lewisville": {
+  "slug": "lewisville",
+  "url": "https://tpwd.texas.gov/fishboat/fish/recreational/lakes/lewisville/",
+  "location": "On the Elm Fork of the Trinity River in Denton County near Lewisville",
+  "surface_acres": 29592,
+  "predominant": [
+   "Largemouth bass",
+   "Spotted bass",
+   "White & hybrid striped bass",
+   "White crappie",
+   "Blue & channel catfish"
+  ],
+  "ratings": {
+   "Largemouth Bass": "Good",
+   "Catfish": "Excellent",
+   "Crappie": "Excellent",
+   "White Bass": "Excellent",
+   "Hybrid Striped Bass": "Good"
+  },
+  "regs_url": "https://tpwd.texas.gov/fishboat/fish/action/fishregs2.php?water=0301",
+  "regs_text": "This reservoir has special regulations on some fishes. See bag and size limits for this lake .",
+  "special_regs": true,
+  "statewide_only": false,
+  "mexico_license": false,
+  "angling": "White crappie and white bass provide the most angling activity on Lewisville Lake. Largemouth bass, the most popular fish in Texas, is also popular at Lewisville. Hybrid striped bass have been stocked and provide anglers with another open water sport fish. The blue and channel catfish fisheries are excellent. Species Poor Fair Good Excellent Largemouth Bass Spotted Bass Catfish Crappie White Bass Hybrid Striped Bass",
+  "tips": {
+   "largemouth_bass": {
+    "text": "can be found around available structure (timber) in coves or along the shoreline.",
+    "lures": []
+   },
+   "white_bass": {
+    "text": "school in the main lake during summer; follow the gulls.",
+    "lures": []
+   },
+   "crappie": {
+    "text": "fishing is excellent under bridges that cross arms of the lake.",
+    "lures": []
+   },
+   "hybrid_striped_bass": {
+    "text": "are found around humps and ridges on Hickory Creek and the main lake.",
+    "lures": []
+   },
+   "channel_catfish": {
+    "text": "is good near the old Lake Dallas area. <div id=\"email-updates-tab\" ga-on=\"click\" ga-event-category=\"On-page Email Sign-up\" ga-event-action=\"tab click\" ga-event-label=\"",
+    "lures": []
+   },
+   "blue_catfish": {
+    "text": "is good near the old Lake Dallas area. <div id=\"email-updates-tab\" ga-on=\"click\" ga-event-category=\"On-page Email Sign-up\" ga-event-action=\"tab click\" ga-event-label=\"",
+    "lures": []
+   }
+  },
+  "tips_all": "Largemouth bass can be found around available structure (timber) in coves or along the shoreline. White bass school in the main lake during summer; follow the gulls. Crappie fishing is excellent under bridges that cross arms of the lake. Hybrids are found around humps and ridges on Hickory Creek and the main lake. Catfishing is good near the old Lake Dallas area. <div id=\"email-updates-tab\" ga-on=\"click\" ga-event-category=\"On-page Email Sign-up\" ga-event-action=\"tab click\" ga-event-label=\"",
+  "fetched": "2026-11-24T10:43-06:00",
+  "lake_regs": [
+   [
+    "Black bass",
+    "For largemouth and smallmouth bass, minimum length limit = 14 inches. No minimum length limit for Alabama, Guadalupe, and spotted bass. Daily bag limit for all black bass species is 5 in any combination."
+   ],
+   [
+    "Carp",
+    "There is no minimum length limit or daily bag limit for common carp."
+   ],
+   [
+    "Catfish",
+    "For blue and channel catfish, no minimum length limit; daily bag and possession limit = 25 blue and channel catfish in any combination. In the 25-fish bag, no more than 5 fish 20 inches or greater in length may be retained, and no more than 1 of those can be 30 inches or longer. For flathead catfish, minimum length = 18 inches and daily bag = 5."
+   ],
+   [
+    "Crappie",
+    "For white and black crappie, their hybrids and subspecies, minimum length limit = 10 inches. Daily bag limit = 25 in any combination."
+   ],
+   [
+    "Gar",
+    "For alligator gar, daily bag limit is 1 fish of any size. No bag limits on other species of gar. Mandatory Harvest Reporting - All alligator gar harvested from the public waters of the state other than Falcon International Reservoir must be reported within 24 hours to the department via mobile app or online. Report your harvest with \"Texas Hunt & Fish\" app . Certain areas may be temporarily closed to alligator gar fishing when optimum spawning conditions occur. Get details ."
+   ],
+   [
+    "Sunfish",
+    "There is no minimum length or daily bag limit on bluegill, redear, warmouth or other species of sunfish."
+   ],
+   [
+    "Trout",
+    "For rainbow and brown trout, their hybrids and subspecies, there is no minimum length and daily bag limit = 5 trout in any combination."
+   ],
+   [
+    "White bass",
+    "For white bass, minimum length = 10 inches and daily bag is 25."
+   ],
+   [
+    "Striped bass and their Hybrids",
+    "For striped and hybrid striped bass, minimum length limit = 18 inches and daily bag limit = 5 in any combination."
+   ]
+  ],
+  "regs_fetched": "2026-11-24T10:44-06:00"
+ },
+ "livingston": {
+  "slug": "livingston",
+  "url": "https://tpwd.texas.gov/fishboat/fish/recreational/lakes/livingston/",
+  "location": "On the Trinity River in Polk, San Jacinto, Trinity and Walker counties. Dam is in Polk and San Jacinto counties, west of Livingston and 50 miles north of Houston.",
+  "surface_acres": 90000,
+  "predominant": [
+   "Largemouth bass",
+   "Bluegill",
+   "Blue , channel & flathead catfish",
+   "White bass",
+   "Striped bass",
+   "Crappie"
+  ],
+  "ratings": {
+   "Largemouth Bass": "Poor",
+   "Catfish": "Excellent",
+   "Crappie": "Poor",
+   "White Bass": "Excellent",
+   "Striped/Hybrid Bass": "Fair",
+   "Sunfish": "Good"
+  },
+  "regs_url": "https://tpwd.texas.gov/fishboat/fish/action/fishregs2.php?water=0451",
+  "regs_text": "This reservoir has special regulations on some fishes. See bag and size limits for this lake .",
+  "special_regs": true,
+  "statewide_only": false,
+  "mexico_license": false,
+  "angling": "Lake Livingston is a notable white bass fishery. White bass are plentiful and grow to large sizes. Also notable is the catfish fishery, dominated by blue catfish. Largemouth bass, striped bass, and crappie are less abundant but good catches are possible in areas of the reservoir where habitat is available. Species Poor Fair Good Excellent Largemouth Bass Catfish Crappie White Bass Striped/Hybrid Bass Sunfish",
+  "tips": {
+   "white_bass": {
+    "text": "are most readily caught in early spring in the many creeks that feed into Lake Livingston. Striped bass can be caught around the 190 bridge area by trolling and vertical jigging spoons or live shad.",
+    "lures": [
+     "jigging spoon",
+     "live shad"
+    ]
+   },
+   "largemouth_bass": {
+    "text": "are most frequently caught in the bays and creeks from the Kickapoo/Penwaugh area northward. Spring and fall are the most successful seasons for largemouths.",
+    "lures": []
+   },
+   "channel_catfish": {
+    "text": "and",
+    "lures": []
+   },
+   "blue_catfish": {
+    "text": "can be caught most any time of year on a variety of organic and live baits over the main river channel and in off channel tributaries and creeks. <div id=\"email-updates-tab\" ga-on=\"click\" ga-event-category=\"On-page Email Sign-up\" ga-event-action=\"tab click\" ga-event-label=\"",
+    "lures": [
+     "live bait"
+    ]
+   }
+  },
+  "tips_all": "White bass are most readily caught in early spring in the many creeks that feed into Lake Livingston. Striped bass can be caught around the 190 bridge area by trolling and vertical jigging spoons or live shad. Largemouth bass are most frequently caught in the bays and creeks from the Kickapoo/Penwaugh area northward. Spring and fall are the most successful seasons for largemouths. Channel and blue catfish can be caught most any time of year on a variety of organic and live baits over the main river channel and in off channel tributaries and creeks. <div id=\"email-updates-tab\" ga-on=\"click\" ga-event-category=\"On-page Email Sign-up\" ga-event-action=\"tab click\" ga-event-label=\"",
+  "fetched": "2026-11-24T10:43-06:00",
+  "lake_regs": [
+   [
+    "Black bass",
+    "For largemouth and smallmouth bass, minimum length limit = 14 inches. No minimum length limit for Alabama, Guadalupe, and spotted bass. Daily bag limit for all black bass species is 5 in any combination."
+   ],
+   [
+    "Carp",
+    "There is no minimum length limit or daily bag limit for common carp."
+   ],
+   [
+    "Catfish",
+    "For blue and channel catfish, no minimum length limit; daily bag and possession limit = 50 in any combination, of which no more than 5 may be 30 inches or greater in length."
+   ],
+   [
+    "Crappie",
+    "For white and black crappie, their hybrids and subspecies, minimum length limit = 10 inches. Daily bag limit = 25 in any combination."
+   ],
+   [
+    "Gar",
+    "Mandatory Harvest Reporting - All alligator gar harvested from the public waters of the state other than Falcon International Reservoir must be reported within 24 hours to the department via mobile app or online. Report your harvest with \"Texas Hunt & Fish\" app . Certain areas may be temporarily closed to alligator gar fishing when optimum spawning conditions occur. Get details. Only alligator gar less than 48 inches in length may be retained. Daily bag limit = 1. Between one half-hour after sunset and one half-hour before sunrise, no person may take or possess an alligator gar by means of lawful archery equipment or crossbow unless they possess a harvest authorization ."
+   ],
+   [
+    "Sunfish",
+    "There is no minimum length or daily bag limit on bluegill, redear, warmouth or other species of sunfish."
+   ],
+   [
+    "Trout",
+    "For rainbow and brown trout, their hybrids and subspecies, there is no minimum length and daily bag limit = 5 trout in any combination."
+   ],
+   [
+    "White bass",
+    "For white bass, minimum length = 10 inches and daily bag is 25."
+   ],
+   [
+    "Striped bass and their Hybrids",
+    "For striped and hybrid striped bass, minimum length limit = 18 inches and daily bag limit = 5 in any combination."
+   ]
+  ],
+  "regs_fetched": "2026-11-24T10:43-06:00"
+ },
+ "sam_rayburn": {
+  "slug": "sam_rayburn",
+  "url": "https://tpwd.texas.gov/fishboat/fish/recreational/lakes/sam_rayburn/",
+  "location": "On the Angelina River; dam is located in Jasper County approximately 15 miles north of Jasper.",
+  "surface_acres": 114500,
+  "predominant": [
+   "Largemouth bass",
+   "Crappie",
+   "Catfish",
+   "White bass"
+  ],
+  "ratings": {
+   "Largemouth Bass": "Excellent",
+   "Catfish": "Excellent",
+   "Crappie": "Excellent",
+   "White Bass": "Fair",
+   "Sunfish": "Good"
+  },
+  "regs_url": "https://tpwd.texas.gov/fishboat/fish/action/fishregs2.php?water=0640",
+  "regs_text": "This reservoir has special regulations on some fishes. See bag and size limits for this lake .",
+  "special_regs": true,
+  "statewide_only": false,
+  "mexico_license": false,
+  "angling": "The most popular game fish at Sam Rayburn Reservoir is the largemouth bass; an excellent year-round fishery exists. Excellent year-round crappie and catfish fisheries are also present. White bass numbers are limited, but provide good fishing opportunities during the spring. Bluegill and redear sunfish are present in high numbers and provide good fishing, especially for youth or inexperienced anglers. Species Poor Fair Good Excellent Largemouth Bass Catfish Crappie White Bass Sunfish",
+  "tips": {
+   "largemouth_bass": {
+    "text": "year round at Sam Rayburn Reservoir. During the fall, winter and spring months, fish are active for longer periods of the day and are typically found in shallow water. A variety of baits and techniques will work during these times, but crankbaits and spinnerbaits are usually the preferred choices. During the hot summer, the bite usually slows and fish activity is usually concentrated during early morning, late evening, and at night. Topwater baits are good choices during low light conditions. As the sun rises, most bass concentrate in or around vegetation edges and man-made brush piles, or seek refuge on deep ledges and creek channels. During this time, plastic worms, jigs, and Carolina rigs are preferred baits.",
+    "lures": [
+     "crankbait",
+     "spinnerbait",
+     "topwater lure",
+     "plastic worm",
+     "jig",
+     "Carolina rig"
+    ]
+   },
+   "crappie": {
+    "text": "fishing is excellent year-round with jigs and minnows. During the spring spawn, anglers target shallow areas around vegetation. During other times of the year, fish are typically concentrated in deeper water around brush piles and creek channels. <div id=\"email-updates-tab\" ga-on=\"click\" ga-event-category=\"On-page Email Sign-up\" ga-event-action=\"tab click\" ga-event-label=\"",
+    "lures": [
+     "jig",
+     "live minnow"
+    ]
+   }
+  },
+  "tips_all": "Anglers are successful at catching largemouth bass year round at Sam Rayburn Reservoir. During the fall, winter and spring months, fish are active for longer periods of the day and are typically found in shallow water. A variety of baits and techniques will work during these times, but crankbaits and spinnerbaits are usually the preferred choices. During the hot summer, the bite usually slows and fish activity is usually concentrated during early morning, late evening, and at night. Topwater baits are good choices during low light conditions. As the sun rises, most bass concentrate in or around vegetation edges and man-made brush piles, or seek refuge on deep ledges and creek channels. During this time, plastic worms, jigs, and Carolina rigs are preferred baits. Crappie fishing is excellent year-round with jigs and minnows. During the spring spawn, anglers target shallow areas around vegetation. During other times of the year, fish are typically concentrated in deeper water around brush piles and creek channels. <div id=\"email-updates-tab\" ga-on=\"click\" ga-event-category=\"On-page Email Sign-up\" ga-event-action=\"tab click\" ga-event-label=\"",
+  "fetched": "2026-11-24T10:43-06:00",
+  "lake_regs": [
+   [
+    "Black bass",
+    "For largemouth and smallmouth bass, minimum length limit = 14 inches. No minimum length limit for Alabama, Guadalupe, and spotted bass. Daily bag limit for all black bass species is 5 in any combination."
+   ],
+   [
+    "Carp",
+    "There is no minimum length limit or daily bag limit for common carp."
+   ],
+   [
+    "Catfish",
+    "For blue and channel catfish, no minimum length limit; daily bag and possession limit = 50 in any combination, of which no more than 5 may be 30 inches or greater in length."
+   ],
+   [
+    "Crappie",
+    "For white and black crappie, their hybrids and subspecies, minimum length limit = 10 inches. Daily bag limit = 25 in any combination."
+   ],
+   [
+    "Gar",
+    "For alligator gar, daily bag limit is 1 fish of any size. No bag limits on other species of gar. Mandatory Harvest Reporting - All alligator gar harvested from the public waters of the state other than Falcon International Reservoir must be reported within 24 hours to the department via mobile app or online. Report your harvest with \"Texas Hunt & Fish\" app . Certain areas may be temporarily closed to alligator gar fishing when optimum spawning conditions occur. Get details ."
+   ],
+   [
+    "Sunfish",
+    "There is no minimum length or daily bag limit on bluegill, redear, warmouth or other species of sunfish."
+   ],
+   [
+    "Trout",
+    "For rainbow and brown trout, their hybrids and subspecies, there is no minimum length and daily bag limit = 5 trout in any combination."
+   ],
+   [
+    "White bass",
+    "For white bass, minimum length = 10 inches and daily bag is 25."
+   ],
+   [
+    "Striped bass and their Hybrids",
+    "For striped and hybrid striped bass, minimum length limit = 18 inches and daily bag limit = 5 in any combination."
+   ]
+  ],
+  "regs_fetched": "2026-11-24T10:43-06:00"
+ },
+ "tawakoni": {
+  "slug": "tawakoni",
+  "url": "https://tpwd.texas.gov/fishboat/fish/recreational/lakes/tawakoni/",
+  "location": "In Van Zandt, Rains, and Hunt counties, 15 miles southeast of Greenville on Caddo Creek and the South Fork and Cowleech Fork of the Sabine River",
+  "surface_acres": 37879,
+  "predominant": [
+   "Striped & hybrid striped bass",
+   "White bass",
+   "Catfish",
+   "Crappie",
+   "Largemouth bass"
+  ],
+  "ratings": {
+   "Largemouth Bass": "Fair",
+   "Catfish": "Excellent",
+   "Crappie": "Fair",
+   "White Bass": "Excellent",
+   "Hybrid & Striped Bass": "Excellent"
+  },
+  "regs_url": "https://tpwd.texas.gov/fishboat/fish/action/fishregs2.php?water=0714",
+  "regs_text": "Special catfish limits are in effect on this lake.",
+  "special_regs": true,
+  "statewide_only": false,
+  "mexico_license": false,
+  "angling": "Striped bass, hybrid striped bass and white bass are vital to the local economy, providing excellent fisheries especially in the lake's open water areas. Striped and hybrid bass are stocked annually by TPWD to maintain the fisheries. Channel and blue catfish are abundant, along with limited numbers of flathead catfish. Largemouth bass is also a popular sportfish in this reservoir. Crappie fishing can be good around standing timber, bridge pilings, and artificial fish attractors. Species Poor Fair Good Excellent Largemouth Bass Catfish Crappie White Bass Hybrid & Striped Bass",
+  "tips": {
+   "largemouth_bass": {
+    "text": "anglers should concentrate their efforts around available cover such as piers, boat houses, vegetation and trees along the shoreline. Peak times for fishing include spring for spawning fish and fall for schooling fish. Spawning fish are frequently caught using spinnerbaits, plastic worms, and jigs. Schooling fish can be caught using crankbaits, spinnerbaits and topwater lures. In spring and summer, surfacing schools of",
+    "lures": [
+     "spinnerbait",
+     "plastic worm",
+     "jig",
+     "crankbait",
+     "topwater lure"
+    ]
+   },
+   "striped_bass": {
+    "text": "and",
+    "lures": []
+   },
+   "hybrid_striped_bass": {
+    "text": "and",
+    "lures": []
+   },
+   "white_bass": {
+    "text": "can be caught using slabs, spoons, shad-bodied grubs, and topwater baits. Seagulls are attracted when schooling fish chase bait fish to the surface. Early morning, dusk, and overcast days are good times to find these schooling fish. When there is no surface activity, anglers should try vertical jigging slabs or spoons off the bottom or trolling major points using lipless crankbaits, sassy shads and roadrunners. In addition, live shad are used by many anglers to catch hybrids and stripers.",
+    "lures": [
+     "slab spoon",
+     "spoon",
+     "topwater lure",
+     "jig",
+     "lipless crankbait",
+     "live shad"
+    ]
+   },
+   "crappie": {
+    "text": "fishing is often concentrated near bridge pilings, submerged trees and brush piles in late spring and fall. <div id=\"email-updates-tab\" ga-on=\"click\" ga-event-category=\"On-page Email Sign-up\" ga-event-action=\"tab click\" ga-event-label=\"",
+    "lures": []
+   },
+   "channel_catfish": {
+    "text": "is one of Lake Tawakoni's sure bets. Anglers use a range of baits including cut bait, shrimp, liver, stink baits and earthworms. Techniques include drift fishing, bank fishing, and trotlining. Catches of trophy blue catfish, especially during winter months are fairly common.",
+    "lures": [
+     "cut bait",
+     "shrimp",
+     "chicken liver",
+     "stinkbait",
+     "earthworm"
+    ]
+   },
+   "blue_catfish": {
+    "text": "is one of Lake Tawakoni's sure bets. Anglers use a range of baits including cut bait, shrimp, liver, stink baits and earthworms. Techniques include drift fishing, bank fishing, and trotlining. Catches of trophy blue catfish, especially during winter months are fairly common.",
+    "lures": [
+     "cut bait",
+     "shrimp",
+     "chicken liver",
+     "stinkbait",
+     "earthworm"
+    ]
+   },
+   "flathead_catfish": {
+    "text": "is one of Lake Tawakoni's sure bets. Anglers use a range of baits including cut bait, shrimp, liver, stink baits and earthworms. Techniques include drift fishing, bank fishing, and trotlining. Catches of trophy blue catfish, especially during winter months are fairly common.",
+    "lures": [
+     "cut bait",
+     "shrimp",
+     "chicken liver",
+     "stinkbait",
+     "earthworm"
+    ]
+   }
+  },
+  "tips_all": "Catfishing is one of Lake Tawakoni's sure bets. Anglers use a range of baits including cut bait, shrimp, liver, stink baits and earthworms. Techniques include drift fishing, bank fishing, and trotlining. Catches of trophy blue catfish, especially during winter months are fairly common. Largemouth bass anglers should concentrate their efforts around available cover such as piers, boat houses, vegetation and trees along the shoreline. Peak times for fishing include spring for spawning fish and fall for schooling fish. Spawning fish are frequently caught using spinnerbaits, plastic worms, and jigs. Schooling fish can be caught using crankbaits, spinnerbaits and topwater lures. In spring and summer, surfacing schools of striped bass, hybrid stripers and white bass can be caught using slabs, spoons, shad-bodied grubs, and topwater baits. Seagulls are attracted when schooling fish chase bait fish to the surface. Early morning, dusk, and overcast days are good times to find these schooling fish. When there is no surface activity, anglers should try vertical jigging slabs or spoons off the bottom or trolling major points using lipless crankbaits, sassy shads and roadrunners. In addition, live shad are used by many anglers to catch hybrids and stripers. Crappie fishing is often concentrated near bridge pilings, submerged trees and brush piles in late spring and fall. <div id=\"email-updates-tab\" ga-on=\"click\" ga-event-category=\"On-page Email Sign-up\" ga-event-action=\"tab click\" ga-event-label=\"",
+  "fetched": "2026-11-24T10:43-06:00",
+  "lake_regs": [
+   [
+    "Black bass",
+    "For largemouth and smallmouth bass, minimum length limit = 14 inches. No minimum length limit for Alabama, Guadalupe, and spotted bass. Daily bag limit for all black bass species is 5 in any combination."
+   ],
+   [
+    "Carp",
+    "There is no minimum length limit or daily bag limit for common carp."
+   ],
+   [
+    "Catfish",
+    "For blue and channel catfish, no minimum length limit; daily bag and possession limit = 25 blue and channel catfish in any combination. In the 25-fish bag, no more than 5 fish 20 inches or greater in length may be retained, and no more than 1 of those can be 30 inches or longer. For flathead catfish, minimum length = 18 inches and daily bag = 5."
+   ],
+   [
+    "Crappie",
+    "For white and black crappie, their hybrids and subspecies, minimum length limit = 10 inches. Daily bag limit = 25 in any combination."
+   ],
+   [
+    "Gar",
+    "For alligator gar, daily bag limit is 1 fish of any size. No bag limits on other species of gar. Mandatory Harvest Reporting - All alligator gar harvested from the public waters of the state other than Falcon International Reservoir must be reported within 24 hours to the department via mobile app or online. Report your harvest with \"Texas Hunt & Fish\" app . Certain areas may be temporarily closed to alligator gar fishing when optimum spawning conditions occur. Get details ."
+   ],
+   [
+    "Sunfish",
+    "There is no minimum length or daily bag limit on bluegill, redear, warmouth or other species of sunfish."
+   ],
+   [
+    "Trout",
+    "For rainbow and brown trout, their hybrids and subspecies, there is no minimum length and daily bag limit = 5 trout in any combination."
+   ],
+   [
+    "White bass",
+    "For white bass, minimum length = 10 inches and daily bag is 25."
+   ],
+   [
+    "Striped bass and their Hybrids",
+    "For striped and hybrid striped bass, minimum length limit = 18 inches and daily bag limit = 5 in any combination."
+   ]
+  ],
+  "regs_fetched": "2026-11-24T10:43-06:00"
+ },
+ "texoma": {
+  "slug": "texoma",
+  "url": "https://tpwd.texas.gov/fishboat/fish/recreational/lakes/texoma/",
+  "location": "A Red River impoundment on the Texas-Oklahoma border northwest of Sherman-Denison, west of US 75",
+  "surface_acres": 74686,
+  "predominant": [
+   "Blue & channel catfish",
+   "White & striped bass",
+   "Largemouth bass",
+   "Spotted bass",
+   "Smallmouth bass",
+   "Black & white crappie",
+   "Bluegill"
+  ],
+  "ratings": {
+   "Largemouth & Spotted Bass": "Good",
+   "Smallmouth Bass": "Excellent",
+   "Blue Catfish": "Excellent",
+   "Channel Catfish": "Good",
+   "Flathead Catfish": "Fair",
+   "Crappie": "Good",
+   "Striped Bass": "Excellent",
+   "White Bass": "Good"
+  },
+  "regs_url": "https://tpwd.texas.gov/fishboat/fish/action/fishregs2.php?water=0723",
+  "regs_text": "Two-thirds of this lake lies in Oklahoma. Anglers with Texas licenses may fish in the Texas portions of the reservoir, or purchase a Lake Texoma license ($12) to fish the entire lake. Special bag and size limits are in effect for several fish species on this lake. Anglers should also be aware of rules in effect here to prevent the spread of exotic invasive species. Boats, livewells, and bait buckets must be drained of all water before leaving the area. In the Red River downstream, from the Texoma dam to the Arkansas state line, it is unlawful to transport live, nongame fishes from this stretch of river to any other water body. Nongame fishes may be collected and used for bait within these waters. For more details, see Possession and Transport of Exotic Aquatic Species . The following length and bag limits apply to the entire lake: During May, alligator gar may not be taken within the boundaries of Hagerman National Wildlife Refuge or the portion of the lake from the US 377 bridge (Willis Bridge) upstream to the IH 35 bridge. For striped bass and hybrid striped bass, the daily bag limit is 10 fish in any combination. Possession limit is 20 fish. There is no minimum length, but only 2 fish 20\" or longer can be retained each day. Culling is prohibited. White bass have no minimum length limit and a daily bag of 25 fish. For blue and channel catfish, minimum length is 12\" and daily bag is 15 fish. Only one blue catfish 30 inches or longer may be retained each day. For flathead catfish, the minimum is 20\" with a bag limit of 5/day. Black and white crappie have a 10\" minimum length and a combined daily bag of 37 fish. The possession limit is 50. For walleye, minimum length is 18\" and daily bag is 5 fish. -->",
+  "special_regs": true,
+  "statewide_only": false,
+  "mexico_license": false,
+  "angling": "Flows in the Red and Washita Rivers make Texoma one of the few freshwater lakes in the United States with a self-sustaining, landlocked population of striped bass. A dozen other Texas lakes support striped bass fisheries; however, routine stocking is required to maintain those populations. Striped bass were first introduced in Lake Texoma by the Oklahoma Department of Wildlife Conservation in 1965. Natural reproduction was first documented in 1974. Striped Bass guides operate year-round on Lake Texoma, and can accommodate families or large groups. Black bass are present in Lake Texoma including Largemouth Bass, Smallmouth Bass, and Spotted Bass. Previous state record Smallmouth Bass have been caught on both the Oklahoma and Texas sides of the lake. Several tournaments target black bass each year and guides are available. Catfish are abundant in Lake Texoma including Channel Catfish, Blue Catfish, and Flathead Catfish. A trophy fishery exists for Blue Catfish and the current Texas state record Blue Catfish was caught here in 2004, weighing 121.5 pounds! Catfish guides are available and multiple bank fishing options exist including Eisenhower State Park and Hagerman National Wildlife Refuge. Species Poor Fair Good Excellent Largemouth & Spotted Bass Smallmouth Bass Blue Catfish Channel Catfish Flathead Catfish Crappie Striped Bass White Bass",
+  "tips": {
+   "channel_catfish": {
+    "text": "are taken near the mouths of creeks after a rain, especially in spring and fall. In late spring and early summer, they are found around rocky shores and areas of rip-rap. Best baits are shrimp, blood bait, cut bait, dough bait, and shad gizzards. In summer, try drift-fishing shrimp across flats. Sunfish and large minnows also pay off here.",
+    "lures": [
+     "shrimp",
+     "cut bait",
+     "live minnow"
+    ]
+   },
+   "blue_catfish": {
+    "text": "are caught on many of the same baits; however, these fish migrate downstream or into the main pool area in winter and upstream in the spring. Try juglining with live gizzard shad for bait. A rod and reel baited with live shad on windless winter days works well, too.",
+    "lures": [
+     "live shad"
+    ]
+   },
+   "flathead_catfish": {
+    "text": "are infrequently caught by rod and reel anglers, but most often by trotlining with live sunfish for bait.",
+    "lures": [
+     "live sunfish"
+    ]
+   },
+   "crappie": {
+    "text": "fishing is best in fall and winter, when fish tend to school in large numbers and concentrate around boat houses, submerged trees, creek channels, and brush piles. While minnows are the bait of choice, crappie are caught on a variety of jigs. The spring spawning season, when they move in shallow, is also an excellent time to fill your creel.",
+    "lures": [
+     "live minnow",
+     "jig"
+    ]
+   },
+   "white_bass": {
+    "text": "are vulnerable to angling when they migrate upstream on the Red and Washita Rivers or the many tributary streams around Lake Texoma. Two to three weeks prior to the migration, they concentrate around the mouths of the tributary streams and become easy prey. At other times of the year they can be found surfacing around the lake and feeding on threadfin shad. Effective baits include small surface baits in silver, white, yellow or chartreuse; silver spoons; slabs; and minnows.",
+    "lures": [
+     "spoon",
+     "slab spoon",
+     "live minnow"
+    ]
+   },
+   "striped_bass": {
+    "text": "migrate up both major river arms in February, and can usually be located in or near the river channel in the vicinity of the Willis or Roosevelt Bridges. They may take surface lures, but most often they are caught on heavy jigs, slabs, plastic shad, and live gizzard shad. After the spring spawning run, stripers can be caught with shad over flats near the river channel in the main part of the lake. Trolling with deep running lures can also be productive. Stripers surface frequently in summer, fall, and winter, attracting diving sea gulls, who also like to feed on threadfin shad. Surface baits can produce some mighty tackle busting strikes, and so can plastic shad retrieved rapidly just under the water's surface.",
+    "lures": [
+     "jig",
+     "slab spoon",
+     "live shad"
+    ]
+   },
+   "largemouth_bass": {
+    "text": ", and",
+    "lures": []
+   }
+  },
+  "tips_all": "Channel catfish are taken near the mouths of creeks after a rain, especially in spring and fall. In late spring and early summer, they are found around rocky shores and areas of rip-rap. Best baits are shrimp, blood bait, cut bait, dough bait, and shad gizzards. In summer, try drift-fishing shrimp across flats. Sunfish and large minnows also pay off here. Blue catfish are caught on many of the same baits; however, these fish migrate downstream or into the main pool area in winter and upstream in the spring. Try juglining with live gizzard shad for bait. A rod and reel baited with live shad on windless winter days works well, too. Flathead catfish are infrequently caught by rod and reel anglers, but most often by trotlining with live sunfish for bait. Crappie fishing is best in fall and winter, when fish tend to school in large numbers and concentrate around boat houses, submerged trees, creek channels, and brush piles. While minnows are the bait of choice, crappie are caught on a variety of jigs. The spring spawning season, when they move in shallow, is also an excellent time to fill your creel. White bass are vulnerable to angling when they migrate upstream on the Red and Washita Rivers or the many tributary streams around Lake Texoma. Two to three weeks prior to the migration, they concentrate around the mouths of the tributary streams and become easy prey. At other times of the year they can be found surfacing around the lake and feeding on threadfin shad. Effective baits include small surface baits in silver, white, yellow or chartreuse; silver spoons; slabs; and minnows. Striped bass migrate up both major river arms in February, and can usually be located in or near the river channel in the vicinity of the Willis or Roosevelt Bridges. They may take surface lures, but most often they are caught on heavy jigs, slabs, plastic shad, and live gizzard shad. After the spring spawning run, stripers can be caught with shad over flats near the river channel in the main part of the lake. Trolling with deep running lures can also be productive. Stripers surface frequently in summer, fall, and winter, attracting diving sea gulls, who also like to feed on threadfin shad. Surface baits can produce some mighty tackle busting strikes, and so can plastic shad retrieved rapidly just under the water's surface. Largemouth, spotted , and smallmouth bass can be caught pretty much year round, but they are caught closer to the shoreline and around structure. While largemouth and spotted bass are found lakewide, smallmouths are mostly limited to the bluffs around Eisenhower State Park, Denison Dam and up the Washita River arm to the Willow Springs area. Since all three species spawn in the shallows, that's the best place to fish for them in the spring. Fish around grass and brush with crank baits, surface lures, spinners, and Carolina rigged worms. As the water warms and bass move offshore, switch to Texas rigged worms, deep diving crankbaits, and surface baits early in the morning. Concentrate on submerged structure such as rocks, boulders, stumps, logs, channels, and secondary points. Fall bass fishing can be very exciting on Lake Texoma. Work crank baits around brush and off rocky shorelines for largemouth and spotted bass. Try free-line, live threadfin shad off the rip-rap at the dam for smallmouths, or fish at night by the bluffs near Eisenhower State Park. <div id=\"email-updates-tab\" ga-on=\"click\" ga-event-category=\"On-page Email Sign-up\" ga-event-action=\"tab click\" ga-event-label=\"",
+  "fetched": "2026-11-24T10:43-06:00",
+  "lake_regs": [
+   [
+    "Black bass",
+    "For largemouth and smallmouth bass, minimum length limit = 14 inches. No minimum length limit for Alabama, Guadalupe, and spotted bass. Daily bag limit for all black bass species is 5 in any combination."
+   ],
+   [
+    "Carp",
+    "There is no minimum length limit or daily bag limit for common carp."
+   ],
+   [
+    "Catfish",
+    "For blue and channel catfish, no minimum length; combined daily bag limit = 15 fish. Only 1 blue catfish 30 inches or greater in length may be retained each day. For flathead catfish, no minimum length limit; daily bag = 5."
+   ],
+   [
+    "Crappie",
+    "For black and white crappie, minimum length limit = 10 inches and daily bag limit = 37 in any combination. Possession limit = 50 crappie."
+   ],
+   [
+    "Gar",
+    "During May, no person shall take alligator gar from, or possess alligator gar while on, the Red River (including Lake Texoma) and all tributaries that drain directly or indirectly to the Red River on the Texas/Oklahoma border in Cooke, Grayson, Fannin, Lamar, Red River, and Bowie counties."
+   ],
+   [
+    "Sunfish",
+    "There is no minimum length or daily bag limit on bluegill, redear, warmouth or other species of sunfish."
+   ],
+   [
+    "Trout",
+    "For rainbow and brown trout, their hybrids and subspecies, there is no minimum length and daily bag limit = 5 trout in any combination."
+   ],
+   [
+    "Walleye and saugeye",
+    "No minimum length, but only two of the 5-fish daily bag can be under 16 inches in length."
+   ],
+   [
+    "White bass",
+    "For white bass, no MLL and daily bag = 25."
+   ],
+   [
+    "Striped bass and their Hybrids",
+    "For striped bass and hybrid striped bass, no MLL, daily bag = 10 and possession limit = 20, and only 2 striped or hybrid striped bass, 20 inches or greater, may be retained each day. Culling of striped bass and hybrid striped bass is prohibited."
+   ]
+  ],
+  "regs_fetched": "2026-11-24T10:43-06:00"
+ },
+ "toledo_bend": {
+  "slug": "toledo_bend",
+  "url": "https://tpwd.texas.gov/fishboat/fish/recreational/lakes/toledo_bend/",
+  "location": "On the Sabine River in Shelby, Sabine and Newton counties, straddling the Texas-Louisiana state line. The dam is in Newton County approximately 24 miles northeast of Jasper.",
+  "surface_acres": 181600,
+  "predominant": [
+   "Largemouth bass",
+   "Crappie",
+   "Catfish",
+   "White & striped bass"
+  ],
+  "ratings": {
+   "Largemouth Bass": "Excellent",
+   "Catfish": "Good",
+   "Crappie": "Good",
+   "White Bass": "Fair",
+   "Striped Bass": "Poor",
+   "Sunfish": "Excellent"
+  },
+  "regs_url": "https://tpwd.texas.gov/fishboat/fish/action/fishregs2.php?water=0734",
+  "regs_text": "Residents of Texas or Louisiana who are properly licensed in their state (or are exempt because of age), or persons who hold valid non-resident fishing licenses issued by either state may fish in any portion of the lakes and rivers forming a common boundary between Louisiana and Texas inland from a line across Sabine Pass between Texas Point and Louisiana Point. Limits for catfish, crappie, white bass and black basses apply on both the Texas and Louisiana portions of the lake. Harvest regulations for some other species, including alligator gar, may differ between the two states. See Texas bag and size limits for Toledo Bend Reservoir . For details on Louisiana regulations, visit the Louisiana Department of Wildlife and Fisheries or call (318) 676-7594.",
+  "special_regs": true,
+  "statewide_only": false,
+  "mexico_license": false,
+  "angling": "The most popular game fish at Toledo Bend Reservoir is the largemouth bass; an excellent year-round fishery exists. Good year-round crappie and catfish fisheries are also present. Striped bass are maintained by annual stockings because conditions at Toledo Bend usually do not allow a successful natural spawn. Stripers are popular due to their large growth potential and reputation as strong fighters. Bluegill and redear sunfish are present in high numbers and provide excellent fishing, especially for youth or inexperienced anglers. Species Poor Fair Good Excellent Largemouth Bass Catfish Crappie White Bass Striped Bass Sunfish",
+  "tips": {
+   "largemouth_bass": {
+    "text": "during the fall, winter, and spring months. Due to cooler water temperatures, fish are active for longer periods of the day and are typically found in shallow water. A variety of baits and techniques will work during these times. When fish are active, crankbaits and spinnerbaits are usually the preferred choice. During the hot summer, the bite slows and fish activity is usually concentrated during early morning, late evening, and at night. Poppers, propeller baits, stickbaits, buzzbaits, and flukes are good topwater choices during low light conditions. As the sun rises, most bass concentrate in or around vegetation edges, or seek refuge on deep ledges and creek channels. During this time, plastic worms and jigs are the preferred baits.",
+    "lures": [
+     "crankbait",
+     "spinnerbait",
+     "topwater lure",
+     "plastic worm",
+     "jig"
+    ]
+   },
+   "crappie": {
+    "text": "fishing is good year-round with jigs and minnows. However, fishing usually peaks during the spring spawn, when anglers target shallow areas around vegetation. During other times of the year, fish are typically concentrated in deeper water around brush piles and creek channels. Anglers catch",
+    "lures": [
+     "jig",
+     "live minnow"
+    ]
+   },
+   "channel_catfish": {
+    "text": "throughout the reservoir. Channel catfish can be caught with stinkbait in areas baited with soured grain. Trotliners catch both blues and channels on cut bait, while flathead catfish prefer live bait. The",
+    "lures": [
+     "stinkbait",
+     "cut bait",
+     "live bait"
+    ]
+   },
+   "blue_catfish": {
+    "text": "throughout the reservoir. Channel catfish can be caught with stinkbait in areas baited with soured grain. Trotliners catch both blues and channels on cut bait, while flathead catfish prefer live bait. The",
+    "lures": [
+     "stinkbait",
+     "cut bait",
+     "live bait"
+    ]
+   },
+   "flathead_catfish": {
+    "text": "throughout the reservoir. Channel catfish can be caught with stinkbait in areas baited with soured grain. Trotliners catch both blues and channels on cut bait, while flathead catfish prefer live bait. The",
+    "lures": [
+     "stinkbait",
+     "cut bait",
+     "live bait"
+    ]
+   },
+   "white_bass": {
+    "text": "fishery is essentially limited to the early spring during the spawning run above the reservoir. Anglers have good success with small spinners, jigs, jigging spoons, and small crankbaits. During the summer and fall, watch for schooling",
+    "lures": [
+     "small spinner",
+     "jig",
+     "jigging spoon",
+     "crankbait"
+    ]
+   },
+   "striped_bass": {
+    "text": "on main lake points, humps, and flats adjoining river channels. Schooling stripers can be caught on topwaters, rattle traps, and spoons. Toledo Bend has a reputation for producing lots of huge",
+    "lures": [
+     "topwater lure",
+     "lipless crankbait",
+     "spoon"
+    ]
+   },
+   "bluegill": {
+    "text": ". Most of the bigger sunfish, especially bluegill and redear sunfish, are caught during the late spring or summer when fish are on spawning beds. Small jigs, spinners, and crickets are good choices. <div id=\"email-updates-tab\" ga-on=\"click\" ga-event-category=\"On-page Email Sign-up\" ga-event-action=\"tab click\" ga-event-label=\"",
+    "lures": [
+     "jig",
+     "cricket"
+    ]
+   }
+  },
+  "tips_all": "Anglers are most successful at catching largemouth bass during the fall, winter, and spring months. Due to cooler water temperatures, fish are active for longer periods of the day and are typically found in shallow water. A variety of baits and techniques will work during these times. When fish are active, crankbaits and spinnerbaits are usually the preferred choice. During the hot summer, the bite slows and fish activity is usually concentrated during early morning, late evening, and at night. Poppers, propeller baits, stickbaits, buzzbaits, and flukes are good topwater choices during low light conditions. As the sun rises, most bass concentrate in or around vegetation edges, or seek refuge on deep ledges and creek channels. During this time, plastic worms and jigs are the preferred baits. Crappie fishing is good year-round with jigs and minnows. However, fishing usually peaks during the spring spawn, when anglers target shallow areas around vegetation. During other times of the year, fish are typically concentrated in deeper water around brush piles and creek channels. Anglers catch channel, blue, and flathead catfish throughout the reservoir. Channel catfish can be caught with stinkbait in areas baited with soured grain. Trotliners catch both blues and channels on cut bait, while flathead catfish prefer live bait. The white bass fishery is essentially limited to the early spring during the spawning run above the reservoir. Anglers have good success with small spinners, jigs, jigging spoons, and small crankbaits. During the summer and fall, watch for schooling striped bass on main lake points, humps, and flats adjoining river channels. Schooling stripers can be caught on topwaters, rattle traps, and spoons. Toledo Bend has a reputation for producing lots of huge sunfish . Most of the bigger sunfish, especially bluegill and redear sunfish, are caught during the late spring or summer when fish are on spawning beds. Small jigs, spinners, and crickets are good choices. <div id=\"email-updates-tab\" ga-on=\"click\" ga-event-category=\"On-page Email Sign-up\" ga-event-action=\"tab click\" ga-event-label=\"",
+  "fetched": "2026-11-24T10:43-06:00",
+  "lake_regs": [
+   [
+    "Black bass",
+    "For largemouth and smallmouth bass, minimum length limit = 14 inches. No minimum length limit for Alabama, Guadalupe, and spotted bass (if present). Daily bag limit for all black bass species is 8 in any combination. Possession limit = 10."
+   ],
+   [
+    "Carp",
+    "There is no minimum length limit or daily bag limit for common carp."
+   ],
+   [
+    "Catfish",
+    "For blue and channel catfish, no minimum length limit; daily bag and possession limit = 50 in any combination, of which no more than 5 may be 30 inches or greater in length. For flathead catfish, minimum length limit = 18 inches; daily bag and possession limit = 10."
+   ],
+   [
+    "Crappie",
+    "For black and white crappie there is no MLL and daily bag = 25 crappie in combination."
+   ],
+   [
+    "Gar",
+    "For alligator gar, daily bag limit is 1 fish of any size. No bag limits on other species of gar. Mandatory Harvest Reporting - All alligator gar harvested from the public waters of the state other than Falcon International Reservoir must be reported within 24 hours to the department via mobile app or online. Report your harvest with \"Texas Hunt & Fish\" app . Certain areas may be temporarily closed to alligator gar fishing when optimum spawning conditions occur. Get details ."
+   ],
+   [
+    "Sunfish",
+    "There is no minimum length or daily bag limit on bluegill, redear, warmouth or other species of sunfish."
+   ],
+   [
+    "Trout",
+    "For rainbow and brown trout, their hybrids and subspecies, there is no minimum length and daily bag limit = 5 trout in any combination."
+   ],
+   [
+    "White bass",
+    "For white bass, no MLL and daily bag = 25."
+   ],
+   [
+    "Striped bass and their Hybrids",
+    "For striped bass, no MLL, daily bag = 5, and only 2 striped bass, 30 inches or greater, may be retained each day."
+   ]
+  ],
+  "regs_fetched": "2026-11-24T10:43-06:00"
+ },
+ "travis": {
+  "slug": "travis",
+  "url": "https://tpwd.texas.gov/fishboat/fish/recreational/lakes/travis/",
+  "location": "On the Colorado River northwest of Austin in Travis and Burnet counties",
+  "surface_acres": 18622,
+  "predominant": [
+   "Largemouth bass",
+   "Guadalupe bass",
+   "White bass & striped bass",
+   "Catfish",
+   "Sunfish"
+  ],
+  "ratings": {
+   "Largemouth & Guadalupe Bass": "Good",
+   "Catfish": "Good",
+   "Crappie": "Poor",
+   "White Bass": "Good",
+   "Striped Bass": "Fair",
+   "Sunfish": "Good"
+  },
+  "regs_url": null,
+  "regs_text": "All species are currently managed under statewide regulations . Bow fishers on this lake are subject to special regulations enforced by the LCRA.",
+  "special_regs": false,
+  "statewide_only": true,
+  "mexico_license": false,
+  "angling": "Lake Travis is noted for producing good numbers of largemouth bass, although they tend to run small. Very few trophy largemouth bass have been caught. White bass runs occur in the spring (February-May) in the major creek arms, the Pedernales River and the upper end of the Colorado River arm. A low-density striped bass fishery is available in the extreme lower end of the reservoir. Blue, channel, and flathead catfish occur throughout the reservoir. Species Poor Fair Good Excellent Largemouth & Guadalupe Bass Catfish Crappie White Bass Striped Bass Sunfish",
+  "tips": {
+   "largemouth_bass": {
+    "text": "anglers have their best success on this reservoir during the spring and fall months. Bass fishing from June through August can be difficult for even the most experienced anglers. Topwater baits such as Zara Spooks, Jumping Minnows, Pop-R's, and suspended jerkbaits are popular with bass anglers. Double willowleaf spinnerbaits with metal flake blades also work well. In Lake Travis, largemouth bass are famous for suspending over points and along drop-offs. Often a topwater, jerkbait, or spinnerbait pulled near the surface will call them to the top. During the spring, sight fishing for spawning bass is popular among anglers. A jerkbait pulled along the shoreline this time of the year will catch some of the bigger female bass that are waiting to go on the nest. In fall, a big topwater worked on windy main-lake points can be deadly for both numbers and quality-sized largemouth bass. For live-bait fishing, try minnows suspended under corks in the same places where an artificial would work. For white and striped bass, fishing at night around the lighted boat docks in the lower end of the lake has become popular during winter months.",
+    "lures": [
+     "topwater lure",
+     "live minnow",
+     "jerkbait",
+     "spinnerbait"
+    ]
+   },
+   "white_bass": {
+    "text": "start to run up the major creek arms and into the Pedernales River on their annual spawning run starting in late February or early March. They may stay in these areas until May as they slowly trickle back to the main lake. Anglers can catch these fish using small spinners, jigs, and crankbaits.",
+    "lures": [
+     "small spinner",
+     "jig",
+     "crankbait"
+    ]
+   },
+   "striped_bass": {
+    "text": "anglers should concentrate their efforts in the lower lake from the dam to the mouth of Sandy Creek. In April and May, these fish often school to chase shad and can be caught using a topwater bait. During the summer, downrigging with bucktail jigs and trailers over submerged humps and deepwater points is often effective.",
+    "lures": [
+     "topwater lure",
+     "jig"
+    ]
+   },
+   "blue_catfish": {
+    "text": "dominate the catfish population, but anglers can also find channel and flathead catfish. Stinkbait and cutbait work well for the blues and channels, while live bait is preferred for large flathead catfish. <div id=\"email-updates-tab\" ga-on=\"click\" ga-event-category=\"On-page Email Sign-up\" ga-event-action=\"tab click\" ga-event-label=\"",
+    "lures": [
+     "stinkbait",
+     "cut bait",
+     "live bait"
+    ]
+   }
+  },
+  "tips_all": "Largemouth bass anglers have their best success on this reservoir during the spring and fall months. Bass fishing from June through August can be difficult for even the most experienced anglers. Topwater baits such as Zara Spooks, Jumping Minnows, Pop-R's, and suspended jerkbaits are popular with bass anglers. Double willowleaf spinnerbaits with metal flake blades also work well. In Lake Travis, largemouth bass are famous for suspending over points and along drop-offs. Often a topwater, jerkbait, or spinnerbait pulled near the surface will call them to the top. During the spring, sight fishing for spawning bass is popular among anglers. A jerkbait pulled along the shoreline this time of the year will catch some of the bigger female bass that are waiting to go on the nest. In fall, a big topwater worked on windy main-lake points can be deadly for both numbers and quality-sized largemouth bass. For live-bait fishing, try minnows suspended under corks in the same places where an artificial would work. For white and striped bass, fishing at night around the lighted boat docks in the lower end of the lake has become popular during winter months. White bass start to run up the major creek arms and into the Pedernales River on their annual spawning run starting in late February or early March. They may stay in these areas until May as they slowly trickle back to the main lake. Anglers can catch these fish using small spinners, jigs, and crankbaits. Striped bass anglers should concentrate their efforts in the lower lake from the dam to the mouth of Sandy Creek. In April and May, these fish often school to chase shad and can be caught using a topwater bait. During the summer, downrigging with bucktail jigs and trailers over submerged humps and deepwater points is often effective. Blue catfish dominate the catfish population, but anglers can also find channel and flathead catfish. Stinkbait and cutbait work well for the blues and channels, while live bait is preferred for large flathead catfish. <div id=\"email-updates-tab\" ga-on=\"click\" ga-event-category=\"On-page Email Sign-up\" ga-event-action=\"tab click\" ga-event-label=\"",
+  "fetched": "2026-11-24T10:43-06:00"
+ }
+}

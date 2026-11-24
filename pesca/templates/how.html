@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>How We Score Fishing Times (and Do Solunar Tables Work?)</h1>
+<p class="sub">Every 10 minutes gets a score for each fish. The good factors are added up and squeezed, so they can't run away: score = 3 + 7 × (1 − e<sup>−points/4</sup>), then the bad factors are taken off. An ordinary dawn or dusk scores about 6, dusk plus a solunar period about 7, and a 9 needs almost everything to line up. A 10 never happens. The best hour of a day is the best 60 minutes in a row.</p>
+<p class="sub">Which fish leads: each lake has a signature fish (the best TPWD rating there, then the most popular in Texas). The headline shows it unless another fish scores at least 1.5 points more. Fish in a closed season never lead.</p>
+<div class="card scroll">
+<table>
+<tr><th>Factor</th><th>Points</th><th>Where it comes from</th><th>How sure are we?</th></tr>
+<tr><td><b>Light</b></td><td>Dawn/dusk feeders: +2.5 within an hour of sunrise or sunset, +1.25 within two, −0.5 the rest of the day and night. Night feeders: +2 at night, +1.5 at dusk and dawn, −1 in daylight.</td><td>Each species' feeding time, only when an agency or a study says so (TPWD, USFWS, Texas A&amp;M AgriLife, SRAC). Spotted seatrout counts as a dawn/dusk feeder only from May to September, because TPWD ties that habit to warm weather. Species without a sourced rule get 0.</td><td>Good where sourced</td></tr>
+<tr><td><b>Tidal flow</b> (coast only)</td><td>+1.5 strong, +0.5 moving, −1 slack. Flounder: +0.5 more on an incoming tide.</td><td>NOAA tide predictions. TPWD: tidal movements influence the feeding activity of all saltwater species. The water has to move at least 0.15 ft in an hour to count; where the tide is that small all week, it scores 0. The flounder bonus is from TPWD's flounder page.</td><td>Reasonable; Texas tides are small and wind often matters more</td></tr>
+<tr><td><b>Solunar periods</b></td><td>+0.75 minor, +1.5 major, +0.25 more near a full or new moon (not for flounder: TPWD says dark nights are better)</td><td>Moon overhead/underfoot (major, 2 h) and moonrise/moonset (minor, 1 h), computed with Skyfield. John Alden Knight's solunar theory (1926; "Moon Up, Moon Down", 1942).</td><td>Weak: popular, little scientific support</td></tr>
+<tr><td><b>Pressure and cold fronts</b></td><td>+1 pressure falling 2 hPa or more in 3 hours (next 6 hours only); −0.5 rising that fast. +1 in the 12 hours before a cold front; −1 for 36 hours after it if the sky is clear.</td><td>Observed pressure at the nearest NWS station (readings older than 3 hours are ignored). Fronts spotted in the NWS forecast: the wind swings to the north and the next day's high drops 8°F or more.</td><td>Angler rule of thumb; evidence is mixed</td></tr>
+<tr><td><b>Wind</b></td><td>−0.75 from 10 mph, −1.5 from 15, −2.5 from 20, −3.5 from 25 mph or gusts from 35</td><td>NWS hourly forecast for the spot.</td><td>About you and your boat, not about fish</td></tr>
+<tr><td><b>Rain and thunder</b></td><td>Rain chance −0.5 from 30%, −1 from 50%, −1.5 from 70%. Thunder chance −3 from 30%, −4 from 60%.</td><td>NWS hourly forecast (chance, not amount).</td><td>About your safety</td></tr>
+<tr><td><b>NWS alerts</b></td><td>−4 for every hour inside a wind, marine, storm, flood or fog alert</td><td>Active NWS alerts for the spot, such as a Small Craft Advisory. Other alerts are shown but don't change the score.</td><td>About your safety</td></tr>
+<tr><td><b>Water temperature</b></td><td>not scored yet</td><td>Fish respond to water temperature, which we don't measure yet. Scoring air temperature against water ranges would mislead you, so this factor stays at 0 for now.</td><td>Coming later</td></tr>
+</table>
+</div>
+<h2>What we never do</h2>
+<div class="card"><p>We never recommend a fish during a closed season (southern flounder can't be kept from Nov 1 to Dec 14). The headline hour needs a sourced reason (the fish's feeding light or moving tide). If no fish has one in the next 24 hours, for example where the tide is tiny, we still show the best hour but mark it as a slow day. We never score a day the NWS hasn't forecast yet. We never invent a fishing rule: if we could not find a source, that factor stays neutral and the page says so. We never promise a catch.</p></div>
+<h2>Do solunar tables work?</h2>
+<div class="card"><p>Maybe a little. The theory is old and popular, but we have not found strong scientific evidence that it works. That is why solunar periods add at most 1.75 points here, less than dawn and dusk light (2.5), and they can never put a fish in the headline on their own. If you only look at a solunar table, you are using the weakest part of the forecast.</p></div>
+{% endblock %}

@@ -1,0 +1,25 @@
+{
+  "_about": "20 Texas fishing places for v1. Lake coordinates = USGS NWIS lake gauge site (public domain), via waterservices.usgs.gov/nwis/site, siteType=LK, read 2026-11-23. Coast coordinates = NOAA CO-OPS tide prediction station (mdapi stations.json?type=tidepredictions, read 2026-11-23). Lake species/ratings/tips come from the TPWD lake page (tpwd_slug), collected by coleta.py.",
+  "places": [
+    {"id": "lake-fork", "name": "Lake Fork", "kind": "lake", "tpwd_slug": "fork", "lat": 32.8148, "lon": -95.5526, "coord_source": "USGS 324853095330901 Lk Fork Res Site FP nr Alba, TX", "near": "Quitman / Alba"},
+    {"id": "sam-rayburn", "name": "Sam Rayburn Reservoir", "short": "Sam Rayburn", "kind": "lake", "tpwd_slug": "sam_rayburn", "lat": 31.0608, "lon": -94.1060, "coord_source": "USGS 08039300 Sam Rayburn Res nr Jasper, TX", "near": "Jasper"},
+    {"id": "toledo-bend", "name": "Toledo Bend Reservoir", "short": "Toledo Bend", "kind": "lake", "tpwd_slug": "toledo_bend", "lat": 31.1672, "lon": -93.5819, "coord_source": "USGS 311002093345501 Toledo Bd Res PS Site nr Burkeville, TX", "near": "Burkeville / Hemphill"},
+    {"id": "lake-texoma", "name": "Lake Texoma", "kind": "lake", "tpwd_slug": "texoma", "lat": 33.8182, "lon": -96.5725, "coord_source": "USGS 07331500 USCOE Lk Texoma nr Denison, TX", "near": "Denison"},
+    {"id": "lake-conroe", "name": "Lake Conroe", "kind": "lake", "tpwd_slug": "conroe", "lat": 30.3585, "lon": -95.5611, "coord_source": "USGS 08067600 Lk Conroe nr Conroe, TX", "near": "Conroe / Montgomery"},
+    {"id": "lake-travis", "name": "Lake Travis", "kind": "lake", "tpwd_slug": "travis", "lat": 30.3916, "lon": -97.9070, "coord_source": "USGS 08154500 Lk Travis nr Austin, TX", "near": "Austin"},
+    {"id": "lake-livingston", "name": "Lake Livingston", "kind": "lake", "tpwd_slug": "livingston", "lat": 30.6335, "lon": -95.0102, "coord_source": "USGS 08066190 Livingston Res nr Goodrich, TX", "near": "Livingston / Onalaska"},
+    {"id": "falcon-lake", "name": "Falcon Lake", "kind": "lake", "tpwd_slug": "falcon", "lat": 26.5584, "lon": -99.1636, "coord_source": "USGS 08461200 Intern Fal Res nr Falcon Heights, TX", "near": "Zapata / Falcon Heights"},
+    {"id": "lake-amistad", "name": "Lake Amistad", "kind": "lake", "tpwd_slug": "amistad", "lat": 29.4867, "lon": -101.0251, "coord_source": "USGS 292911101012900 Amistad Res at Buoy DR-C nr Del Rio, TX (the dam gauge 08450700 sits on the border and NWS /points returns 404 there)", "near": "Del Rio"},
+    {"id": "lake-tawakoni", "name": "Lake Tawakoni", "kind": "lake", "tpwd_slug": "tawakoni", "lat": 32.8087, "lon": -95.9197, "coord_source": "USGS 08017400 Lk Tawakoni nr Wills Point, TX", "near": "Wills Point"},
+    {"id": "lewisville-lake", "name": "Lewisville Lake", "kind": "lake", "tpwd_slug": "lewisville", "lat": 33.0693, "lon": -96.9645, "coord_source": "USGS 08052800 Lewisville Lk nr Lewisville, TX", "near": "Lewisville / Dallas"},
+    {"id": "choke-canyon", "name": "Choke Canyon Reservoir", "short": "Choke Canyon", "kind": "lake", "tpwd_slug": "choke_canyon", "lat": 28.4839, "lon": -98.2458, "coord_source": "USGS 08206900 Choke Canyon Res nr Three Rivers, TX", "near": "Three Rivers"},
+    {"id": "galveston", "name": "Galveston", "kind": "coast", "noaa_station": "8771450", "lat": 29.310, "lon": -94.793, "coord_source": "NOAA 8771450 GALVESTON, Galveston Channel", "near": "Galveston Island"},
+    {"id": "texas-city-dike", "name": "Texas City Dike", "kind": "coast", "noaa_station": "8771262", "lat": 29.391, "lon": -94.885, "coord_source": "NOAA 8771262 Texas City, Galveston Bay", "near": "Texas City"},
+    {"id": "freeport", "name": "Freeport", "kind": "coast", "noaa_station": "8772440", "lat": 28.948, "lon": -95.308, "coord_source": "NOAA 8772440 Freeport Harbor", "near": "Freeport / Surfside"},
+    {"id": "port-oconnor", "name": "Port O'Connor", "kind": "coast", "noaa_station": "8773701", "lat": 28.452, "lon": -96.388, "coord_source": "NOAA 8773701 PORT O'CONNOR, MATAGORDA BAY", "near": "Matagorda Bay"},
+    {"id": "rockport", "name": "Rockport", "kind": "coast", "noaa_station": "8774770", "lat": 28.022, "lon": -97.047, "coord_source": "NOAA 8774770 Rockport", "near": "Aransas Bay"},
+    {"id": "port-aransas", "name": "Port Aransas", "kind": "coast", "noaa_station": "8775237", "lat": 27.840, "lon": -97.073, "coord_source": "NOAA 8775237 Port Aransas", "near": "Mustang Island"},
+    {"id": "corpus-christi", "name": "Corpus Christi", "kind": "coast", "noaa_station": "8775296", "lat": 27.815, "lon": -97.389, "coord_source": "NOAA 8775296 Texas State Aquarium, USS Lexington", "near": "Corpus Christi Bay"},
+    {"id": "south-padre-island", "name": "South Padre Island", "kind": "coast", "noaa_station": "8779750", "lat": 26.068, "lon": -97.157, "coord_source": "NOAA 8779750 PADRE ISLAND (south end)", "near": "Brazos Santiago Pass"}
+  ]
+}

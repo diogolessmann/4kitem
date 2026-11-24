@@ -1,0 +1,565 @@
+[
+  {
+    "id": "red_drum",
+    "common_name": "Red Drum (Redfish)",
+    "scientific_name": "Sciaenops ocellatus",
+    "water": "salt",
+    "tpwd_profile_url": "https://tpwd.texas.gov/huntwild/wild/species/reddrum/",
+    "habitat_short": {
+      "text": "Shallow bay edges with seagrass, oyster reefs and jetties; adults move to the Gulf.",
+      "source_url": "https://tpwd.texas.gov/huntwild/wild/species/reddrum/",
+      "quote": "Red drums prefer shallow waters (1-4 feet deep) along the edges of bays with submerged vegetation such as seagrasses.",
+      "verified": true
+    },
+    "temp_preferred_f": null,
+    "temp_tolerance_f": {
+      "min": 35.6,
+      "max": 99.5,
+      "note": "2-37.5 C tolerance (USFWS 82(11.36) abstract); NOT an optimum. Only optimum found is for hatching/larvae: 25 C (Holt et al. 1981).",
+      "source_url": "https://www.osti.gov/biblio/6530018",
+      "quote": "Red drum tolerate a wide range of temperatures (2/sup 0/ to 37.5/sup 0/C)",
+      "verified": true
+    },
+    "temp_spawn_f": null,
+    "spawn_months_tx": {
+      "months": [
+        8,
+        9,
+        10,
+        11
+      ],
+      "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_br_v3400_045_red_drum.pdf",
+      "quote": "Spawning occurs in the nearshore waters of the Gulf of Mexico from August through November",
+      "verified": true,
+      "label": "Aug through Nov, nearshore Gulf"
+    },
+    "activity": {
+      "pattern": "mixed",
+      "detail": "USFWS profile (juveniles only; Bass & Avault 1975). TPWD: adults generally bottom feeders, feed in the water column when the opportunity arises; tail head-down in shallow grass. No adult time-of-day source found.",
+      "source_url": "https://webarchive.library.unt.edu/eot2008/20080916061755id_/http://www.nwrc.usgs.gov/wdb/pub/species_profiles/82_11-036.pdf",
+      "quote": "juvenile red drum feed night and day",
+      "verified": true
+    },
+    "tide": {
+      "preference": "TPWD: daily movement from shallows to deeper water is influenced by tides and water temperature (no incoming/outgoing preference stated). TPWD general: tidal movements influence feeding activity of all species.",
+      "quote_2": "Tidal movements influence the feeding activity of all species.",
+      "source_url_2": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_bk_k0700_0639d.pdf",
+      "source_url": "https://tpwd.texas.gov/huntwild/wild/species/reddrum/",
+      "quote": "Daily movement from the shallows to deeper waters is influenced by tides and water temperatures.",
+      "verified": true,
+      "verified_2": true,
+      "incoming_bonus": false
+    },
+    "baits": [
+      {
+        "season": "all",
+        "bait": "Live shrimp, small finger mullet, Atlantic croaker, small live blue crabs",
+        "technique": "Natural bait",
+        "source_url": "https://tpwd.texas.gov/huntwild/wild/species/reddrum/",
+        "quote": "The best natural baits are live shrimp, small finger mullet, Atlantic croaker, and small live blue crabs.",
+        "verified": true
+      },
+      {
+        "season": "all",
+        "bait": "Spoons (gold, copper, silver), floating/shallow plugs, shrimplike plastic worms and jigs",
+        "technique": "Wade grass flats; heavier spoons and slow-sinking plugs in the surf.",
+        "source_url": "https://tpwd.texas.gov/huntwild/wild/species/reddrum/",
+        "quote": "Artificial baits such as 1/2 and 1/4 ounce shallow-running gold, copper, or silver spoons are favorites.",
+        "verified": true
+      }
+    ],
+    "regs_statewide": {
+      "daily_bag": "3",
+      "min_length_in": "20 (max 28)",
+      "notes": "Slot 20-28 in. One red drum over 28 in. allowed per license year with a Red Drum Tag and one more with a Bonus Red Drum Tag, in addition to the bag. Possession = 2x bag. Valid Sep 1 2026-Aug 31 2027.",
+      "source_url": "https://tpwd.texas.gov/regulations/outdoor-annual/fishing/saltwater-fishing/bag-length-limits/drum-bag-length-limits",
+      "checked": "2026-11-23"
+    },
+    "not_found": [
+      "temp_preferred_f (adult)",
+      "temp_spawn_f",
+      "tide incoming vs outgoing",
+      "baits by season",
+      "adult time-of-day pattern"
+    ]
+  },
+  {
+    "id": "spotted_seatrout",
+    "common_name": "Spotted Seatrout (Speckled Trout)",
+    "scientific_name": "Cynoscion nebulosus",
+    "water": "salt",
+    "tpwd_profile_url": "https://tpwd.texas.gov/huntwild/wild/species/strout/",
+    "habitat_short": {
+      "text": "Shallow bays and estuaries with oyster and seagrass beds; deeper bay water and the Gulf in fall and winter.",
+      "source_url": "https://tpwd.texas.gov/huntwild/wild/species/strout/",
+      "quote": "Spotted seatrout prefer shallower bays and estuaries with oyster beds and seagrass beds that attract prey species.",
+      "verified": true
+    },
+    "temp_preferred_f": {
+      "min": 77,
+      "max": 86,
+      "kind": "feeding",
+      "source_url": "https://www.vliz.be/imisdocs/publications/ocrd/242296.pdf",
+      "source_title": "Lassuy 1983, FWS/OBS-82/11.4 Spotted Seatrout (Gulf of Mexico)",
+      "quote": "reported highest catches from 25° to 30°C (77° to 86°F) while Tabb (1958) suggested 15° to 27°C (59° to 81°F) as a suitable temperature range",
+      "verified": true
+    },
+    "temp_spawn_f": {
+      "min": 70,
+      "max": null,
+      "source_url": "https://www.vliz.be/imisdocs/publications/ocrd/242296.pdf",
+      "quote": "Spawning is reported to occur at temperatures of 21°C (70°F) or greater in Texas",
+      "verified": true
+    },
+    "spawn_months_tx": {
+      "months": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "source_url": "https://www.vliz.be/imisdocs/publications/ocrd/242296.pdf",
+      "quote": "the inception of spawning in the Gulf is variable and may start as early as February, but that it has generally ceased by October",
+      "verified": true,
+      "verified_mode": "ocr-spacing-tolerant",
+      "label": "can start in Feb; mostly over by Oct (Gulf)"
+    },
+    "activity": {
+      "pattern": "crepuscular",
+      "detail": "In warm weather fish shallows early morning and late evening; midday heat pushes them to dropoffs, channels, reefs. USFWS: feeding heaviest early to mid-morning (Darnell 1958).",
+      "source_url": "https://tpwd.texas.gov/huntwild/wild/species/strout/",
+      "quote": "During warm weather, fish shallow areas early in the morning and late in the evening.",
+      "verified": true,
+      "months": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "months_note": "TPWD ties the dawn/dusk pattern to warm weather ('During warm weather...'). We read warm weather as May-Sep on the Texas coast (our reading, not TPWD's words). USFWS adds feeding is heaviest early to mid-morning."
+    },
+    "tide": {
+      "preference": "Moving water helps: TPWD recommends free-shrimping rigs where tidal flow is strong. Larvae move through passes on flood tides.",
+      "source_url": "https://tpwd.texas.gov/huntwild/wild/species/strout/",
+      "quote": "This method is effective when drift fishing from a boat or when fishing in areas with strong tidal flow.",
+      "quote_2": "Tidal movements influence the feeding activity of all species.",
+      "source_url_2": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_bk_k0700_0639d.pdf",
+      "verified": true,
+      "verified_2": true,
+      "incoming_bonus": false
+    },
+    "baits": [
+      {
+        "season": "all",
+        "bait": "Live shrimp (best); live mullet, pinfish, dead shrimp",
+        "technique": "Under a popping cork, or free-shrimped with a tiny weight.",
+        "source_url": "https://tpwd.texas.gov/huntwild/wild/species/strout/",
+        "quote": "The best bait for catching trout is live shrimp.",
+        "verified": true
+      },
+      {
+        "season": "summer",
+        "bait": "Silver spoons (often with bucktail)",
+        "technique": "Vary speed and depth of retrieve.",
+        "source_url": "https://tpwd.texas.gov/huntwild/wild/species/strout/",
+        "quote": "Spoons are very effective, particularly during the warmer months.",
+        "verified": true
+      },
+      {
+        "season": "winter",
+        "bait": "Fish-like lures",
+        "technique": "Fished very slowly in cold weather.",
+        "source_url": "https://tpwd.texas.gov/huntwild/wild/species/strout/",
+        "quote": "Try the fishlike lures during the cooler months, although they can be effective anytime.",
+        "verified": true
+      },
+      {
+        "season": "summer",
+        "bait": "Floating lures",
+        "technique": "Shallow water stalking.",
+        "source_url": "https://tpwd.texas.gov/huntwild/wild/species/strout/",
+        "quote": "Floating lures have recently become popular with fishers stalking large trout in shallow water during the warm months.",
+        "verified": true
+      },
+      {
+        "season": "all",
+        "bait": "Jigs (worm jigs: hot pink, root beer, dark red, white)",
+        "technique": "Singly or in pairs, with or without a cork; under lights at night.",
+        "source_url": "https://tpwd.texas.gov/huntwild/wild/species/strout/",
+        "quote": "They are very effective fished under lights at night when trout congregate to feed.",
+        "verified": true
+      }
+    ],
+    "regs_statewide": {
+      "daily_bag": "3",
+      "min_length_in": "15 (max 20)",
+      "notes": "Slot 15-20 in. One spotted seatrout over 28 in. per license year with a Spotted Seatrout Tag/Bonus Tag, in addition to the bag. Possession = 2x bag. Valid Sep 1 2026-Aug 31 2027.",
+      "source_url": "https://tpwd.texas.gov/regulations/outdoor-annual/fishing/saltwater-fishing/bag-length-limits/seatrout-bag-length-limits",
+      "checked": "2026-11-23"
+    },
+    "not_found": [
+      "TPWD-sourced spawn months/temperature (TPWD page silent; used USFWS)",
+      "tide incoming vs outgoing"
+    ]
+  },
+  {
+    "id": "southern_flounder",
+    "common_name": "Southern Flounder",
+    "scientific_name": "Paralichthys lethostigma",
+    "water": "salt",
+    "tpwd_profile_url": "https://tpwd.texas.gov/huntwild/wild/species/flounder/",
+    "habitat_short": {
+      "text": "Bays, shallow grassy areas near Gulf passes, coastal rivers and bayous; adults leave bays in fall/winter to spawn in the Gulf.",
+      "source_url": "https://tpwd.texas.gov/huntwild/wild/species/flounder/",
+      "quote": "shallow grassy areas near the Gulf passes.",
+      "verified": true
+    },
+    "temp_preferred_f": null,
+    "temp_observed_range_f": {
+      "min": 41,
+      "max": 95,
+      "note": "Observed catch range, not a preference. USFWS Biol. Rep. 82(11.30), full text (quote is copied as the OCR text reads: the degree sign after 5 appears as a quote mark; true value 5 C).",
+      "source_url": "https://webarchive.library.unt.edu/eot2008/20080916061755id_/http://www.nwrc.usgs.gov/wdb/pub/species_profiles/82_11-030.pdf",
+      "quote": "Adult southern flounders have been collected at temperatures ranging from 5\" to 35°C",
+      "verified": true
+    },
+    "temp_spawn_f": null,
+    "spawn_months_tx": {
+      "months": [
+        10,
+        11,
+        12
+      ],
+      "note": "Migration to the Gulf (Stokes 1977), spawning inferred; USFWS summary says Gulf spawning Oct-Feb.",
+      "source_url": "https://webarchive.library.unt.edu/eot2008/20080916061755id_/http://www.nwrc.usgs.gov/wdb/pub/species_profiles/82_11-030.pdf",
+      "quote": "in Texas, they migrate from estuaries into the Gulf of Mexico from October through December, apparently to spawn",
+      "verified": true,
+      "label": "Oct-Dec they move to the Gulf, apparently to spawn"
+    },
+    "activity": {
+      "pattern": "nocturnal",
+      "detail": "USFWS profile corroborates: Louisiana day vs night trawling: 89% of southern flounders caught at night; a tank study also found more night activity (Dugas 1975).",
+      "source_url_2": "https://webarchive.library.unt.edu/eot2008/20080916061755id_/http://www.nwrc.usgs.gov/wdb/pub/species_profiles/82_11-030.pdf",
+      "quote_2": "89% of southern flounders were caught at night",
+      "source_url": "https://tpwd.texas.gov/huntwild/wild/species/flounder/",
+      "quote": "Adult flounder enter shallow water at night where they lie, often partially buried, and wait for prey.",
+      "verified": true,
+      "verified_2": true
+    },
+    "tide": {
+      "preference": "Incoming tide best (floundering); outgoing tide also works, try farther offshore around sandbars; avoid abnormally high tides.",
+      "source_url": "https://tpwd.texas.gov/huntwild/wild/species/flounder/",
+      "quote": "The best catches are made during an incoming tide and on dark nights as opposed to moonlit nights.",
+      "verified": true,
+      "incoming_bonus": true
+    },
+    "baits": [
+      {
+        "season": "all",
+        "bait": "Live shrimp",
+        "technique": "Retrieved slowly along the bottom.",
+        "source_url": "https://tpwd.texas.gov/huntwild/wild/species/flounder/",
+        "quote": "Flounder prefer live to dead bait. Live shrimp retrieved slowly along the bottom often produce excellent results.",
+        "verified": true
+      },
+      {
+        "season": "all",
+        "bait": "Killifish (mud minnows)",
+        "technique": "Fished like live shrimp.",
+        "source_url": "https://tpwd.texas.gov/huntwild/wild/species/flounder/",
+        "quote": "Killifish (referred to locally as mud minnows) fished in a similar fashion, is good bait.",
+        "verified": true
+      },
+      {
+        "season": "all",
+        "bait": "Leaded plastic worm (worm jig)",
+        "technique": "Over barren bottoms.",
+        "source_url": "https://tpwd.texas.gov/huntwild/wild/species/flounder/",
+        "quote": "Over barren bottoms, leaded plastic worms (worm jigs) are often very effective.",
+        "verified": true
+      },
+      {
+        "season": "all",
+        "bait": "Shallow-running spoon",
+        "technique": "Heavily vegetated areas.",
+        "source_url": "https://tpwd.texas.gov/huntwild/wild/species/flounder/",
+        "quote": "In heavily vegetated areas, shallow-running spoons are best.",
+        "verified": true
+      }
+    ],
+    "regs_statewide": {
+      "daily_bag": "5",
+      "min_length_in": "15",
+      "notes": "Fishery CLOSED Nov 1-Dec 14 (bag limit 0). Possession = daily bag. No max length. Valid Sep 1 2026-Aug 31 2027.",
+      "source_url": "https://tpwd.texas.gov/regulations/outdoor-annual/fishing/saltwater-fishing/bag-length-limits/flounder-bag-length-limits",
+      "checked": "2026-11-23"
+    },
+    "not_found": [
+      "temp_preferred_f",
+      "temp_spawn_f",
+      "TPWD spawn months (TPWD says fall/winter only)"
+    ],
+    "closed": [
+      {
+        "from": "11-01",
+        "to": "12-14",
+        "label": "Nov 1 - Dec 14",
+        "source_url": "https://tpwd.texas.gov/regulations/outdoor-annual/fishing/saltwater-fishing/bag-length-limits/flounder-bag-length-limits",
+        "quote": "Daily bag is 5 fish except Nov 1 - Dec 14 (fishery closed; bag limit = 0).",
+        "checked": "2026-11-23"
+      }
+    ],
+    "moon_phase_bonus": false
+  },
+  {
+    "id": "black_drum",
+    "common_name": "Black Drum",
+    "scientific_name": "Pogonias cromis",
+    "water": "salt",
+    "tpwd_profile_url": "https://tpwd.texas.gov/huntwild/wild/species/blackdrum/",
+    "habitat_short": {
+      "text": "Very adaptable: sand flats, muddy sloughs and deep Gulf water; drawn to freshwater runoff from creeks and rivers.",
+      "source_url": "https://tpwd.texas.gov/huntwild/wild/species/blackdrum/",
+      "quote": "This species can adapt to a wider range of habitats than any other important Texas food fish.",
+      "verified": true
+    },
+    "temp_preferred_f": null,
+    "temp_observed_range_f": {
+      "min": 54,
+      "max": 91,
+      "note": "Observed range, not optimum. USFWS Biol. Rep. 82(11.51).",
+      "source_url": "https://webarchive.library.unt.edu/eot2008/20080916061755id_/http://www.nwrc.usgs.gov/wdb/pub/species_profiles/82_11-051.pdf",
+      "quote": "adults are found in salinities of 9 to 26 ppt and in water temperatures of 12 to 33°C",
+      "verified": true
+    },
+    "temp_spawn_f": null,
+    "spawn_months_tx": {
+      "months": [
+        2,
+        3,
+        4
+      ],
+      "source_url": "https://tpwd.texas.gov/huntwild/wild/species/blackdrum/",
+      "quote": "Free spawning (random release of eggs) occurs mostly in February, March, and April with some later spawning occurring in June and July.",
+      "note": "Mostly Feb-Apr; some later spawning Jun-Jul.",
+      "verified": true,
+      "label": "mostly Feb-Apr, some in Jun-Jul"
+    },
+    "activity": {
+      "pattern": "mixed",
+      "detail": "LSU/Louisiana Sea Grant (Gulf). TPWD: feeding is by feel and smell on the bottom, tailing head-down.",
+      "source_url": "https://lsu.edu/seagrantfish/biological/drum/blackdrum.htm",
+      "quote": "They feed both during daylight hours and at night, but feeding is less intensive during early morning hours.",
+      "verified": true
+    },
+    "tide": {
+      "source_title": "TPWD Learn to Fish: A Basic Guide for the Beginning Angler (saltwater section)",
+      "preference": "No black-drum-specific tide statement found; TPWD general statement that tidal movements influence feeding of all species applies.",
+      "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_bk_k0700_0639d.pdf",
+      "quote": "Tidal movements influence the feeding activity of all species.",
+      "verified": true,
+      "incoming_bonus": false
+    },
+    "baits": [
+      {
+        "season": "all",
+        "bait": "Peeled shrimp tails; cut fish; squid",
+        "technique": "Baited hook on the bottom, wait.",
+        "source_url": "https://tpwd.texas.gov/huntwild/wild/species/blackdrum/",
+        "quote": "Cut fish, squid and shrimp are used, with peeled shrimp tails (preferably ripe and smelly) the most popular.",
+        "verified": true
+      },
+      {
+        "season": "all",
+        "bait": "Natural bait only (artificials rarely work)",
+        "technique": "Bottom fishing.",
+        "source_url": "https://tpwd.texas.gov/huntwild/wild/species/blackdrum/",
+        "quote": "Black drum are rarely taken on artificial baits since most feeding is done by feel and smell.",
+        "verified": true
+      },
+      {
+        "season": "all",
+        "bait": "Spoon (shallow schools in clear water)",
+        "technique": "Sight-cast to shallow schools; fish are spooky.",
+        "source_url": "https://tpwd.texas.gov/huntwild/wild/species/blackdrum/",
+        "quote": "Fishermen using artificial bait might try a spoon here if they can get close enough.",
+        "verified": true
+      },
+      {
+        "season": "all",
+        "bait": "Blue crab (halved or quartered)",
+        "technique": "Hooked through the body sections.",
+        "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_bk_k0700_0639d.pdf",
+        "quote": "Black drum and cobia have a liking for blue crabs.",
+        "verified": true
+      }
+    ],
+    "regs_statewide": {
+      "daily_bag": "5",
+      "min_length_in": "14 (max 30)",
+      "notes": "Slot 14-30 in.; one black drum over 52 in. allowed as part of the daily bag. Possession = 2x bag. Valid Sep 1 2026-Aug 31 2027.",
+      "source_url": "https://tpwd.texas.gov/regulations/outdoor-annual/fishing/saltwater-fishing/bag-length-limits/drum-bag-length-limits",
+      "checked": "2026-11-23"
+    },
+    "not_found": [
+      "temp_preferred_f",
+      "temp_spawn_f",
+      "black-drum-specific tide statement"
+    ]
+  },
+  {
+    "id": "sheepshead",
+    "common_name": "Sheepshead",
+    "scientific_name": "Archosargus probatocephalus",
+    "water": "salt",
+    "tpwd_profile_url": "https://tpwd.texas.gov/huntwild/wild/species/sheepshead/",
+    "habitat_short": {
+      "text": "Young fish in shallow grassy areas; adults around pilings and rocks (jetties, piers, reefs).",
+      "source_url": "https://tpwd.texas.gov/huntwild/wild/species/sheepshead/",
+      "quote": "Adults live near pilings and rocks where their strong incisor teeth are used to good advantage to graze barnacles and small shellfish.",
+      "verified": true
+    },
+    "temp_preferred_f": null,
+    "temp_spawn_f": null,
+    "spawn_months_tx": {
+      "months": [
+        2,
+        3
+      ],
+      "source_url": "https://tpwd.texas.gov/huntwild/wild/species/sheepshead/",
+      "quote": "Spawning occurs in February and March in the Gulf near jetties, rock piles and reefs.",
+      "verified": true,
+      "label": "Feb and Mar, Gulf jetties and reefs"
+    },
+    "activity": {
+      "pattern": null,
+      "detail": "No time-of-day source found; feeding is grazing barnacles/shellfish on pilings and rocks.",
+      "source_url": "https://tpwd.texas.gov/huntwild/wild/species/sheepshead/",
+      "quote": "Adults live near pilings and rocks where their strong incisor teeth are used to good advantage to graze barnacles and small shellfish.",
+      "verified": true
+    },
+    "tide": {
+      "source_title": "TPWD Learn to Fish: A Basic Guide for the Beginning Angler (saltwater section)",
+      "preference": "No sheepshead-specific tide statement found; TPWD general statement that tidal movements influence feeding of all species applies.",
+      "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_bk_k0700_0639d.pdf",
+      "quote": "Tidal movements influence the feeding activity of all species.",
+      "verified": true,
+      "incoming_bonus": false
+    },
+    "baits": [
+      {
+        "season": "all",
+        "bait": "Small fiddler and hermit crabs",
+        "technique": "Near jetties, rock piles, reefs; fish is an adept bait stealer.",
+        "source_url": "https://tpwd.texas.gov/huntwild/wild/species/sheepshead/",
+        "quote": "Experienced fishermen use small fiddler and hermit crabs to catch sheepshead.",
+        "verified": true
+      },
+      {
+        "season": "all",
+        "bait": "Hermit and fiddler crabs",
+        "technique": "Hooked through the body.",
+        "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_bk_k0700_0639d.pdf",
+        "quote": "Sheepshead and snapper go after hermit and fiddler crabs hooked through the body.",
+        "verified": true
+      }
+    ],
+    "regs_statewide": {
+      "daily_bag": "5",
+      "min_length_in": "15",
+      "notes": "No maximum length. Possession = 2x bag. Valid Sep 1 2026-Aug 31 2027.",
+      "source_url": "https://tpwd.texas.gov/regulations/outdoor-annual/fishing/saltwater-fishing/bag-length-limits/sheepshead-bag-length-limits",
+      "checked": "2026-11-23"
+    },
+    "not_found": [
+      "temp_preferred_f",
+      "temp_spawn_f",
+      "activity time of day",
+      "sheepshead-specific tide statement",
+      "baits: only 2 found (need 3-6)"
+    ]
+  },
+  {
+    "id": "atlantic_croaker",
+    "common_name": "Atlantic Croaker (Hardhead)",
+    "scientific_name": "Micropogonias undulatus",
+    "water": "salt",
+    "tpwd_profile_url": "https://tpwd.texas.gov/huntwild/wild/species/croaker/",
+    "habitat_short": {
+      "text": "Estuaries and bays in spring and summer; moves offshore in fall.",
+      "source_url": "https://tpwd.texas.gov/huntwild/wild/species/croaker/",
+      "quote": "Atlantic croaker prefer estuaries and bays through the spring and summer",
+      "verified": true
+    },
+    "temp_preferred_f": null,
+    "temp_observed_range_f": {
+      "min": 41,
+      "max": 95.9,
+      "note": "Observed range, not a preference. USFWS FWS/OBS-82/11.3 abstract.",
+      "source_url": "https://www.osti.gov/biblio/6090864",
+      "quote": "Adults have been collected in a temperature range of 5/sup 0/ to 35.5/sup 0/C",
+      "verified": true
+    },
+    "temp_spawn_f": null,
+    "spawn_months_tx": {
+      "months": [
+        8,
+        9,
+        10
+      ],
+      "quote_2": "spawning occurs from October to March in the nearshore Gulf of Mexico",
+      "source_url_2": "https://webarchive.library.unt.edu/eot2008/20080916061755id_/http://www.nwrc.usgs.gov/wdb/pub/species_profiles/82_11-003.pdf",
+      "note": "CONFLICT: TPWD says fall, peak Aug-Oct; USFWS Gulf profile says Oct-Mar. Unresolved.",
+      "source_url": "https://tpwd.texas.gov/huntwild/wild/species/croaker/",
+      "quote": "Spawning season is in the fall, with a peak between August and October.",
+      "verified": true,
+      "verified_2": true,
+      "label": "fall, peak Aug-Oct (TPWD)"
+    },
+    "activity": {
+      "pattern": null,
+      "detail": "No time-of-day source found. TPWD: best fishing summer into fall; bottom feeders.",
+      "source_url": "https://tpwd.texas.gov/huntwild/wild/species/croaker/",
+      "quote": "The best times for fishing for Atlantic croaker are from summer into the fall.",
+      "verified": true
+    },
+    "tide": {
+      "source_title": "TPWD Learn to Fish: A Basic Guide for the Beginning Angler (saltwater section)",
+      "preference": "No croaker-specific tide statement found; TPWD general statement applies.",
+      "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_bk_k0700_0639d.pdf",
+      "quote": "Tidal movements influence the feeding activity of all species.",
+      "verified": true,
+      "incoming_bonus": false
+    },
+    "baits": [
+      {
+        "season": "all",
+        "bait": "Dead shrimp",
+        "technique": "Fished on the bottom.",
+        "source_url": "https://tpwd.texas.gov/huntwild/wild/species/croaker/",
+        "quote": "They are easily caught on bait (dead shrimp) when fishing on the bottom.",
+        "verified": true
+      }
+    ],
+    "regs_statewide": {
+      "daily_bag": "No limit",
+      "min_length_in": "No limit",
+      "notes": "Not listed in the TPWD 2026-27 pocket guide, which states no limits apply to species not listed. Valid Sep 1 2026-Aug 31 2027.",
+      "source_url": "https://tpwd.texas.gov/documents/240/pwd_cd_v3400_100b.pdf",
+      "checked": "2026-11-23"
+    },
+    "not_found": [
+      "temp_preferred_f",
+      "temp_spawn_f",
+      "activity time of day",
+      "croaker-specific tide statement",
+      "baits: only 1 found (need 3-6)"
+    ]
+  }
+]

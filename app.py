@@ -15820,6 +15820,19 @@ except Exception as _atende_err:
     log.warning(f'[AtendeZap] Erro ao carregar blueprint: {_atende_err}')
 
 # ══════════════════════════════════════════════════════════════════════════════
+# BEST TIME TO FISH — guia de pesca do Texas (inglês), site estático em /fish (24/11/2026)
+# O robô gera as páginas a cada 2 h num processo à parte (pesca/atualiza.py); aqui só entrega arquivo.
+# Domínio próprio: variável HDP_DOMINIO. Desliga o robô: HDP_ROBO=0.
+# ══════════════════════════════════════════════════════════════════════════════
+try:
+    from pesca_bp import pesca_bp, iniciar_robo_pesca
+    app.register_blueprint(pesca_bp)
+    iniciar_robo_pesca()
+    log.info('[Pesca] Blueprint registrado em /fish')
+except Exception as _pesca_err:
+    log.warning(f'[Pesca] Erro ao carregar blueprint: {_pesca_err}')
+
+# ══════════════════════════════════════════════════════════════════════════════
 
 with app.app_context():
     _startup()

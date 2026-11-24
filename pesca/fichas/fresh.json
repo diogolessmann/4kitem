@@ -1,0 +1,841 @@
+[
+  {
+    "id": "largemouth_bass",
+    "common_name": "Largemouth Bass",
+    "scientific_name": "Micropterus salmoides",
+    "water": "fresh",
+    "tpwd_profile_url": "https://tpwd.texas.gov/huntwild/wild/species/lmb/",
+    "habitat_short": {
+      "text": "Moderately clear to turbid, quiet warm water with vegetation, logs, trees, brush, stumps and underwater contours.",
+      "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_lf_k0700_0692.pdf",
+      "quote": "Moderately clear to turbid, quiet warm waters in streams, rivers, lakes, reservoirs and ponds. Vegetation, near logs, trees, brush, stumps and underwater contours.",
+      "verified": true
+    },
+    "temp_preferred_f": {
+      "min": 75,
+      "max": 86,
+      "kind": "optimal growth",
+      "source_url": "https://sitesreservoirproject.riptideweb.com/references/REF17/Appx_12D_WaterTempratureIndexValue/Stuber_etal_1982.pdf",
+      "source_title": "Habitat Suitability Index Models: Largemouth Bass (Stuber, Gebhart, Maughan; USFWS FWS/OBS-82/10.16, 1982)",
+      "quote": "Optimal temperatures for growth of adult bass range from 24-30° C",
+      "note": "Original in Celsius: 24-30 C = 75-86 F. USFWS HSI FWS/OBS-82/10.16 (Stuber et al. 1982).",
+      "verified": true
+    },
+    "temp_spawn_f": {
+      "min": 61,
+      "max": 72,
+      "source_url": "https://sitesreservoirproject.riptideweb.com/references/REF17/Appx_12D_WaterTempratureIndexValue/Stuber_etal_1982.pdf",
+      "quote": "but most occurs between 16 and 22° C",
+      "note": "Original in Celsius: 16-22 C = 61-72 F (HSI). TPWD says spawning begins about 60 F.",
+      "verified": true
+    },
+    "spawn_months_tx": {
+      "months": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_br_t3200_0023m.pdf",
+      "quote": "This can occur as early as February or as late as May, depending on where one is in the state.",
+      "verified": true,
+      "label": "Feb to May, depending on where in Texas"
+    },
+    "activity": {
+      "pattern": "crepuscular",
+      "detail": "Feeding peaks early morning and late evening; TPWD says anglers use topwater in low light and switch to subsurface lures later in the day.",
+      "source_url": "https://sitesreservoirproject.riptideweb.com/references/REF17/Appx_12D_WaterTempratureIndexValue/Stuber_etal_1982.pdf",
+      "quote": "Largemouth bass feeding intensity is bimodal, with peaks in the early morning and late evening",
+      "verified": true
+    },
+    "tide": null,
+    "baits": [
+      {
+        "season": "spring",
+        "bait": "Fish shallow near spawning areas",
+        "technique": "Fish move into shallows to spawn; big females near spawning areas in March.",
+        "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_br_t3200_0023m.pdf",
+        "quote": "March is the best time to catch a trophy-size bass.",
+        "verified": true
+      },
+      {
+        "season": "all",
+        "bait": "Topwater baits in low light; spinnerbaits, hard-body lures, plastic worms later in the day",
+        "technique": "Topwater at dawn/dusk, then switch to subsurface lures.",
+        "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_br_t3200_0023m.pdf",
+        "quote": "Many anglers use top-water baits in low-light conditions and switch to spinner baits, hard-body lures or plastic worms",
+        "verified": true
+      },
+      {
+        "season": "summer",
+        "bait": "Deeper structure",
+        "technique": "By June bass start moving deeper.",
+        "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_br_t3200_0023m.pdf",
+        "quote": "By June, they start moving into deeper water.",
+        "verified": true
+      },
+      {
+        "season": "all",
+        "bait": "Crankbaits, spinnerbaits, jigs, soft plastics, spoons, minnows, earthworms, crawfish",
+        "technique": "General TPWD list.",
+        "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_lf_k0700_0692.pdf",
+        "quote": "Crankbaits, spinner baits, jigs, soft plastics, spoons, flies, minnows, earthworms, crawfish, leeches, frogs, lizards and insects.",
+        "verified": true
+      }
+    ],
+    "regs_statewide": {
+      "daily_bag": "5 (combined with smallmouth, Alabama, Guadalupe and spotted bass)",
+      "min_length_in": "14",
+      "notes": "Many reservoirs have special length/bag limits. Special regulations may apply to certain waterbodies; check TPWD exceptions page. Limits valid Sept 1, 2026 to Aug 31, 2027.",
+      "source_url": "https://tpwd.texas.gov/regulations/outdoor-annual/fishing/freshwater-fishing/bag-length-limits",
+      "checked": "2026-11-23"
+    },
+    "not_found": [
+      "TPWD temperature preference (used USFWS HSI)",
+      "baits for fall and winter"
+    ]
+  },
+  {
+    "id": "white_bass",
+    "common_name": "White Bass",
+    "scientific_name": "Morone chrysops",
+    "water": "fresh",
+    "tpwd_profile_url": "https://tpwd.texas.gov/huntwild/wild/species/wtb/",
+    "habitat_short": {
+      "text": "Open water of large streams, rivers and reservoirs; adults feed on shad; spawning run up tributaries over gravel or rock.",
+      "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_lf_k0700_0692.pdf",
+      "quote": "Large streams, rivers and lakes. Adults feed primarily on shad and always found in open water.",
+      "verified": true
+    },
+    "temp_preferred_f": {
+      "min": 82,
+      "max": 85,
+      "kind": "preferred (field selection near power-plant effluent, Gammon 1973, as cited in HSI)",
+      "source_title": "USFWS Biological Report 82(10.89), Hamilton & Nelson 1984, Habitat suitability index models: white bass",
+      "note": "Original in Celsius: 28.0-29.5 C = 82-85 F. Round-2 fix: the earlier URL (LPS101986) is the WARMOUTH HSI, not white bass.",
+      "source_url": "https://www.govinfo.gov/content/pkg/GOVPUB-I49-PURL-LPS101735/pdf/GOVPUB-I49-PURL-LPS101735.pdf",
+      "quote": "the probable optimum temperature for white bass lies between 28.0 and 29.5° C",
+      "verified": true,
+      "verified_mode": "ocr-spacing-tolerant"
+    },
+    "temp_spawn_f": {
+      "min": 55,
+      "max": 60,
+      "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_br_t3200_0022.pdf",
+      "quote": "when rains provide flow and water temperatures reach 55 to 60°F, whites gather in the upper ends of reservoirs",
+      "verified": true
+    },
+    "spawn_months_tx": {
+      "months": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "quote_2": "The whole spawning migration is usually complete by sometime in May.",
+      "note": "Central Texas reservoirs (TPWD White Bass in Central Texas). Run starts Feb-Mar, done by May.",
+      "source_url": "https://tpwd.texas.gov/publications/pwdpubs/pwd_br_t3200_0022e/biology.phtml",
+      "quote": "In February and March they begin their spawning migration seeking clean gravel and rock substrate with good flow to spawn.",
+      "verified": true,
+      "verified_2": true,
+      "label": "runs start Feb-Mar, done by May"
+    },
+    "activity": {
+      "pattern": "mixed",
+      "detail": "Schools feed on shad at the surface; TPWD: night fishing with lights productive in late spring and summer and in Jan-Feb around lighted docks; in summer look for schooling fish at dawn or on cloudy days.",
+      "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_br_t3200_0022.pdf",
+      "quote": "Fishing at night with a floating light, or near a lighted dock, can be very productive in late spring and summer.",
+      "quote_2": "look for schooling fish at dawn or on cloudy days",
+      "source_url_2": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_br_t3200_0022e.pdf",
+      "verified": true,
+      "verified_2": true
+    },
+    "tide": null,
+    "baits": [
+      {
+        "season": "spring",
+        "bait": "Jigs, spinners, soft plastic shad, small crankbaits",
+        "technique": "Spawning run in tributaries after rain.",
+        "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_br_t3200_0022.pdf",
+        "quote": "Popular lures for the spawning season include jigs, spinners, soft plastic shad and small crank baits.",
+        "verified": true
+      },
+      {
+        "season": "spring",
+        "bait": "Minnows and silversides",
+        "technique": "Dead bait on bottom; live bait at any depth.",
+        "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_br_t3200_0022.pdf",
+        "quote": "Dead bait should be fished on the bottom while live bait can be fished at any depth.",
+        "verified": true
+      },
+      {
+        "season": "summer",
+        "bait": "Crankbaits, soft plastic shad, topwater",
+        "technique": "Find birds diving over surfacing schools.",
+        "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_br_t3200_0022.pdf",
+        "quote": "Crank baits, soft plastic shad and topwater baits are good at these times.",
+        "verified": true
+      },
+      {
+        "season": "summer",
+        "bait": "Natural baits, slabs, jigs under a light",
+        "technique": "Night fishing with a floating light or near lighted docks.",
+        "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_br_t3200_0022.pdf",
+        "quote": "Fishing at night with a floating light, or near a lighted dock, can be very productive in late spring and summer.",
+        "verified": true
+      },
+      {
+        "season": "all",
+        "bait": "Small surface baits (silver, white, yellow, chartreuse), silver spoons, slabs, minnows",
+        "technique": "Lake Texoma guidance.",
+        "source_url": "https://tpwd.texas.gov/fishboat/fish/recreational/lakes/texoma/",
+        "quote": "Effective baits include small surface baits in silver, white, yellow or chartreuse; silver spoons; slabs; and minnows.",
+        "verified": true
+      }
+    ],
+    "regs_statewide": {
+      "daily_bag": "25",
+      "min_length_in": "10",
+      "notes": "No minimum on Lake Texoma and Louisiana border waters per 2015 TPWD brochure. Special regulations may apply to certain waterbodies; check TPWD exceptions page. Limits valid Sept 1, 2026 to Aug 31, 2027.",
+      "source_url": "https://tpwd.texas.gov/regulations/outdoor-annual/fishing/freshwater-fishing/bag-length-limits",
+      "checked": "2026-11-23"
+    },
+    "not_found": [
+      "fall and winter baits"
+    ]
+  },
+  {
+    "id": "striped_bass",
+    "common_name": "Striped Bass",
+    "scientific_name": "Morone saxatilis",
+    "water": "fresh",
+    "tpwd_profile_url": "https://tpwd.texas.gov/huntwild/wild/species/str/",
+    "habitat_short": {
+      "text": "Reservoir fish that depend on stocking in most Texas lakes (Lake Texoma is an exception); feeds mainly on shad.",
+      "source_url": "https://tpwd.texas.gov/huntwild/wild/species/str/",
+      "quote": "most reservoir populations are not self-sustaining and must be maintained through stocking.",
+      "verified": true
+    },
+    "temp_preferred_f": {
+      "min": null,
+      "max": 75,
+      "kind": "preferred (upper limit)",
+      "source_url": "https://tpwd.texas.gov/fishboat/fish/didyouknow/coastal/gulfstripedbass.phtml",
+      "source_title": "TPWD: Striped Bass in the Gulf of Mexico?",
+      "quote": "Striped bass prefer water temperatures less than 75 F and will stop feeding when forced to live under warmer conditions",
+      "note": "TPWD (Gulf striped bass page): upper limit only. Corroboration: SEAFWA Smith (Lake Buchanan, TX) defines preferred thermal habitat as <25 C (77 F).",
+      "source_url_2": "https://seafwa.org/sites/default/files/journal-articles/13Smith69-74.pdf",
+      "quote_2": "lack of preferred thermal habitat (i.e., temperature <25 C and dissolved oxygen >2 mg l -1)",
+      "verified": true,
+      "verified_2": true,
+      "verified_2_mode": "ocr-spacing-tolerant"
+    },
+    "temp_spawn_f": {
+      "min": 58,
+      "max": 60,
+      "quote_2": "spawning occurs in the spring when water temperatures exceed 58 F",
+      "source_url_2": "https://tpwd.texas.gov/fishboat/fish/didyouknow/coastal/gulfstripedbass.phtml",
+      "source_url": "https://tpwd.texas.gov/huntwild/wild/species/str/",
+      "quote": "Spawning begins in the spring when water temperatures approach 60°F.",
+      "verified": true,
+      "verified_2": true
+    },
+    "spawn_months_tx": null,
+    "activity": {
+      "pattern": null,
+      "detail": "TPWD gives no time-of-day pattern; only that they feed irregularly in summer.",
+      "source_url": "https://tpwd.texas.gov/fishboat/fish/didyouknow/coastal/gulfstripedbass.phtml",
+      "quote": "They feed irregularly during the summer and grow very slowly.",
+      "verified": true
+    },
+    "tide": null,
+    "baits": [
+      {
+        "season": "winter",
+        "bait": "Heavy jigs, slabs, plastic shad, live gizzard shad",
+        "technique": "Stripers migrate up Texoma river arms in February.",
+        "source_url": "https://tpwd.texas.gov/fishboat/fish/recreational/lakes/texoma/",
+        "quote": "most often they are caught on heavy jigs, slabs, plastic shad, and live gizzard shad",
+        "verified": true
+      },
+      {
+        "season": "spring",
+        "bait": "Shad over flats near river channel",
+        "technique": "After the spring spawning run.",
+        "source_url": "https://tpwd.texas.gov/fishboat/fish/recreational/lakes/texoma/",
+        "quote": "After the spring spawning run, stripers can be caught with shad over flats near the river channel",
+        "verified": true
+      },
+      {
+        "season": "summer",
+        "bait": "Deep-running lures",
+        "technique": "Trolling.",
+        "source_url": "https://tpwd.texas.gov/fishboat/fish/recreational/lakes/texoma/",
+        "quote": "Trolling with deep running lures can also be productive.",
+        "verified": true
+      },
+      {
+        "season": "all",
+        "bait": "Silver spoons imitating small fish",
+        "technique": "General.",
+        "source_url": "https://tpwd.texas.gov/huntwild/wild/species/str/",
+        "quote": "Stripers are often captured using artificial lures that imitate small fish, such as silver spoons.",
+        "verified": true
+      }
+    ],
+    "regs_statewide": {
+      "daily_bag": "5 (striped and hybrid striped bass, any combination)",
+      "min_length_in": "18",
+      "notes": "Possession-limit exception at Lake Texoma. Special regulations may apply to certain waterbodies; check TPWD exceptions page. Limits valid Sept 1, 2026 to Aug 31, 2027.",
+      "source_url": "https://tpwd.texas.gov/regulations/outdoor-annual/fishing/freshwater-fishing/bag-length-limits",
+      "checked": "2026-11-23"
+    },
+    "not_found": [
+      "Texas spawn months",
+      "adult minimum preferred temp",
+      "time-of-day pattern",
+      "fall baits",
+      "activity pattern (time of day): no source supports one"
+    ]
+  },
+  {
+    "id": "hybrid_striped_bass",
+    "common_name": "Hybrid Striped Bass",
+    "scientific_name": "Morone saxatilis x Morone chrysops",
+    "water": "fresh",
+    "tpwd_profile_url": null,
+    "habitat_short": {
+      "text": "Hatchery cross stocked in Texas reservoirs; tolerates a wider range of conditions than pure striped bass.",
+      "source_url": "https://tpwd.texas.gov/fishboat/fish/management/hatcheries/fw_production.phtml",
+      "quote": "Hybrids are smaller than pure stripers, but they can tolerate a wider range of environmental conditions.",
+      "verified": true
+    },
+    "temp_preferred_f": {
+      "min": 77,
+      "max": 81,
+      "kind": "optimal growth (pond culture)",
+      "source_title": "SRAC Publication 303, Hybrid Striped Bass: Pond Production of Food Fish",
+      "note": "Original in Celsius: 25-27 C = 77-81 F. Same sheet: tolerates 39 F (4 C) to 84 F (29 C). Aquaculture source, not wild-fish preference.",
+      "source_url": "https://www.srac.msstate.edu/pdfs/Fact Sheets/303 Hybrid Striped Bass- Pond Production of Food Fish.pdf",
+      "quote": "maximum growth occurs between 25 and 27 °C",
+      "verified": true
+    },
+    "temp_spawn_f": null,
+    "spawn_months_tx": null,
+    "activity": {
+      "pattern": "crepuscular",
+      "detail": "Texas A&M AgriLife pond-management page (adapted from SRAC 300). TPWD Conroe page: caught most any time of year.",
+      "source_url": "https://fisheries.tamu.edu/pond-management/species/hybrid-striped-bass/",
+      "quote": "generally they are most active in periods of low light, such as dawn and dusk",
+      "verified": true
+    },
+    "tide": null,
+    "baits": [
+      {
+        "season": "all",
+        "bait": "Live shad",
+        "technique": "Suspended in the water column or on the bottom (Walter E. Long).",
+        "source_url": "https://tpwd.texas.gov/fishboat/fish/recreational/lakes/walter_long/",
+        "quote": "live shad fished suspended in the water column or on the bottom can be very effective.",
+        "verified": true
+      },
+      {
+        "season": "all",
+        "bait": "Bucktail jigs, jigging spoons",
+        "technique": "Downrigged / vertical (Walter E. Long).",
+        "source_url": "https://tpwd.texas.gov/fishboat/fish/recreational/lakes/walter_long/",
+        "quote": "Downrigging with bucktail jigs and using jigging spoons also can be effective.",
+        "verified": true
+      },
+      {
+        "season": "all",
+        "bait": "Trolled lures, jigging spoons, live shad",
+        "technique": "Open water (Lake Conroe).",
+        "source_url": "https://tpwd.texas.gov/fishboat/fish/recreational/lakes/conroe/",
+        "quote": "Most are taken by anglers trolling in open water areas or vertically jigging spoons or live shad.",
+        "verified": true
+      },
+      {
+        "season": "summer",
+        "bait": "Small topwater lures, leadhead curly-tail grubs",
+        "technique": "Cast to schooling fish chasing shad in summer heat (Walter E. Long).",
+        "source_url": "https://tpwd.texas.gov/fishboat/fish/recreational/lakes/walter_long/",
+        "quote": "Small topwater lures and leadhead curly tail grubs are effective for both species when they are schooling.",
+        "verified": true
+      },
+      {
+        "season": "summer",
+        "bait": "Topwater, jigging spoons, grubs, lipless crankbaits",
+        "technique": "Main-lake points and humps (Jim Chapman Lake).",
+        "source_url": "https://tpwd.texas.gov/fishboat/fish/recreational/lakes/cooper/",
+        "quote": "In summer and early fall, schooling white bass and hybrid striped bass concentrate around main-lake points and humps.",
+        "verified": true
+      }
+    ],
+    "regs_statewide": {
+      "daily_bag": "5 (striped and hybrid striped bass, any combination)",
+      "min_length_in": "18",
+      "notes": "Possession-limit exception at Lake Texoma (striped bass). Special regulations may apply to certain waterbodies; check TPWD exceptions page. Limits valid Sept 1, 2026 to Aug 31, 2027.",
+      "source_url": "https://tpwd.texas.gov/regulations/outdoor-annual/fishing/freshwater-fishing/bag-length-limits",
+      "checked": "2026-11-23"
+    },
+    "not_found": [
+      "tpwd_profile_url (no TPWD species page)",
+      "temp_spawn_f",
+      "spawn_months_tx (hatchery fish; see reproduction)",
+      "winter and fall baits"
+    ],
+    "tpwd_profile_note": "TPWD has no species page for hybrids; closest TPWD pages: White Bass in Central Texas (biology.phtml) and lake pages (Walter E. Long, Conroe, Jim Chapman).",
+    "reproduction": {
+      "text": "Texas hybrids are hatchery fish. TPWD says only white bass reproduce in significant numbers in Central Texas; hybrid populations depend on stocking. CONFLICT: Texas A&M page says hybrids are fertile; TPWD Jim Chapman page says they do not reproduce. For the engine: treat as stocked fish, no spawn window.",
+      "sources": [
+        {
+          "source_url": "https://tpwd.texas.gov/publications/pwdpubs/pwd_br_t3200_0022e/biology.phtml",
+          "quote": "Central Texas striped bass and hybrid striped bass populations are completely supported from stockings by Texas Parks and Wildlife Department fish hatcheries.",
+          "verified": true
+        },
+        {
+          "source_url": "https://tpwd.texas.gov/fishboat/fish/recreational/lakes/cooper/",
+          "quote": "because hybrid striped bass do not reproduce, they are stocked annually by TPWD to maintain the fishery",
+          "verified": true
+        },
+        {
+          "source_url": "https://fisheries.tamu.edu/pond-management/species/hybrid-striped-bass/",
+          "quote": "they are fertile, unlike most other hybrid species",
+          "verified": true
+        }
+      ]
+    }
+  },
+  {
+    "id": "crappie",
+    "common_name": "Crappie (White and Black)",
+    "scientific_name": "Pomoxis annularis; Pomoxis nigromaculatus",
+    "water": "fresh",
+    "tpwd_profile_url": "https://tpwd.texas.gov/huntwild/wild/species/wcp/",
+    "habitat_short": {
+      "text": "Schools around submerged trees, docks and other structure; black crappie common in clear east Texas waters.",
+      "source_url": "https://tpwd.texas.gov/huntwild/wild/species/wcp/",
+      "quote": "usually around submerged trees, boat docks, or other submerged structures.",
+      "verified": true
+    },
+    "temp_preferred_f": null,
+    "temp_spawn_f": {
+      "min": 60,
+      "max": 72,
+      "note": "TPWD brochure \"Crappie & Crappie Fishing\"; begins at 60 F, peaks 68-72 F.",
+      "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_br_t3200_178.pdf",
+      "quote": "beginning when water temperatures reach 60°F and peaking between 68° and 72°F",
+      "verified": true
+    },
+    "spawn_months_tx": {
+      "months": [
+        3,
+        4,
+        5
+      ],
+      "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_br_t3200_178.pdf",
+      "quote": "spawning takes place from mid-March to mid-May",
+      "verified": true,
+      "label": "mid-March to mid-May"
+    },
+    "activity": {
+      "pattern": "mixed",
+      "detail": "TPWD: in summer crappie sit just above the thermocline and night fishing under a light is highly productive; in winter fish are hard to locate and bite only at certain times. No dawn/dusk statement in TPWD.",
+      "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_br_t3200_178.pdf",
+      "quote": "During this time, night fishing is highly productive.",
+      "verified": true
+    },
+    "tide": null,
+    "baits": [
+      {
+        "season": "spring",
+        "bait": "Medium-size minnows; small jigs",
+        "technique": "Fish close to cover (docks, brush, timber) and slowly; TPWD: best live bait is a medium-size minnow.",
+        "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_br_t3200_178.pdf",
+        "quote": "From mid-February to mid-June, they are generally found in less than 15 feet of water in coves, along submerged creek channels",
+        "verified": true
+      },
+      {
+        "season": "all",
+        "bait": "Jigs and small spinners 1/32-1/8 oz",
+        "technique": "Marabou, hair and plastic jigs all produce.",
+        "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_br_t3200_178.pdf",
+        "quote": "Best artificial lures include various types of jigs and small spinners ranging from 1/32 to 1/8 ounce.",
+        "verified": true
+      },
+      {
+        "season": "summer",
+        "bait": "Live minnows or small jigs",
+        "technique": "Night fishing with a light over 15-25 ft near coves, channels, timber (TPWD).",
+        "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_br_t3200_178.pdf",
+        "quote": "Fish near the bottom with live minnows or small jigs.",
+        "verified": true
+      },
+      {
+        "season": "fall",
+        "bait": "Minnows, jigs",
+        "technique": "Schooling in large numbers (Lake Texoma).",
+        "source_url": "https://tpwd.texas.gov/fishboat/fish/recreational/lakes/texoma/",
+        "quote": "Crappie fishing is best in fall and winter, when fish tend to school in large numbers",
+        "verified": true
+      },
+      {
+        "season": "winter",
+        "bait": "Minnows/jigs at lighted, baited piers",
+        "technique": "Fish suspended 20-30 ft over structure and bite only at certain times (TPWD).",
+        "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_br_t3200_178.pdf",
+        "quote": "Some excellent winter fishing is available around lighted and baited fishing piers.",
+        "verified": true
+      }
+    ],
+    "regs_statewide": {
+      "daily_bag": "25 (white and black, any combination)",
+      "min_length_in": "10",
+      "notes": "Special regulations may apply to certain waterbodies; check TPWD exceptions page. Limits valid Sept 1, 2026 to Aug 31, 2027.",
+      "source_url": "https://tpwd.texas.gov/regulations/outdoor-annual/fishing/freshwater-fishing/bag-length-limits",
+      "checked": "2026-11-23"
+    },
+    "not_found": [
+      "temp_preferred_f (no agency/extension source opened; HSI only says optimum growth near upper end of warm-water range)",
+      "dawn/dusk statement for crappie (MN DNR page blocked, 403)"
+    ]
+  },
+  {
+    "id": "channel_catfish",
+    "common_name": "Channel Catfish",
+    "scientific_name": "Ictalurus punctatus",
+    "water": "fresh",
+    "tpwd_profile_url": "https://tpwd.texas.gov/huntwild/wild/species/ccf/",
+    "habitat_short": {
+      "text": "Streams, rivers, lakes, ponds and reservoirs, even shallow water; most abundant in large streams with low or moderate current.",
+      "source_url": "https://tpwd.texas.gov/huntwild/wild/species/ccf/",
+      "quote": "Channel catfish are most abundant in large streams with low or moderate current.",
+      "verified": true
+    },
+    "temp_preferred_f": {
+      "min": 80,
+      "max": 85,
+      "kind": "optimal growth (pond culture)",
+      "source_title": "Texas A&M AgriLife, Aquaculture/Catfish",
+      "note": "SRAC 180 says about 85 F (29.4 C) for optimum growth.",
+      "source_url_2": "https://www.srac.msstate.edu/pdfs/Fact Sheets/180 Channel Catfish- Life History and Biology.pdf",
+      "quote_2": "optimum growth occurring at temperatures of about 85° F (29.4° C)",
+      "source_url": "https://fisheries.tamu.edu/aquaculture/catfish/",
+      "quote": "80 to 85 degrees F is the optimum temperature",
+      "verified": true,
+      "verified_2": true,
+      "verified_2_mode": "ocr-spacing-tolerant"
+    },
+    "temp_spawn_f": {
+      "min": 75,
+      "max": 85,
+      "note": "TPWD: spawn in late spring or summer when water reaches about 75 F.",
+      "source_url_2": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_br_t3200_0236.pdf",
+      "quote_2": "Catfish spawn in late spring or summer when the water temperature reaches about 75°F.",
+      "source_url": "https://www.srac.msstate.edu/pdfs/Fact Sheets/180 Channel Catfish- Life History and Biology.pdf",
+      "quote": "spawn when the water temperature is between 75° and 85° F (23° to 30° C)",
+      "verified": true,
+      "verified_2": true
+    },
+    "spawn_months_tx": {
+      "months": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "note": "Range for wild populations generally (SRAC), not Texas-specific. TPWD: late spring or early summer, no months. Peak likely May-Jul [E].",
+      "source_url": "https://www.srac.msstate.edu/pdfs/Fact Sheets/180 Channel Catfish- Life History and Biology.pdf",
+      "quote": "wild populations of catfish may spawn as early as late February or as late as August depending on the location",
+      "verified": true,
+      "label": "late Feb to Aug in the wild, depending on location (SRAC)"
+    },
+    "activity": {
+      "pattern": "nocturnal",
+      "detail": "Dusk through night; SRAC 180: most movement and feeding just after sunset and just before sunrise; USFWS HSI: feeding occurs primarily at night. Fish hold in deep holes by day.",
+      "source_url_2": "https://www.srac.msstate.edu/pdfs/Fact Sheets/180 Channel Catfish- Life History and Biology.pdf",
+      "quote_2": "Most movement and feeding activity occurs at night just after sunset and just before sunrise.",
+      "source_url": "https://fisheries.tamu.edu/pond-management/species/channel-catfish/",
+      "quote": "Most feeding and activity occurs at dusk or night.",
+      "verified": true,
+      "verified_2": true,
+      "verified_2_mode": "ocr-spacing-tolerant"
+    },
+    "tide": null,
+    "baits": [
+      {
+        "season": "all",
+        "bait": "Liver, worms, grasshoppers, shrimp, chicken, corn, hotdogs, cheese; dough, dip and punch baits",
+        "technique": "Soured grain as chum; anchor or drift large flats.",
+        "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_br_t3200_0236.pdf",
+        "quote": "Channel catfish can be captured on a variety of natural baits including liver, worms, grasshoppers, shrimp, chicken, corn, hotdogs and cheese.",
+        "verified": true
+      },
+      {
+        "season": "spring",
+        "bait": "Natural or prepared baits",
+        "technique": "Most popular season.",
+        "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_br_t3200_0236.pdf",
+        "quote": "The most popular time to fish for channel cats is spring and early summer, but they can be caught any time of year.",
+        "verified": true
+      },
+      {
+        "season": "fall",
+        "bait": "Natural baits near creek mouths after rain",
+        "technique": "Lake Texoma, spring and fall.",
+        "source_url": "https://tpwd.texas.gov/fishboat/fish/recreational/lakes/texoma/",
+        "quote": "Channel catfish are taken near the mouths of creeks after a rain, especially in spring and fall.",
+        "verified": true
+      }
+    ],
+    "regs_statewide": {
+      "daily_bag": "25 (channel, blue and hybrid catfish combined; only 10 may be 20 in or longer)",
+      "min_length_in": "none",
+      "notes": "The 2015 TPWD brochure said 12 in minimum; the current Outdoor Annual shows none. Community Fishing Lakes were 5/day per the 2015 brochure. Special regulations may apply to certain waterbodies; check TPWD exceptions page. Limits valid Sept 1, 2026 to Aug 31, 2027.",
+      "source_url": "https://tpwd.texas.gov/regulations/outdoor-annual/fishing/freshwater-fishing/bag-length-limits",
+      "checked": "2026-11-23"
+    },
+    "not_found": [
+      "winter baits"
+    ]
+  },
+  {
+    "id": "blue_catfish",
+    "common_name": "Blue Catfish",
+    "scientific_name": "Ictalurus furcatus",
+    "water": "fresh",
+    "tpwd_profile_url": "https://tpwd.texas.gov/huntwild/wild/species/blc/",
+    "habitat_short": {
+      "text": "Similar to channel catfish but grows larger and tends toward open water.",
+      "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_br_t3200_0236.pdf",
+      "quote": "Blue catfish (Ictalurus furcatus) are similar in appearance and habit, but they grow larger than channel catfish and tend more toward open water.",
+      "verified": true
+    },
+    "temp_preferred_f": null,
+    "temp_spawn_f": {
+      "min": 75,
+      "max": null,
+      "note": "Generic catfish statement; TPWD blue catfish page: \"The spawning behavior of blue catfish appears to be similar to that of channel catfish.\"",
+      "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_br_t3200_0236.pdf",
+      "quote": "Catfish spawn in late spring or summer when the water temperature reaches about 75°F.",
+      "verified": true
+    },
+    "spawn_months_tx": null,
+    "activity": null,
+    "tide": null,
+    "baits": [
+      {
+        "season": "winter",
+        "bait": "Live or dead minnows or shad",
+        "technique": "Fish edges of creek channels or deep holes.",
+        "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_br_t3200_0236.pdf",
+        "quote": "Blue catfish are most often caught on live or dead minnows or shad. Winter is the best time to fish for big blues",
+        "verified": true
+      },
+      {
+        "season": "spring",
+        "bait": "Minnows or shad",
+        "technique": "Good for numbers of blues.",
+        "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_br_t3200_0236.pdf",
+        "quote": "but spring is also very good for numbers of blues.",
+        "verified": true
+      },
+      {
+        "season": "all",
+        "bait": "Live gizzard shad",
+        "technique": "Juglining (Lake Texoma).",
+        "source_url": "https://tpwd.texas.gov/fishboat/fish/recreational/lakes/texoma/",
+        "quote": "Try juglining with live gizzard shad for bait.",
+        "verified": true
+      }
+    ],
+    "regs_statewide": {
+      "daily_bag": "25 (channel, blue and hybrid catfish combined; only 10 may be 20 in or longer)",
+      "min_length_in": "none",
+      "notes": "See channel catfish note. Special regulations may apply to certain waterbodies; check TPWD exceptions page. Limits valid Sept 1, 2026 to Aug 31, 2027.",
+      "source_url": "https://tpwd.texas.gov/regulations/outdoor-annual/fishing/freshwater-fishing/bag-length-limits",
+      "checked": "2026-11-23"
+    },
+    "not_found": [
+      "spawn_months_tx (TPWD: similar to channel catfish, no months)",
+      "temp_preferred_f",
+      "activity (no blue-specific source; channel catfish sources not transferable)",
+      "summer and fall baits"
+    ],
+    "habitat_note": {
+      "source_url": "https://tpwd.texas.gov/huntwild/wild/species/blc/",
+      "quote": "They tend to move upstream in the summer in search of cooler temperatures, and downstream in the winter in order to find warmer water.",
+      "verified": true
+    }
+  },
+  {
+    "id": "flathead_catfish",
+    "common_name": "Flathead Catfish",
+    "scientific_name": "Pylodictis olivaris",
+    "water": "fresh",
+    "tpwd_profile_url": "https://tpwd.texas.gov/huntwild/wild/species/catfish/",
+    "habitat_short": {
+      "text": "Solitary; shelters near banks of rivers and lakes, forages near woody cover and rocky areas.",
+      "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_br_t3200_0236.pdf",
+      "quote": "Flathead catfish are solitary creatures, generally foraging at night near woody cover and rocky areas.",
+      "verified": true
+    },
+    "temp_preferred_f": {
+      "min": 76,
+      "max": 89,
+      "kind": "preferred (field telemetry, summer, Buffalo Springs Lake, West Texas)",
+      "source_title": "Weller & Winter, Temperature selection by flathead catfish in a west Texas reservoir, Proc. SEAFWA 53:42-49",
+      "note": "Original in Celsius: 24.5-31.5 C = 76-89 F. Same paper: upper avoidance temperature 32.0 C (90 F) per Gammon 1973.",
+      "source_url": "https://seafwa.org/sites/default/files/journal-articles/WELLER-42-49.pdf",
+      "quote": "flathead catfish were found in the warmest lake waters (24.5-31.5 C)",
+      "verified": true
+    },
+    "temp_spawn_f": {
+      "min": 75,
+      "max": 80,
+      "source_url": "https://tpwd.texas.gov/huntwild/wild/species/catfish/",
+      "quote": "Spawning season is from late May through August, when the water temperature is between 75° and 80° F.",
+      "verified": true
+    },
+    "spawn_months_tx": {
+      "months": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "source_url": "https://tpwd.texas.gov/huntwild/wild/species/catfish/",
+      "quote": "Spawning season is from late May through August, when the water temperature is between 75° and 80° F.",
+      "verified": true,
+      "label": "late May through August"
+    },
+    "activity": {
+      "pattern": "nocturnal",
+      "detail": "Deep pools by day; forage at night near woody cover and rocky areas (TPWD brochure); trotlines left overnight.",
+      "source_url_2": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_br_t3200_0236.pdf",
+      "quote_2": "Flathead catfish are solitary creatures, generally foraging at night near woody cover and rocky areas.",
+      "source_url": "https://tpwd.texas.gov/huntwild/wild/species/catfish/",
+      "quote": "At night, they move into shallow areas to feed.",
+      "verified": true,
+      "verified_2": true
+    },
+    "tide": null,
+    "baits": [
+      {
+        "season": "all",
+        "bait": "Live fish",
+        "technique": "Trotlines or throwlines left overnight.",
+        "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_br_t3200_0236.pdf",
+        "quote": "the most effective methods are trotlines or throwlines baited with live fish and left overnight.",
+        "verified": true
+      },
+      {
+        "season": "all",
+        "bait": "Live sunfish",
+        "technique": "Trotlining (Lake Texoma).",
+        "source_url": "https://tpwd.texas.gov/fishboat/fish/recreational/lakes/texoma/",
+        "quote": "most often by trotlining with live sunfish for bait",
+        "verified": true
+      }
+    ],
+    "regs_statewide": {
+      "daily_bag": "5",
+      "min_length_in": "18",
+      "notes": "Statewide per TPWD Outdoor Annual. Special regulations may apply to certain waterbodies; check TPWD exceptions page. Limits valid Sept 1, 2026 to Aug 31, 2027.",
+      "source_url": "https://tpwd.texas.gov/regulations/outdoor-annual/fishing/freshwater-fishing/bag-length-limits",
+      "checked": "2026-11-23"
+    },
+    "not_found": [
+      "seasonal baits"
+    ]
+  },
+  {
+    "id": "bluegill",
+    "common_name": "Bluegill",
+    "scientific_name": "Lepomis macrochirus",
+    "water": "fresh",
+    "tpwd_profile_url": "https://tpwd.texas.gov/huntwild/wild/species/bgl/",
+    "habitat_short": {
+      "text": "Vegetation and sunken trees of shallow backwaters of rivers, lakes and ponds.",
+      "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_lf_k0700_0692.pdf",
+      "quote": "Vegetation and sunken trees of shallow backwater rivers, lakes and ponds.",
+      "verified": true
+    },
+    "temp_preferred_f": {
+      "min": 86,
+      "max": 86,
+      "kind": "optimal growth (lab, juveniles, 20-36 C tested)",
+      "source_title": "Lemke 1977, Optimum temperature for growth of juvenile bluegills, Progressive Fish-Culturist (OSTI abstract)",
+      "note": "Original 30 C = 86 F. Only the 20 C and 36 C groups differed significantly from 30 C.",
+      "source_url": "https://www.osti.gov/biblio/7302763",
+      "quote": "The highest specific growth rate occurred at 30/sup 0/C (2.35%/day)",
+      "verified": true
+    },
+    "temp_spawn_f": {
+      "min": 70,
+      "max": null,
+      "source_url": "https://tpwd.texas.gov/huntwild/wild/species/bgl/",
+      "quote": "Bluegills begin spawning when water temperatures reach about 70°F.",
+      "verified": true
+    },
+    "spawn_months_tx": {
+      "months": [
+        5,
+        6
+      ],
+      "source_url": "https://tpwd.texas.gov/huntwild/wild/species/bgl/",
+      "quote": "Spawning may peak in May or June, but continues until water temperatures cool in the fall.",
+      "verified": true,
+      "label": "peak May or June, continues until the water cools in fall"
+    },
+    "activity": {
+      "pattern": "crepuscular",
+      "detail": "Texas A&M AgriLife; Wisconsin DNR says the same (\"feed primarily at dawn and dusk, though they will feed throughout the day\").",
+      "source_url": "https://fisheries.tamu.edu/pond-management/species/bluegill/",
+      "quote": "Bluegills feed primarily under low light conditions at dawn and dusk, but are opportunistic and will feed whenever a meal presents itself.",
+      "verified": true
+    },
+    "tide": null,
+    "baits": [
+      {
+        "season": "all",
+        "bait": "Worms, crickets, mealworms, small jigs, spinners, miniature insect crankbaits, flies, poppers",
+        "technique": "TPWD Angler Education list.",
+        "source_url": "https://tpwd.texas.gov/publications/pwdpubs/media/pwd_lf_k0700_0692.pdf",
+        "quote": "Worms, crickets, mealworms, small jigs, spinners, miniature insect crankbaits or flyfishing tackle (flies, poppers, worm imitations).",
+        "verified": true
+      },
+      {
+        "season": "winter",
+        "bait": "Small baits",
+        "technique": "Bluegill keep feeding in cold water.",
+        "source_url": "https://tpwd.texas.gov/fishboat/fish/didyouknow/inland/managepond.phtml",
+        "quote": "Bluegill will feed at temperatures down into the 40s, while other fish wait until the temperature reaches the 50s.",
+        "verified": true
+      }
+    ],
+    "regs_statewide": {
+      "daily_bag": "No limit",
+      "min_length_in": "none",
+      "notes": "Applies to bluegill, redear and similar sunfish. Special regulations may apply to certain waterbodies; check TPWD exceptions page. Limits valid Sept 1, 2026 to Aug 31, 2027.",
+      "source_url": "https://tpwd.texas.gov/regulations/outdoor-annual/fishing/freshwater-fishing/bag-length-limits",
+      "checked": "2026-11-23"
+    },
+    "not_found": [
+      "seasonal baits beyond general list"
+    ],
+    "temp_feeding_floor_f": {
+      "min": 40,
+      "max": null,
+      "kind": "feeding (still feeds down into the 40s)",
+      "source_url": "https://tpwd.texas.gov/fishboat/fish/didyouknow/inland/managepond.phtml",
+      "source_title": "TPWD: Managing A Pond",
+      "quote": "Bluegill will feed at temperatures down into the 40s, while other fish wait until the temperature reaches the 50s.",
+      "verified": true
+    }
+  }
+]
