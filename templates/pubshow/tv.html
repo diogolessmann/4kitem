@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PUBSHOW TV — {{ b.nome }}</title>
-<!-- 24/10/26 (momentos no telão, visual): Anton + Inter das 3 cenas, pedidas quando a TV ABRE e sem travar a tela
-     (media=print até a folha chegar). Sem internet, a cena roda na hora com a reserva (Impact/Arial). -->
+{# 24/10/26 (momentos no telão, visual): Anton + Inter das 3 cenas, pedidas quando a TV ABRE e sem travar a tela
+     (media=print até a folha chegar). Sem internet, a cena roda na hora com a reserva (Impact/Arial). #}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link id="pc-fontes" rel="stylesheet" media="print" onload="this.media='all';if(window._pcFontes)_pcFontes()"
@@ -14,15 +14,15 @@
   *{margin:0;padding:0;box-sizing:border-box}
   body{background:#000;color:#fff;font-family:'Segoe UI',sans-serif;overflow:hidden;height:100vh;width:100vw}
 
-  /* Player */
+{# Player #}
   #player-wrap{position:fixed;inset:0;z-index:1}
   #yt-player{width:100%;height:100%;border:none;display:block}
 
-  /* Now Playing bar */
+{# Now Playing bar #}
   #now-playing{
     position:fixed;bottom:0;left:0;right:0;z-index:10;
     background:linear-gradient(transparent,rgba(0,0,0,.9));
-    padding:60px 400px 24px 32px;   /* 400px à direita = lugar do QR fixo (16/10/26, TV-21) */
+    padding:60px 400px 24px 32px;{# 400px à direita = lugar do QR fixo (16/10/26, TV-21) #}
     display:flex;align-items:flex-end;justify-content:space-between;
     transition:opacity .6s;
   }
@@ -38,7 +38,7 @@
   .np-titulo{font-size:20px;font-weight:800;text-shadow:0 2px 12px rgba(0,0,0,.9)}
   .np-artista{font-size:14px;color:rgba(255,255,255,.65);margin-top:3px}
 
-  /* FILA — próxima pedido */
+{# FILA — próxima pedido #}
   #fila-badge{
     position:fixed;top:20px;left:20px;z-index:50;
     background:rgba(0,0,0,.8);border:1px solid rgba(255,255,255,.2);
@@ -53,9 +53,9 @@
   .fila-dot{width:8px;height:8px;border-radius:50%;background:#f59e0b;animation:blink 1s ease-in-out infinite}
   @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
 
-  /* PRÓXIMO — aparece 20s antes do fim do vídeo (acima do QR fixo) */
+{# PRÓXIMO — aparece 20s antes do fim do vídeo (acima do QR fixo) #}
   #proximo-card{
-    position:fixed;bottom:calc(clamp(72px,12vh,140px) + 56px);right:24px;z-index:50;   /* sempre acima do QR fixo (16/10/26) */
+    position:fixed;bottom:calc(clamp(72px,12vh,140px) + 56px);right:24px;z-index:50;{# sempre acima do QR fixo (16/10/26) #}
     background:rgba(0,0,0,.85);border:2px solid #f59e0b;
     border-radius:16px;padding:14px 20px;max-width:280px;
     display:none;animation:slideIn .4s ease;
@@ -142,12 +142,12 @@
   .overlay-bar{height:.6vh;border-radius:.3vh;background:var(--overlay-cor,#ec4899);margin-top:1.6vh;animation:shrink linear forwards}
   @keyframes shrink{from{width:100%}to{width:0}}
 
-  /* Confetes */
+{# Confetes #}
   .confete{position:fixed;top:-10px;border-radius:50%;animation:cair linear forwards;pointer-events:none;z-index:200}
   @keyframes cair{to{transform:translateY(110vh) rotate(720deg);opacity:0}}
 
-  /* Canais selector */
-  /* ── Seletor de canal — abas de nicho ──────────────────────────────────── */
+{# Canais selector
+ ── Seletor de canal — abas de nicho ──────────────────────────────────── #}
   #canal-selector{
     position:fixed;top:20px;right:20px;z-index:50;
     display:flex;flex-direction:column;gap:0;
@@ -158,7 +158,7 @@
   }
   #canal-selector:hover,#canal-selector.visible{opacity:1}
 
-  /* Abas de nicho (topo do seletor) */
+{# Abas de nicho (topo do seletor) #}
   #canal-tabs{
     display:flex;border-bottom:1px solid rgba(255,255,255,.08);
     overflow-x:auto;scrollbar-width:none;
@@ -172,7 +172,7 @@
   .canal-tab.ativo{color:#fff;border-bottom-color:var(--tab-cor,#ef4444)}
   .canal-tab:hover{color:rgba(255,255,255,.85)}
 
-  /* Lista de canais do nicho ativo */
+{# Lista de canais do nicho ativo #}
   #canal-lista{
     display:flex;flex-direction:column;gap:2px;padding:8px;
     max-height:70vh;overflow-y:auto;scrollbar-width:thin;
@@ -187,13 +187,13 @@
   .canal-btn:hover{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.35)}
   .canal-btn.ativo{background:rgba(255,255,255,.18);border-color:var(--canal-cor,#ef4444);color:#fff}
   .canal-btn.mix{border-style:dashed;font-size:11px;opacity:.85}
-  /* label de grupo dentro da lista (sub-separador se necessário) */
+{# label de grupo dentro da lista (sub-separador se necessário) #}
   .canal-grupo-label{
     font-size:9px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;
     color:rgba(255,255,255,.25);padding:4px 4px 2px;
   }
 
-  /* Botão fullscreen — só aparece com o mouse mexendo, ABAIXO do selo da fila (16/10/26, TV-21) */
+{# Botão fullscreen — só aparece com o mouse mexendo, ABAIXO do selo da fila (16/10/26, TV-21) #}
   #fs-btn{
     position:fixed;top:76px;left:20px;z-index:50;
     background:rgba(0,0,0,.75);border:1px solid rgba(255,255,255,.35);
@@ -206,7 +206,7 @@
   #fs-btn.visible{opacity:.85;pointer-events:auto}
   #fs-btn.visible:hover{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.7);opacity:1;transform:scale(1.05)}
 
-  /* ── Ligar a TV (16/10/26, B7): 1 toque = som + tela cheia + some o cursor ─── */
+{# ── Ligar a TV (16/10/26, B7): 1 toque = som + tela cheia + some o cursor ─── #}
   #ligar-tv{
     position:fixed;inset:0;z-index:300;
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;
@@ -220,7 +220,7 @@
     animation:popIn .4s cubic-bezier(.34,1.56,.64,1);
   }
   .ligar-sub{font-size:clamp(14px,1.6vw,22px);color:rgba(255,255,255,.75);text-align:center;line-height:1.5}
-  /* Voltou sem som (recarga, queda de luz): aviso PEQUENO; o vídeo e os momentos seguem visíveis */
+{# Voltou sem som (recarga, queda de luz): aviso PEQUENO; o vídeo e os momentos seguem visíveis #}
   #sem-som{
     position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:300;
     display:none;align-items:center;gap:8px;white-space:nowrap;
@@ -228,10 +228,10 @@
     padding:10px 22px;font-size:17px;font-weight:800;color:#fff;cursor:pointer;
   }
   #sem-som.show{display:flex}
-  body.com-promo #sem-som{top:118px}   /* 16/10/26 (V-S5-06): desce pra não cobrir a Promoção Relâmpago */
+  body.com-promo #sem-som{top:118px}{# 16/10/26 (V-S5-06): desce pra não cobrir a Promoção Relâmpago #}
   html.sem-cursor, html.sem-cursor *{cursor:none !important}
 
-  /* ── Promoção Relâmpago — countdown na TV ───────────────────────────────── */
+{# ── Promoção Relâmpago — countdown na TV ───────────────────────────────── #}
   #promo-relampago{
     position:fixed;top:0;left:0;right:0;z-index:80;
     background:linear-gradient(135deg,#7c2d12,#1c0a00);
@@ -272,7 +272,7 @@
   body.fila-on:not(.modo-fundo) .promo-timer{font-size:calc(7*var(--pk))}
   body.fila-on:not(.modo-fundo) #esq.on~#promo-relampago{visibility:hidden}
 
-  /* ── Slide de propaganda do bar ─────────────────────────────────────────── */
+{# ── Slide de propaganda do bar ─────────────────────────────────────────── #}
   #slide-propaganda{
     position:fixed;inset:0;z-index:90;
     display:none;align-items:center;justify-content:center;
@@ -291,7 +291,7 @@
   .slide-titulo{font-size:6vh;font-weight:900;color:var(--slide-cor,#ef4444);letter-spacing:-.15vh;line-height:1.1;margin-bottom:1.2vh}
   .slide-sub{font-size:3.6vh;color:rgba(255,255,255,.75);line-height:1.4;margin-bottom:2vh}
   .slide-bar{height:4px;border-radius:2px;background:var(--slide-cor,#ef4444);margin-top:20px;animation:shrink linear forwards}
-  /* Slide de imagem */
+{# Slide de imagem #}
   #slide-img-box{display:none;flex-direction:column;align-items:center;gap:16px;animation:popIn .5s cubic-bezier(.34,1.56,.64,1)}
   #slide-img-box img{max-height:82vh;max-width:92vw;border-radius:20px;object-fit:contain;box-shadow:0 0 80px rgba(0,0,0,.8)}
   #slide-img-box .slide-bar{width:min(600px,90vw)}
@@ -299,7 +299,7 @@
   body.fila-on:not(.modo-fundo) #slide-propaganda{right:var(--col-w)}
   body.fila-on:not(.modo-fundo) #slide-img-box img{max-width:calc((100vw - var(--col-w))*.92)}
 
-  /* QR fixo no canto INFERIOR DIREITO: a faixa "tocando agora" fica à esquerda, sem sobrepor (16/10/26, TV-21) */
+{# QR fixo no canto INFERIOR DIREITO: a faixa "tocando agora" fica à esquerda, sem sobrepor (16/10/26, TV-21) #}
   #qr-fixo{
     position:fixed;right:18px;bottom:18px;z-index:40;
     display:flex;align-items:center;gap:10px;max-width:360px;
@@ -308,8 +308,8 @@
     transition:transform .5s;
   }
   #qr-fixo img{width:clamp(72px,12vh,140px)!important;height:clamp(72px,12vh,140px)!important}
-  /* 16/10/26 (crítico C1): de tempos em tempos o QR cresce (≥ 18% da altura) — o de 70 px numa TV de 50"
-     tem ~6 cm e, da mesa (3-4 m), não escaneia. Grande por 20 s a cada 4 min, nunca por cima de um momento. */
+{# 16/10/26 (crítico C1): de tempos em tempos o QR cresce (≥ 18% da altura) — o de 70 px numa TV de 50"
+     tem ~6 cm e, da mesa (3-4 m), não escaneia. Grande por 20 s a cada 4 min, nunca por cima de um momento. #}
   #qr-fixo.grande{max-width:none;padding:14px 22px 14px 14px;gap:18px;border-color:rgba(74,222,128,.5)}
   #qr-fixo.grande img{width:26vh!important;height:26vh!important}
   #qr-fixo.grande .qr-txt1{font-size:3.4vh!important}
@@ -327,11 +327,11 @@
   body.modo-fundo #qr-fixo{top:18px;bottom:auto}
   body.modo-fundo.com-promo #qr-fixo{top:118px}
   body.modo-fundo #proximo-card{bottom:calc(6vh + max(18.8vw, 270px) + 64px)}
-  body.modo-fundo{--fora-janela:calc(3vw + max(33.4vw, 480px) + 2vw)}   /* da borda direita até a esquerda da janela */
+  body.modo-fundo{--fora-janela:calc(3vw + max(33.4vw, 480px) + 2vw)}{# da borda direita até a esquerda da janela #}
   body.modo-fundo #now-playing{right:var(--fora-janela);padding-right:32px}
   body.modo-fundo #overlay, body.modo-fundo #slide-propaganda, body.modo-fundo #ligar-tv{right:var(--fora-janela)}
   body.modo-fundo #slide-img-box img{max-width:calc((100vw - var(--fora-janela)) * .92)}
-  body.modo-fundo #canal-lista{max-height:calc(94vh - max(18.8vw, 270px) - 130px)}   /* o seletor acaba acima do rótulo */
+  body.modo-fundo #canal-lista{max-height:calc(94vh - max(18.8vw, 270px) - 130px)}{# o seletor acaba acima do rótulo #}
 
   /* ── 🎶 FILA NA TV + MOLDURA (22/10/26, pedido do Garage; spec do juiz + adendo da moldura) ────────────────────────
      "o cliente vê que vai demorar e pede pra pular". Regra do YouTube: nada na frente do player. Com o servidor novo
@@ -364,12 +364,12 @@
   .ft-item.vez .ft-tit{color:#000}
   .ft-item.vez .ft-num{background:#000;color:#fbbf24}
   .ft-item.novo{animation:ftEntra .4s ease}
-  /* espaço curto (modo fundo + promo em 720p): com 1 linha só e ainda sem caber, aperta os espaços (não as letras) */
+{# espaço curto (modo fundo + promo em 720p): com 1 linha só e ainda sem caber, aperta os espaços (não as letras) #}
   #fila-tv.apertado{gap:.5vh;padding:1vh 1.4vh}
   #fila-tv.apertado .ft-gratis{padding-top:.5vh}
   #fila-tv.apertado .ft-tempo{height:4.6vh}
   .ft-mais{font-weight:800;font-size:3.6vh;line-height:1.2;color:rgba(255,255,255,.85);padding-left:6.4vh;flex:none}
-  /* rodapé: sem espaço pra uma linha, os minutos descem pra 2ª linha à direita (nada é cortado) */
+{# rodapé: sem espaço pra uma linha, os minutos descem pra 2ª linha à direita (nada é cortado) #}
   .ft-gratis{display:flex;flex-wrap:wrap;justify-content:space-between;column-gap:1vh;font-weight:800;font-size:3.6vh;line-height:1.2;
     color:#fff;flex:none;border-top:1px solid rgba(255,255,255,.25);padding-top:.6vh;white-space:nowrap}
   .ft-furar{display:flex;flex-wrap:wrap;justify-content:space-between;column-gap:1vh;font-weight:900;font-size:4.2vh;line-height:1.1;
@@ -386,7 +386,7 @@
   body.fila-on:not(.com-fila) #qr-fixo #qr-preco{font-weight:900!important;font-size:5vh!important;line-height:1.1!important;color:#4ade80!important}
   body.com-fila #qr-fixo{opacity:0;pointer-events:none}
 
-  /* MOLDURA (fora do modo fundo): o player encolhe; a coluna é o lugar de tudo (nada por cima do clipe) */
+{# MOLDURA (fora do modo fundo): o player encolhe; a coluna é o lugar de tudo (nada por cima do clipe) #}
   body.fila-on:not(.modo-fundo) #player-wrap{right:var(--col-w);background:#000}
   body.fila-on:not(.modo-fundo) #coluna-tv{display:flex;flex-direction:column;gap:1.2vh;position:fixed;top:0;right:0;
     bottom:0;width:var(--col-w);z-index:30;background:#000;padding:1.4vh;overflow:hidden}
@@ -408,6 +408,8 @@
     font-size:min(7vh,calc((var(--tarja) - 6vh)/2.4))}
   #esq.ch div{max-width:96%;white-space:pre-line;text-align:center}
   #esq.ouro div{background:linear-gradient(90deg,#92400e,#d97706);border-color:#fde68a}
+  #esq.super div{background:linear-gradient(90deg,#6b21a8,#db2777);border-color:#f9a8d4;text-shadow:0 0 2vh #f472b6;
+    box-shadow:0 2vh 3vh -1vh rgba(236,72,153,.75)}
   /* 06/11/26 (Diogo, prints do Garage: cada música que entra escondia o QR; "faz os 2"): com fila ele fica compacto no pé */
   body.fila-on:not(.modo-fundo).com-fila #qr-fixo{display:flex;flex-direction:row;align-items:center;gap:1vh;padding:.8vh;
     max-width:none;opacity:1;pointer-events:auto;background:rgba(0,0,0,.8);border:2px solid rgba(74,222,128,.6);
@@ -418,13 +420,13 @@
   body.fila-on:not(.modo-fundo):not(.com-fila) #qr-fixo{display:flex;margin-top:auto}
   body.fila-on:not(.modo-fundo) #sem-som.show{display:flex;align-self:center}
   body.fila-on:not(.modo-fundo) #sem-som{font-size:3.2vh;padding:1vh 2vh;gap:1vh;white-space:normal;text-align:center;border-radius:2vh}
-  /* "Tela cheia" (mouse / 8 s quando o som liga sozinho): no canto de cima da coluna, nunca sobre o player */
+{# "Tela cheia" (mouse / 8 s quando o som liga sozinho): no canto de cima da coluna, nunca sobre o player #}
   body.fila-on:not(.modo-fundo) #fs-btn{top:1.2vh;left:auto;right:1.2vh;z-index:35}
-  /* 23/10/26 (print do Garage): o seletor de canal só aparece com o mouse mexendo (3 s). Com o cursor parado em cima
-     ele ficava aceso para sempre por cima do nome e da barra do tempo; invisível também não fica na frente de nada. */
+{# 23/10/26 (print do Garage): o seletor de canal só aparece com o mouse mexendo (3 s). Com o cursor parado em cima
+     ele ficava aceso para sempre por cima do nome e da barra do tempo; invisível também não fica na frente de nada. #}
   body.fila-on:not(.modo-fundo) #canal-selector:not(.visible),
   body.fila-on:not(.modo-fundo) #canal-selector:not(.visible) *{visibility:hidden!important}
-  /* 23/10/26 (Diogo: "ele tinha o load da música"): com a fila vazia a barra do tempo fica; o resto da fila some */
+{# 23/10/26 (Diogo: "ele tinha o load da música"): com a fila vazia a barra do tempo fica; o resto da fila some #}
   body.fila-on:not(.modo-fundo):not(.com-fila) #fila-tv{display:flex;flex:none}
   body.fila-on:not(.modo-fundo):not(.com-fila) #fila-tv > :not(.ft-tempo){display:none!important}
   .ct-tit{font-weight:800;font-size:4.2vh;line-height:1.2;color:#fff;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
@@ -432,7 +434,7 @@
   .ct-art{font-weight:700;font-size:3.6vh;line-height:1.2;color:rgba(255,255,255,.6);margin-top:.4vh;white-space:nowrap;overflow:hidden;
     text-overflow:ellipsis}
 
-  /* MODO FUNDO: o cartão no topo à direita, com a largura da janela do clipe, sobre o esporte do Pexels */
+{# MODO FUNDO: o cartão no topo à direita, com a largura da janela do clipe, sobre o esporte do Pexels #}
   body.modo-fundo #fila-tv{position:fixed;top:18px;right:3vw;width:max(33.4vw,480px);z-index:45;
     max-height:calc(100vh - 6vh - max(18.8vw,270px) - 3vh - 60px)}
   body.modo-fundo.com-promo #fila-tv{top:118px;max-height:calc(100vh - 6vh - max(18.8vw,270px) - 3vh - 160px)}{% if karaoke %}
@@ -494,11 +496,11 @@
      a música acabar (player parado), entra em tela cheia no #overlay e só então vem a próxima. Com o clipe tocando, a
      coluna anuncia "Depois desta". As 3 cenas novas (furar, parabéns, brinde) usam o #palco; os outros 6 tipos, o
      cartão de hoje (.overlay-box). Em toda cena, o QR no canto. */
-  /* 24/10/26 (momentos no telão, visual): a cara das 3 cenas é a dos templates que o Diogo aprovou (pasta MOMENTOS_TV:
+{# 24/10/26 (momentos no telão, visual): a cara das 3 cenas é a dos templates que o Diogo aprovou (pasta MOMENTOS_TV:
      furar.html, brinde.html, parabens.html + momento.css), tempo a tempo. Tudo aqui tem prefixo pc-/pcf-/pcb-/pcp- (id,
      classe e @keyframes pc…): a TV já usa .some, @keyframes popIn/pulse etc., e nada dos templates (#flash, #nome, #fim,
      @keyframes flash/sobe/aparece) vaza pro resto dela. A cena é um <template> clonado dentro do #pc-cena quando abre e
-     jogado fora quando fecha (nenhuma classe de animação sobra). As partículas: 1 canvas só do palco (#pc-fx). */
+     jogado fora quando fecha (nenhuma classe de animação sobra). As partículas: 1 canvas só do palco (#pc-fx). #}
   #overlay.palco-cena{background:#000;backdrop-filter:none;overflow:hidden}
   #overlay.palco-cena .overlay-box{display:none}
   #palco{position:absolute;inset:0;overflow:hidden;display:none;pointer-events:none;font-family:Inter,Arial,sans-serif}
@@ -515,8 +517,8 @@
     text-align:center}
   .pc-centro.pc-pb{padding-bottom:8vh;box-sizing:border-box}
   .pc-rotulo{font:800 4.4vh Inter,Arial,sans-serif;letter-spacing:1.2vh;text-transform:uppercase;opacity:0;transform:translateY(-3vh)}
-  /* a ÁREA DO NOME: o padding em cima segura o acento do Ú/Ã/Â (o background-clip:text cortava o 'SAÚDE'); a margem
-     devolve um pedaço, pro til do JOÃO não encostar na frase de cima */
+{# a ÁREA DO NOME: o padding em cima segura o acento do Ú/Ã/Â (o background-clip:text cortava o 'SAÚDE'); a margem
+     devolve um pedaço, pro til do JOÃO não encostar na frase de cima #}
   .pc-nome{font-family:Anton,Impact,sans-serif;font-size:22vh;line-height:1.05;letter-spacing:.5vh;opacity:0;white-space:nowrap;
     padding:.18em .08em 0;margin-top:-.06em;
     background:linear-gradient(180deg,#fff 0%,var(--n1,#fff7d6) 38%,var(--n2,#fbbf24) 62%,var(--n3,#b45309) 100%);
@@ -543,16 +545,16 @@
   #pc-fim{position:absolute;inset:0;z-index:6;background:#000;opacity:0;pointer-events:none}
   #pc-fim.pc-escurece{animation:pcAparece .7s ease-in forwards}
   #pc-fim.pc-escurece-f{animation:pcAparece .5s ease-in forwards}
-  /* canto (decisão do Diogo, 24/10): o convite do momento + o preço do bar (o MESMO número do cardápio do celular) + o
+{# canto (decisão do Diogo, 24/10): o convite do momento + o preço do bar (o MESMO número do cardápio do celular) + o
      QR de verdade; embaixo à esquerda, pequeno, o bar e o PubShow. QR em 18vh (o C1 de 16/10: menor que isso não escaneia
-     da mesa); o template tinha 15vh */
+     da mesa); o template tinha 15vh #}
   #palco-qr{position:absolute;z-index:4;right:3vw;bottom:4vh;display:flex;align-items:center;gap:1.6vh;opacity:0}
   #palco-qr img{width:18vh;height:18vh;background:#fff;border-radius:1.2vh;padding:.8vh;box-sizing:border-box;flex:none}
   #palco-qr p{margin:0;font:800 3.8vh Inter,Arial,sans-serif;color:#fff;text-align:right;line-height:1.25;text-shadow:0 2px 8px rgba(0,0,0,.6)}
   #palco-qr p b{color:#4ade80;font-size:5vh;display:block}
   #pq-bar{position:absolute;z-index:4;left:3vw;bottom:4vh;font:800 3.2vh Inter,Arial,sans-serif;color:#f97316;letter-spacing:.4vh;
     opacity:0;max-width:40vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  /* ⚡ furar (furar.html, 4 s): os tempos são os atrasos do próprio template, contados de quando a cena entra */
+{# ⚡ furar (furar.html, 4 s): os tempos são os atrasos do próprio template, contados de quando a cena entra #}
   .pc-feixe{position:absolute;z-index:0;bottom:-10vh;width:22vw;height:140vh;transform-origin:50% 100%;opacity:0;
     background:linear-gradient(to top,rgba(255,200,80,.55),rgba(255,200,80,0) 80%);filter:blur(6px);mix-blend-mode:screen}
   .pc-f1{left:8vw;animation:pcLuz 2.6s ease-in-out .5s infinite alternate}
@@ -612,6 +614,7 @@
   @keyframes pcGb{0%{opacity:0;transform:none}8%{opacity:.32;transform:translateX(-6vw)}14%{opacity:.2;transform:translateX(4vw)}20%,100%{opacity:0;transform:none}}
   #palco[data-modelo] #pcp-nome,#palco[data-modelo] #pcb-nome,#palco[data-modelo] #pcb-saude{--n1:inherit;--n2:inherit;--n3:inherit;--brilho:inherit;--sombra:inherit}
   #palco[data-modelo] #pcf-rotulo,#palco[data-modelo] #pcp-topo,#palco[data-modelo] #pcb-topo{color:var(--n2);text-shadow:0 0 18px var(--brilho)}
+  #palco[data-modelo=s] #pcf-frase{color:#fbcfe8}
   .pc-holo{top:-6vw;width:24vw;height:72vw;transform-origin:50% 0;background:linear-gradient(var(--lc),transparent 85%);
     clip-path:polygon(44% 0,56% 0,100% 100%,0 100%);animation:pcHolo 3s ease-in-out infinite alternate}
   @keyframes pcHolo{from{transform:rotate(var(--a1))}to{transform:rotate(var(--a2))}}
@@ -691,7 +694,7 @@
   .pcp-fumaca.pc-sobefumaca{animation:pcFumaca 1.6s ease-out forwards}
   @keyframes pcFumaca{0%{opacity:.8;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(1.5vh,-12vh) scale(3.5)}}
 
-  /* coluna: "Depois desta" no topo (com a fila vazia também) + o pino do aniversariante */
+{# coluna: "Depois desta" no topo (com a fila vazia também) + o pino do aniversariante #}
   #ct-avisos{display:none}
   body.fila-on.com-momento #ct-avisos, body.fila-on.com-pino #ct-avisos{display:flex;flex-direction:column;gap:1vh}
   #ft-momento, #ft-pino{display:none}
@@ -702,11 +705,15 @@
   body.modo-fundo #ct-avisos{position:fixed;top:18px;left:2vw;width:min(34vw,calc(100vw - var(--fora-janela) - 4vw));z-index:45}
   body.modo-fundo.com-promo #ct-avisos{top:118px}
   body.modo-fundo #ft-pino{background:rgba(0,0,0,.8);border-radius:1.2vh;padding:.8vh 1.2vh}
-  /* ⚡ furar fica dourado na fila desde que entra (pago) */
+{# ⚡ furar fica dourado na fila desde que entra (pago) #}
   .ft-item.furar{background:linear-gradient(90deg,#b45309,#facc15)}
   .ft-item.furar .ft-tit{color:#000}
   .ft-item.furar .ft-num{background:#000;color:#facc15}
+  /* 🚀 23/11/26: o super fura fila fica rosa-roxo na fila desde que entra (pago) */
+  .ft-item.super{background:linear-gradient(90deg,#7e22ce,#db2777)}
+  .ft-item.super .ft-num{background:#fff;color:#a21caf}
 </style>
+{# 23/11/26: reserva para caixinha com navegador antigo (Chrome < 79/87). No navegador novo isto não vale. #}<style>@supports not (width:min(1px,2px)){:root{--col-w:24vw;--clip-h:calc(76vw*9/16)}#proximo-card{bottom:calc(12vh + 56px)}#garcom{--gc:1vh}#ligar-btn{font-size:4.2vw}.ligar-sub{font-size:1.6vw}body.fila-on:not(.modo-fundo) #promo-relampago{--pk:1vh}#slide-img-box .slide-bar{width:600px;max-width:90vw}#qr-fixo img{width:12vh!important;height:12vh!important}body.modo-fundo #janela-rot{bottom:calc(6vh + 18.8vw + 14px);font-size:1.3vw}body.modo-fundo #proximo-card{bottom:calc(6vh + 18.8vw + 64px)}body.modo-fundo{--fora-janela:calc(3vw + 33.4vw + 2vw)}body.modo-fundo #canal-lista{max-height:calc(94vh - 18.8vw - 130px)}body.fila-on:not(.modo-fundo) #esq div{font-size:7vh}body.modo-fundo #fila-tv{width:33.4vw;max-height:calc(100vh - 6vh - 18.8vw - 3vh - 60px)}body.modo-fundo.com-promo #fila-tv{max-height:calc(100vh - 6vh - 18.8vw - 3vh - 160px)}body.modo-fundo #ct-avisos{width:34vw}@media (max-width:1436px){body.modo-fundo #janela-rot{bottom:calc(6vh + 270px + 14px)}body.modo-fundo #proximo-card{bottom:calc(6vh + 270px + 64px)}body.modo-fundo #canal-lista{max-height:calc(94vh - 270px - 130px)}body.modo-fundo #fila-tv{max-height:calc(100vh - 6vh - 270px - 3vh - 60px)}body.modo-fundo.com-promo #fila-tv{max-height:calc(100vh - 6vh - 270px - 3vh - 160px)}}@media (max-width:1437px){body.modo-fundo{--fora-janela:calc(5vw + 480px)}body.modo-fundo #fila-tv{width:480px}}@media (max-width:842px){body.modo-fundo #ct-avisos{width:calc(91vw - 480px)}}@media (max-width:1076px){body.modo-fundo #janela-rot{font-size:14px}}@media (min-width:1847px){body.modo-fundo #janela-rot{font-size:24px}}{% if karaoke %}#kav{--u:1vh}#kav.topo{--u:.7vh}#kav .k2{font:calc(var(--u)*8.6)/1.15 Anton,Impact,sans-serif}body.fila-on:not(.modo-fundo) #kav,body.fila-on:not(.modo-fundo) #kav.topo{--u:1vh}{% endif %}}@supports not (inset:0){ #player-wrap,#overlay,#ligar-tv,#slide-propaganda,#fundo-esporte,#palco,#pc-fx,.pc-centro,#pc-flash,#pc-fim,#pc-luz,.pcp-cena2{top:0;right:0;bottom:0;left:0}body.modo-fundo #player-wrap{top:auto;left:auto}}</style>
 </head>
 <body{% if fundo_clipes %} class="modo-fundo"{% endif %}>
 {% if fundo_clipes %}
@@ -715,8 +722,8 @@
 <div id="janela-rot">🎵 Tocando agora</div>
 {% endif %}
 
-<!-- Ligar a TV (16/10/26, B7): 1 toque = som + tela cheia + some o cursor. Aparece só na 1ª vez neste aparelho;
-     depois de uma recarga/queda de luz fica só o aviso pequeno "Sem som" (o vídeo e os momentos continuam visíveis). -->
+{# Ligar a TV (16/10/26, B7): 1 toque = som + tela cheia + some o cursor. Aparece só na 1ª vez neste aparelho;
+     depois de uma recarga/queda de luz fica só o aviso pequeno "Sem som" (o vídeo e os momentos continuam visíveis). #}
 <div id="ligar-tv">
   <button id="ligar-btn" type="button">▶ LIGAR A TV</button>
   <div class="ligar-sub">Liga o som e a tela cheia.<br>Os pedidos das mesas só aparecem com a TV ligada.</div>
@@ -724,17 +731,17 @@
 
 <!-- TV do bar: sem balão global do WhatsApp (a string 'wa-float-4k' aqui impede a injeção do app.py) -->
 <style>#wa-float-4k{display:none !important}</style>
-<!-- QR fixo e discreto: é o jeito do cliente pedir música (não é propaganda) -->
-<!-- 🎶 22/10/26: a coluna da direita (moldura). Servidor antigo: display:contents e cada peça fica onde sempre esteve -->
+{# QR fixo e discreto: é o jeito do cliente pedir música (não é propaganda)
+ 🎶 22/10/26: a coluna da direita (moldura). Servidor antigo: display:contents e cada peça fica onde sempre esteve #}
 <aside id="coluna-tv">
-  <!-- 24/10/26 (momentos no telão): "🍻 Depois desta: …" com o clipe tocando + o pino "🎂 Aniversariante na casa" -->
+{# 24/10/26 (momentos no telão): "🍻 Depois desta: …" com o clipe tocando + o pino "🎂 Aniversariante na casa" #}
   <div id="ct-avisos" aria-live="polite"><div id="ft-momento"></div><div id="ft-pino"></div></div>
   <div id="ct-tocando">{% if karaoke %}<div id="k-rot">AGORA NO PALCO</div>{% endif %}<div class="ct-tit" id="ct-titulo"></div><div class="ct-art" id="ct-artista"></div></div>
   <div id="fila-tv" aria-live="polite">
     <div class="ft-tempo"><span class="ft-ico" id="ft-ico">▶</span><div class="ft-trilho"><i id="ft-barra"></i></div><span class="ft-rest" id="ft-rest">--:--</span></div>
     <div id="ft-linhas"></div>
     <div class="ft-mais" id="ft-mais" style="display:none"></div>
-    <div class="ft-gratis"><span>⏳ Grátis</span><span id="ft-min-gratis"></span></div>
+    <div class="ft-gratis"><span>⏳ {{ 'Música' if (tv_musica_txt and tv_musica_txt != 'GRÁTIS') else 'Grátis' }}</span><span id="ft-min-gratis"></span></div>
     <div class="ft-furar" id="ft-furar" style="display:none"><span id="ft-furar-txt"></span><span id="ft-min-furar"></span></div>
   </div>{% if karaoke %}
   <div id="k-rei" aria-live="polite"><div class="k-rei-rot"{% if karaoke_pix %} id="k-rei-rot"{% endif %}>{% if karaoke_pix %}🎤 HOJE JÁ CANTARAM{% else %}👑 REI DA NOITE{% endif %}</div><div class="k-rei-nome" id="k-rei-nome">{% if karaoke_pix %}0{% else %}Ninguém ainda{% endif %}</div><div class="k-rei-n" id="k-rei-n">{% if not karaoke_pix %}Abre a noite!{% endif %}</div></div>{% endif %}
@@ -745,7 +752,7 @@
   <div id="sem-som">🔇 Sem som. Toque na TV</div>
 </aside>
 
-<!-- Botão fullscreen (aparece ao mover o mouse) -->
+{# Botão fullscreen (aparece ao mover o mouse) #}
 <button id="fs-btn" onclick="toggleFullscreen()" title="Tela cheia (F)">⛶ Tela cheia</button>
 
 <!-- Player YouTube (IFrame API). pointer-events:none: tocar na TV nunca pausa o vídeo (o toque vai pra página) -->
@@ -753,7 +760,7 @@
   <div id="yt-player"></div>
 </div>
 
-<!-- Now Playing -->
+{# Now Playing #}
 <div id="now-playing" style="--canal-cor:{{ canal.cor }}">
   <div class="np-left">
     <span class="np-canal-badge">{{ canal.emoji }} {{ canal.nome }}</span>
@@ -764,13 +771,13 @@
   </div>
 </div>
 
-<!-- Fila badge (canto superior) -->
+{# Fila badge (canto superior) #}
 <div id="fila-badge">
   <div class="fila-dot"></div>
   <span id="fila-txt">1 pedido na fila</span>
 </div>
 
-<!-- Próximo na fila (aparece ~20s antes do fim) -->
+{# Próximo na fila (aparece ~20s antes do fim) #}
 <div id="proximo-card">
   <div class="prox-label">⏭ Próximo — pedido da mesa</div>
   <div class="prox-tipo" id="prox-tipo">🎵 Pedido de música</div>
@@ -794,9 +801,9 @@
     <div class="overlay-de" id="ov-de"></div>
     <div class="overlay-bar" id="ov-bar"></div>
   </div>
-  <!-- 24/10/26 (momentos no telão, visual): o palco das 3 cenas (⚡ furar, 🍻 brinde, 🎂 parabéns), com a cara dos
+{# 24/10/26 (momentos no telão, visual): o palco das 3 cenas (⚡ furar, 🍻 brinde, 🎂 parabéns), com a cara dos
        templates aprovados. A cena entra no #pc-cena (clone do <template> dela) e sai inteira no fim; o canvas das
-       partículas, o flash, o preto do fim e o canto (convite + preço + QR) ficam. Os 6 cartões de hoje usam só o canto. -->
+       partículas, o flash, o preto do fim e o canto (convite + preço + QR) ficam. Os 6 cartões de hoje usam só o canto. #}
   <div id="palco" aria-hidden="true">
     <canvas id="pc-fx" width="0" height="0"></canvas>
     <div id="pc-cena"></div>
@@ -806,7 +813,7 @@
     <div id="pc-fim"></div>
   </div>
 </div>
-<!-- ⚡ furar.html: feixes de luz, o raio desenhando, o nome dourado batendo com faíscas, o traço e a música -->
+{# ⚡ furar.html: feixes de luz, o raio desenhando, o nome dourado batendo com faíscas, o traço e a música #}
 <template id="tpl-furar">
   <div class="pc-feixe pc-f1"></div><div class="pc-feixe pc-f2"></div><div class="pc-feixe pc-f3"></div>
   <svg id="pcf-raio" viewBox="0 0 200 500" aria-hidden="true"><path class="pc-l7" d="M120 0 L70 190 L125 185 L60 360 L105 352 L40 500"/><path class="pc-l7 pc-g" d="M98 120 L150 175 L135 230"/><path class="pc-l7 pc-g" d="M85 300 L30 330 L20 390"/><path class="pc-l6" d="M120 0 L70 190 L125 185 L60 360 L105 352 L40 500"/><path class="pc-l6 pc-g" d="M98 120 L150 175 L135 230"/><path class="pc-l6 pc-g" d="M85 300 L30 330 L20 390"/><path class="pc-l5" d="M120 0 L70 190 L125 185 L60 360 L105 352 L40 500"/><path class="pc-l5 pc-g" d="M98 120 L150 175 L135 230"/><path class="pc-l5 pc-g" d="M85 300 L30 330 L20 390"/><path class="pc-l4" d="M120 0 L70 190 L125 185 L60 360 L105 352 L40 500"/><path class="pc-l4 pc-g" d="M98 120 L150 175 L135 230"/><path class="pc-l4 pc-g" d="M85 300 L30 330 L20 390"/><path class="pc-l3" d="M120 0 L70 190 L125 185 L60 360 L105 352 L40 500"/><path class="pc-l3 pc-g" d="M98 120 L150 175 L135 230"/><path class="pc-l3 pc-g" d="M85 300 L30 330 L20 390"/><path class="pc-l2" d="M120 0 L70 190 L125 185 L60 360 L105 352 L40 500"/><path class="pc-l2 pc-g" d="M98 120 L150 175 L135 230"/><path class="pc-l2 pc-g" d="M85 300 L30 330 L20 390"/><path class="pc-l1" d="M120 0 L70 190 L125 185 L60 360 L105 352 L40 500"/><path class="pc-l1 pc-g" d="M98 120 L150 175 L135 230"/><path class="pc-l1 pc-g" d="M85 300 L30 330 L20 390"/><path d="M120 0 L70 190 L125 185 L60 360 L105 352 L40 500"/><path class="pc-galho1" d="M98 120 L150 175 L135 230"/><path class="pc-galho2" d="M85 300 L30 330 L20 390"/></svg>
@@ -818,7 +825,7 @@
     <div id="pcf-frase"></div>
   </div></div>
 </template>
-<!-- 🍻 brinde.html: 3·2·1 com as canecas vindo dos cantos, SAÚDE!, quem puxou o brinde, o nome e o recado -->
+{# 🍻 brinde.html: 3·2·1 com as canecas vindo dos cantos, SAÚDE!, quem puxou o brinde, o nome e o recado #}
 <template id="tpl-brinde">
   <div class="pc-centro pc-pb"><div id="pcb-tremor">
     <div class="pc-rotulo" id="pcb-topo">🍻 brinde geral 🍻</div>
@@ -830,8 +837,8 @@
   </div></div>
   <div class="pcb-conta"><span id="pcb-n3">3</span><span id="pcb-n2">2</span><span id="pcb-n1">1</span></div>
 </template>
-<!-- 🎂 parabens.html: hoje é dia de, o nome, PARABÉNS! em onda e o recado; depois o bolo aceso + TODO MUNDO CANTA!,
-     o pedido, as velas apagando e PARABÉNS, <primeiro nome>! com o confete dos cantos. Sem 3·2·1 -->
+{# 🎂 parabens.html: hoje é dia de, o nome, PARABÉNS! em onda e o recado; depois o bolo aceso + TODO MUNDO CANTA!,
+     o pedido, as velas apagando e PARABÉNS, <primeiro nome>! com o confete dos cantos. Sem 3·2·1 #}
 <template id="tpl-parabens">
   <div class="pc-centro pc-pb" id="pcp-centro"><div id="pcp-tremor">
     <div class="pc-rotulo" id="pcp-topo">🎂 hoje é dia de</div>
@@ -853,7 +860,7 @@
   </div>
 </template>
 
-<!-- Promoção Relâmpago — topo da tela com countdown -->
+{# Promoção Relâmpago — topo da tela com countdown #}
 <div id="promo-relampago">
   <div class="promo-left">
     <span class="promo-emoji-big" id="promo-emoji">🍺</span>
@@ -868,7 +875,7 @@
   </div>
 </div>
 
-<!-- Slide de propaganda do bar -->
+{# Slide de propaganda do bar #}
 <div id="slide-propaganda">
   <div class="slide-box" id="slide-box">
     <span class="slide-emoji" id="slide-emoji">📢</span>
@@ -882,7 +889,7 @@
   </div>
 </div>
 
-<!-- Seletor de canal — abas de nicho -->
+{# Seletor de canal — abas de nicho #}
 {% set grupos = [
   ('musica',        '🎵',  'Música',  '#a855f7'),
   ('sport',         '🏆',  'Sport',   '#f59e0b'),
@@ -893,7 +900,7 @@
 {% set canal_grupo = canais[canal_key].get('grupo', 'musica') if canal_key in canais else 'musica' %}
 
 <div id="canal-selector">
-  <!-- Abas de nicho -->
+{# Abas de nicho #}
   <div id="canal-tabs">
     {% for gkey, gemoji, glabel, gcor in grupos %}
     {% if canais.values()|selectattr('grupo','equalto',gkey)|list %}
@@ -906,7 +913,7 @@
     {% endfor %}
   </div>
 
-  <!-- Canais do nicho ativo -->
+{# Canais do nicho ativo #}
   <div id="canal-lista">
     {% for gkey, gemoji, glabel, gcor in grupos %}
     {% set grupo_canais = canais.items()|selectattr('1.grupo','equalto',gkey)|list %}
@@ -932,54 +939,54 @@
 const CODE        = '{{ b.code }}';
 let   CANAL_KEY   = '{{ canal_key }}';
 const BASE_URL    = '/pubshow';
-// 16/10/26 (V3-02): aberta pelo "Testar aqui no celular" (?teste=1) → o status não marca a TV como ligada.
-// V-S5-05: e ela só MOSTRA os pedidos: nunca marca "exibido" (não gasta pedido real do bar no celular do dono)
+{# 16/10/26 (V3-02): aberta pelo "Testar aqui no celular" (?teste=1) → o status não marca a TV como ligada.
+ V-S5-05: e ela só MOSTRA os pedidos: nunca marca "exibido" (não gasta pedido real do bar no celular do dono) #}
 const MODO_TESTE  = new URLSearchParams(location.search).get('teste') === '1';
-// V-S5-02: cada pergunta de status diz se a TV está com som (o painel avisa "TV sem som")
+{# V-S5-02: cada pergunta de status diz se a TV está com som (o painel avisa "TV sem som") #}
 function _urlStatus() { return `${BASE_URL}/api/status/${CODE}?som=${_isMuted ? 0 : 1}${MODO_TESTE ? '&teste=1' : ''}{% if karaoke %}&kp=${_tocandoPedido && _kPalcoId ? _kPalcoId : 0}{% endif %}`; }
 const JUKEBOX_URL = 'https://www.4kitem.com.br/pubshow/jukebox/{{ b.jukebox_token or b.code }}';
-// 11/09/26: NADA automático na TV — só os slides que o gerente do bar lançar.
-// (16/10/26, B7: saíram o CTA de tela cheia, o ranking, o slide de preço e os slides do sistema — estavam
-//  desligados e não tinham como ligar; ficam no git.)
-const ANUNCIOS_EFETIVOS = {{ anuncios | tojson }};  // slides de propaganda do bar
+{# 11/09/26: NADA automático na TV — só os slides que o gerente do bar lançar.
+ (16/10/26, B7: saíram o CTA de tela cheia, o ranking, o slide de preço e os slides do sistema — estavam
+  desligados e não tinham como ligar; ficam no git.) #}
+const ANUNCIOS_EFETIVOS = {{ anuncios | tojson }};{# slides de propaganda do bar #}
 
-// Info de canais disponível no JS para atualizar UI sem reload
+{# Info de canais disponível no JS para atualizar UI sem reload #}
 const CANAIS_JS = {{ canais | tojson }};
-// 29/10/26 (estilos 2, pendência 2 do diagnóstico): o estilo do bar (os canais dos botões acesos + a Mistura; null =
-// Variado/sem estilo). A troca automática ("Tema temporariamente indisponível") anda só dentro dele; estilo de 1
-// botão só = não grava nada e tenta de novo daqui a 1 min. Sem estilo = rock/pop, como antes.
+{# 29/10/26 (estilos 2, pendência 2 do diagnóstico): o estilo do bar (os canais dos botões acesos + a Mistura; null =
+ Variado/sem estilo). A troca automática ("Tema temporariamente indisponível") anda só dentro dele; estilo de 1
+ botão só = não grava nada e tenta de novo daqui a 1 min. Sem estilo = rock/pop, como antes. #}
 const CANAIS_ESTILO = {{ (canais_estilo or none) | tojson }};
 function _canalReserva() {
   if (CANAIS_ESTILO && CANAIS_ESTILO.length) return CANAIS_ESTILO.find(k => k !== CANAL_KEY) || null;
   return CANAL_KEY !== 'rock' ? 'rock' : 'pop';
 }
 
-// ── Biblioteca de vídeos ──────────────────────────────────────────────────────
+{# ── Biblioteca de vídeos ────────────────────────────────────────────────────── #}
 const VIDEOS = {{ videos | tojson }};
-let videoIdx        = Math.floor(Math.random() * VIDEOS.length);  // começa em qualquer ponto do acervo (não só nos 5 primeiros)
-let _videosPlayed   = 0;   // contador de vídeos tocados — trigger de propaganda
+let videoIdx        = Math.floor(Math.random() * VIDEOS.length);{# começa em qualquer ponto do acervo (não só nos 5 primeiros) #}
+let _videosPlayed   = 0;{# contador de vídeos tocados — trigger de propaganda #}
 let _pedidoYtId     = null; // youtube_id do pedido específico em carregamento (null = nenhum)
 let _pedidoId       = null; // 💸 05/11/26: o id desse pedido (o _avisarFalha conta ao servidor)
-let _anuncioIdx     = 0;   // qual slide mostrar agora
+let _anuncioIdx     = 0;{# qual slide mostrar agora #}
 let overlayAtivo    = false;
-// 24/10/26 (momentos no telão): o momento pago espera o intervalo (nada por cima do clipe tocando)
-let _palcoAtivo     = false;   // cena na tela (player parado): nada mais carrega vídeo até ela acabar
-let _momentoPend    = null;    // o momento que o /api/status mandou e ainda não passou (1 por intervalo)
-let _momentoDesde   = 0;       // quando esta TV viu ele pela 1ª vez (D3: espera máxima de 5 min na rotação)
+{# 24/10/26 (momentos no telão): o momento pago espera o intervalo (nada por cima do clipe tocando) #}
+let _palcoAtivo     = false;{# cena na tela (player parado): nada mais carrega vídeo até ela acabar #}
+let _momentoPend    = null;{# o momento que o /api/status mandou e ainda não passou (1 por intervalo) #}
+let _momentoDesde   = 0;{# quando esta TV viu ele pela 1ª vez (D3: espera máxima de 5 min na rotação) #}
 const MOMENTO_ESPERA_MAX_MS = 5 * 60 * 1000;
-// ⏸️ 25/10/26 (Garage: "cantaram parabéns e não tem pause"): música pausada pelo dono (painel → /api/status)
-let _pausaBar       = false;   // pausada: o player fica parado; fila, cena e slide esperam
-let _pausaPend      = null;    // o passo que ia acontecer (próxima música / cena) e roda quando voltar
-let _pausaAteLocal  = 0;       // rede caiu? a TV volta sozinha no mesmo prazo do servidor (+5 s)
-// 24/10/26 (momentos no telão, visual): o preço de cada momento no canto do QR = o MESMO texto do cardápio do celular
-// ("R$ 6", "R$ 12,90"); o /api/status manda de novo (o dono muda o preço com a TV aberta). TV antiga ignora.
+{# ⏸️ 25/10/26 (Garage: "cantaram parabéns e não tem pause"): música pausada pelo dono (painel → /api/status) #}
+let _pausaBar       = false;{# pausada: o player fica parado; fila, cena e slide esperam #}
+let _pausaPend      = null;{# o passo que ia acontecer (próxima música / cena) e roda quando voltar #}
+let _pausaAteLocal  = 0;{# rede caiu? a TV volta sozinha no mesmo prazo do servidor (+5 s) #}
+{# 24/10/26 (momentos no telão, visual): o preço de cada momento no canto do QR = o MESMO texto do cardápio do celular
+ ("R$ 6", "R$ 12,90"); o /api/status manda de novo (o dono muda o preço com a TV aberta). TV antiga ignora. #}
 let PRECOS_CANTO = {{ (precos_canto or {})|tojson }};
-// as fontes das cenas baixam AGORA (TV abrindo), nunca na hora da cena: a espera não entra no teto de 20 s. As faces só
-// existem depois que a folha do Google chega, por isso o onload do <link id="pc-fontes"> chama de novo
+{# as fontes das cenas baixam AGORA (TV abrindo), nunca na hora da cena: a espera não entra no teto de 20 s. As faces só
+ existem depois que a folha do Google chega, por isso o onload do <link id="pc-fontes"> chama de novo #}
 function _pcFontes() {
   try {
     ['1em Anton', '800 1em Inter', '600 1em Inter', 'italic 800 1em Inter'].forEach(f => document.fonts.load(f).catch(() => {}));
-  } catch(e) { /* navegador sem FontFace API: fica a reserva */ }
+  } catch(e) { {# navegador sem FontFace API: fica a reserva #} }
 }
 _pcFontes();
 let pedidoAtual  = null;
@@ -988,22 +995,22 @@ let player       = null;
 let proximoTimer = null;
 let stallTimer   = null;
 let _skipCount   = 0;
-let _loopGuard   = 0; // guard global — só zera quando vídeo de fato toca
+let _loopGuard   = 0;{# guard global — só zera quando vídeo de fato toca #}
 
-// Vídeos que falharam nesta sessão — não tentar novamente
+{# Vídeos que falharam nesta sessão — não tentar novamente #}
 const _skipSet = new Set();
 try { JSON.parse(localStorage.getItem('ps_skip_'+CANAL_KEY)||'[]').forEach(id => _skipSet.add(id)); } catch(e) {}
 
-// ── Fila sem repetição (16/10/26, TV-17) ─────────────────────────────────────
-const PRAZO_FETCH_MS = 8000;      // pergunta ao servidor que passar disso é cancelada
-const _consumidos    = new Set(); // pedidos que esta TV já tocou/mostrou: resposta atrasada não repete
-const _exibidoEm     = {};        // id → quando o "exibido" foi mandado (reenvio no máx. a cada 10 s)
-let _pollEmVoo   = false;         // 1 pergunta de status por vez (servidor lento não empilha)
-let _avancoSeq   = 0;             // avancarFila() mais nova vence a que ainda esperava o servidor
-let _tocandoPago = false;         // o que toca agora é pedido PAGO (furar a fila): outro furar a fila não corta
-// 18/10/26 (pente fino TVP-1): o que toca agora é PEDIDO de cliente (pago ou grátis). Só o ⏭️ Pular corta:
-// troca de estilo e recarga da TV (propaganda, Novo QR) esperam ele acabar. Teto de 11 min (regra dos 10 min)
-// pra um player travado não segurar a TV pra sempre.
+{# ── Fila sem repetição (16/10/26, TV-17) ───────────────────────────────────── #}
+const PRAZO_FETCH_MS = 8000;{# pergunta ao servidor que passar disso é cancelada #}
+const _consumidos    = new Set();{# pedidos que esta TV já tocou/mostrou: resposta atrasada não repete #}
+const _exibidoEm     = {};{# id → quando o "exibido" foi mandado (reenvio no máx. a cada 10 s) #}
+let _pollEmVoo   = false;{# 1 pergunta de status por vez (servidor lento não empilha) #}
+let _avancoSeq   = 0;{# avancarFila() mais nova vence a que ainda esperava o servidor #}
+let _tocandoPago = false;{# o que toca agora é pedido PAGO (furar a fila): outro furar a fila não corta #}
+{# 18/10/26 (pente fino TVP-1): o que toca agora é PEDIDO de cliente (pago ou grátis). Só o ⏭️ Pular corta:
+ troca de estilo e recarga da TV (propaganda, Novo QR) esperam ele acabar. Teto de 11 min (regra dos 10 min)
+ pra um player travado não segurar a TV pra sempre. #}
 let _tocandoPedido = false;
 let _pedidoDesde   = 0;
 function _pedidoTocandoAgora() { return _tocandoPedido && (Date.now() - _pedidoDesde) < 11 * 60 * 1000; }
@@ -1016,7 +1023,7 @@ function _fetchTV(url, opts) {
 
 function _ehPago(p) { return !!p && (p.tipo === 'flash' || p.tipo === 'vip'); }
 
-// Marca o pedido como exibido. Se o servidor ainda devolver o mesmo id (o POST se perdeu), manda de novo.
+{# Marca o pedido como exibido. Se o servidor ainda devolver o mesmo id (o POST se perdeu), manda de novo. #}
 {# 🙋 16/11/26 (leva 1): o POST que falha (rede, prazo do _fetchTV ou 5xx) tenta de novo 1 vez, 3 s depois (de2 = a 2ª
    tentativa, fora da trava de 10 s). Sem isso, uma recarga da TV chamava o garçom 2 vezes. 4xx (409 = já exibido) não
    tenta. Vale pra todo pedido. #}
@@ -1041,38 +1048,38 @@ const TIPO_CONFIG = {
   chegada:     {emoji:'🎉', titulo:'CHEGARAM!',            cor:'#f97316', duracao:7000,  confetes:true},
   casamento:   {emoji:'💕', titulo:'PEDIDO DE NAMORO 💕',  cor:'#a855f7', duracao:14000, confetes:true},
   gorjeta:     {emoji:'🙏', titulo:'GORJETA PRA EQUIPE! 🙏', cor:'#22c55e', duracao:7000,  confetes:true},
-  donate_bar:  {emoji:'🙏', titulo:'DONATE PARA O BAR! 🙏', cor:'#22c55e', duracao:7000,  confetes:true},   // 27/10/26: a gorjeta virou o donate (a linha acima fica pras antigas)
+  donate_bar:  {emoji:'🙏', titulo:'DONATE PARA O BAR! 🙏', cor:'#22c55e', duracao:7000,  confetes:true},{# 27/10/26: a gorjeta virou o donate (a linha acima fica pras antigas) #}
   cantada:     {emoji:'😏', titulo:'CANTADA! 😏',           cor:'#f472b6', duracao:15000, confetes:false},
   salve:       {emoji:'📣', titulo:'SALVE PRO PESSOAL!',    cor:'#0ea5e9', duracao:15000, confetes:false},
 };
 
 const TIPOS_MUSICA = {
-  vip:              {emoji:'👑', label:'VIP — Tocar AGORA'},
+  vip:              {emoji:'🚀', label:'Super fura fila'},
   flash:            {emoji:'⚡', label:'Furou a fila — tocando AGORA'},
   musica:           {emoji:'🎵', label:'Pedido de música'},
   musica_especifica:{emoji:'🎯', label:'Da biblioteca'},
   musica_externa:   {emoji:'🌐', label:'Pedido de música'},
 };
 
-// ── Som / Autoplay ────────────────────────────────────────────────────────────
-// 16/10/26 (TV-03/B7): o navegador só libera o som depois de um toque. Enquanto a TV está MUDA, ela não
-// consome pedido nenhum (nem momento pago, nem música): fica tudo na fila até alguém tocar na TV.
+{# ── Som / Autoplay ────────────────────────────────────────────────────────────
+ 16/10/26 (TV-03/B7): o navegador só libera o som depois de um toque. Enquanto a TV está MUDA, ela não
+ consome pedido nenhum (nem momento pago, nem música): fica tudo na fila até alguém tocar na TV. #}
 let _isMuted = true;
 function _somLigado() { return !_isMuted; }
 
-// 🔇 Esporte sempre mudo (21/10/26, Diogo: "Esporte sempre mudo, sem interruptor (o som sai da caixa do bar);
-// Comédia com som"). Vídeo de ESPORTE da rotação fica mudo, sempre; Comédia, música e pedido do cliente tocam com som.
-// (17/10 era um interruptor "Vídeo sem música → sem som"; saiu.) Só player.mute() (função da API): música do app por
+{# 🔇 Esporte sempre mudo (21/10/26, Diogo: "Esporte sempre mudo, sem interruptor (o som sai da caixa do bar);
+ Comédia com som"). Vídeo de ESPORTE da rotação fica mudo, sempre; Comédia, música e pedido do cliente tocam com som.
+ (17/10 era um interruptor "Vídeo sem música → sem som"; saiu.) Só player.mute() (função da API): música do app por #}
 // cima do vídeo é proibida pelo YouTube (trilha alternativa III.I.7 + 2 players tocando juntos). _isMuted continua =
-// "o navegador liberou o som" (status, momentos e furar a fila dependem disso); este mudo é outro, e só ele se desfaz sozinho.
+{# "o navegador liberou o som" (status, momentos e furar a fila dependem disso); este mudo é outro, e só ele se desfaz sozinho. #}
 const GRUPO_CANAL = {{ grupos_canal | tojson }};
-// 20/10/26: o mudo decide pelo grupo da CATEGORIA do vídeo — com 2+ estilos acesos o canal é 'variado' (música) e a
-// lista mistura categorias (Rock + Esporte = clipe de rock, f1, surf…). Categoria sem canal próprio: vale o do canal.
+{# 20/10/26: o mudo decide pelo grupo da CATEGORIA do vídeo — com 2+ estilos acesos o canal é 'variado' (música) e a
+ lista mistura categorias (Rock + Esporte = clipe de rock, f1, surf…). Categoria sem canal próprio: vale o do canal. #}
 const GRUPO_CAT = {{ grupos_cat | tojson }};
 function _grupoDoVideo(v) { return (v && GRUPO_CAT[v.categoria]) || GRUPO_CANAL[CANAL_KEY] || 'musica'; }
-let _mudoPeloCanal = false;   // fomos NÓS que tiramos o som (vídeo sem música): só então devolvemos
-let _grupoTocando = _grupoDoVideo(VIDEOS[videoIdx]);   // grupo do vídeo da rotação que está NO PLAYER
-let _testandoSom = false;    // _tentarSomSozinho tirou o mudo e ainda não decidiu
+let _mudoPeloCanal = false;{# fomos NÓS que tiramos o som (vídeo sem música): só então devolvemos #}
+let _grupoTocando = _grupoDoVideo(VIDEOS[videoIdx]);{# grupo do vídeo da rotação que está NO PLAYER #}
+let _testandoSom = false;{# _tentarSomSozinho tirou o mudo e ainda não decidiu #}
 function _videoSemSom() {
   return !_tocandoPedido && _grupoTocando === 'sport';
 }
@@ -1081,7 +1088,7 @@ function _aplicarSomDoVideo() {
   try {
     if (_isMuted && _testandoSom) { player.setVolume(_videoSemSom() ? 1 : volumeAtualTV()); return; }
     if (_videoSemSom()) {
-      if (!_isMuted) { player.mute(); _mudoPeloCanal = true; }   // TV ainda sem som liberado: já está muda
+      if (!_isMuted) { player.mute(); _mudoPeloCanal = true; }{# TV ainda sem som liberado: já está muda #}
     } else if (_mudoPeloCanal) {
       _mudoPeloCanal = false;
       if (!_isMuted && volumeAtualTV() > 0) { player.unMute(); player.setVolume(volumeAtualTV()); }
@@ -1089,7 +1096,7 @@ function _aplicarSomDoVideo() {
   } catch(e) {}
 }
 
-let _jaLigou = false;   // esta TV já foi ligada neste aparelho → sem botão grande, só o aviso pequeno
+let _jaLigou = false;{# esta TV já foi ligada neste aparelho → sem botão grande, só o aviso pequeno #}
 try { _jaLigou = localStorage.getItem('ps_tv_ligada') === '1'; } catch(e) {}
 
 function _esconderCursorDepois(ms) {
@@ -1110,77 +1117,77 @@ function ligarTV() {
   _esconderCursorDepois(0);
   try {
     if (player && player.unMute) {
-      if (_videoSemSom()) player.setVolume(1);   // 🔇 vai voltar a ficar mudo já já: nada de estalo no volume cheio
+      if (_videoSemSom()) player.setVolume(1);{# 🔇 vai voltar a ficar mudo já já: nada de estalo no volume cheio #}
       player.unMute();
       player.setVolume(_videoSemSom() ? 1 : volumeAtualTV());
       _isMuted = false;
-      _aplicarSomDoVideo();   // 🔇 o toque libera o som; vídeo sem música com o interruptor ligado volta a ficar mudo
-      // 16/10/26: a tentativa de som sozinha pode ter deixado o vídeo PAUSADO pelo Chrome; o toque retoma
-      // (menos no slide do bar e no palco dos momentos, que param o vídeo de propósito)
+      _aplicarSomDoVideo();{# 🔇 o toque libera o som; vídeo sem música com o interruptor ligado volta a ficar mudo #}
+{# 16/10/26: a tentativa de som sozinha pode ter deixado o vídeo PAUSADO pelo Chrome; o toque retoma
+ (menos no slide do bar e no palco dos momentos, que param o vídeo de propósito) #}
       if (!document.getElementById('slide-propaganda').classList.contains('show') && !_palcoAtivo && !_pausaBar && player.getPlayerState() !== 1) {
         player.playVideo();
       }
     }
   } catch(e) {}
-  // Se o player ainda não carregou, desmuta quando estiver pronto
+{# Se o player ainda não carregou, desmuta quando estiver pronto #}
   window._autoUnmute = true;
   _furarFilaQueEsperava();
 }
 
-// Furar a fila pago que chegou com a TV muda: toca assim que o som volta (não espera a música acabar)
+{# Furar a fila pago que chegou com a TV muda: toca assim que o som volta (não espera a música acabar) #}
 function _furarFilaQueEsperava() {
   if (_somLigado() && player && _ehPago(pedidoMusica) && !_tocandoPago) avancarFila();
 }
 
-// Toda TV tenta o som sozinha quando o player fica pronto (Chrome com som liberado / modo quiosque / site que
-// o Chrome já conhece). Se o navegador não deixar, ela fica muda: na 1ª vez, o botão grande; depois de uma
-// recarga, só o aviso "Sem som. Toque na TV".
-// 16/10/26 (V-S5-01): vídeo carregando devagar (wi-fi do bar) não é "bloqueado". Espera o 1º vídeo TOCAR
-// (mudo), só então tira o mudo e decide pelo isMuted: tocando com som = deixou; o Chrome PAUSOU (estado 2)
-// ou o player voltou mudo = não deixou. Ainda carregando: confere de novo até ~8 s.
+{# Toda TV tenta o som sozinha quando o player fica pronto (Chrome com som liberado / modo quiosque / site que
+ o Chrome já conhece). Se o navegador não deixar, ela fica muda: na 1ª vez, o botão grande; depois de uma
+ recarga, só o aviso "Sem som. Toque na TV".
+ 16/10/26 (V-S5-01): vídeo carregando devagar (wi-fi do bar) não é "bloqueado". Espera o 1º vídeo TOCAR
+ (mudo), só então tira o mudo e decide pelo isMuted: tocando com som = deixou; o Chrome PAUSOU (estado 2)
+ ou o player voltou mudo = não deixou. Ainda carregando: confere de novo até ~8 s. #}
 const PRAZO_SOM_MS = 8000;
 function _tentarSomSozinho() {
   let ini = Date.now();
   let tirouMudoEm = 0;
   const confere = () => {
-    if (!_isMuted) { _testandoSom = false; return; }   // alguém já tocou na TV
-    // ⏸️ 25/10/26: recarregou com a música pausada pelo dono → o player parado de propósito não é "o Chrome não
-    // deixou o som"; o teste espera o ▶️ Voltar (senão a TV voltava MUDA depois da pausa)
+    if (!_isMuted) { _testandoSom = false; return; }{# alguém já tocou na TV #}
+{# ⏸️ 25/10/26: recarregou com a música pausada pelo dono → o player parado de propósito não é "o Chrome não
+ deixou o som"; o teste espera o ▶️ Voltar (senão a TV voltava MUDA depois da pausa) #}
     if (_pausaBar) { ini = Date.now(); if (tirouMudoEm) tirouMudoEm = Date.now(); setTimeout(confere, 500); return; }
     let mudo = true, estado = -1;
     try { mudo = player.isMuted(); estado = player.getPlayerState(); } catch(e) { return; }
     if (!tirouMudoEm) {
-      if (estado === 1) {    // tocando mudo: agora tenta o som
-        // 🔇 vídeo sem música com o interruptor ligado: testa no volume 1 (o teste não solta 1,5 s de motor no bar)
+      if (estado === 1) { {# tocando mudo: agora tenta o som #}
+{# 🔇 vídeo sem música com o interruptor ligado: testa no volume 1 (o teste não solta 1,5 s de motor no bar) #}
         try { player.setVolume(_videoSemSom() ? 1 : volumeAtualTV()); player.unMute(); } catch(e) { return; }
         _testandoSom = true;
         tirouMudoEm = Date.now();
         setTimeout(confere, 1500);
       } else if (Date.now() - ini < 30000) {
-        setTimeout(confere, 300);    // o 1º vídeo ainda não começou
+        setTimeout(confere, 300);{# o 1º vídeo ainda não começou #}
       }
       return;
     }
     if (!mudo && estado === 1) {
       _testandoSom = false;
-      _isMuted = false;      // tocando COM som: o navegador deixou
-      if (_videoSemSom()) _aplicarSomDoVideo();   // 🔇 som liberado, mas o vídeo sem música segue mudo
-      else { try { player.setVolume(volumeAtualTV()); } catch(e) {} }   // o canal pode ter virado música no teste
+      _isMuted = false;{# tocando COM som: o navegador deixou #}
+      if (_videoSemSom()) _aplicarSomDoVideo();{# 🔇 som liberado, mas o vídeo sem música segue mudo #}
+      else { try { player.setVolume(volumeAtualTV()); } catch(e) {} }{# o canal pode ter virado música no teste #}
       document.getElementById('ligar-tv').classList.add('hidden');
       document.getElementById('sem-som').classList.remove('show');
       _lembrarTelaCheia();
       _furarFilaQueEsperava();
     } else if (mudo || estado === 2 || Date.now() - tirouMudoEm >= PRAZO_SOM_MS) {
       _testandoSom = false;
-      try { player.mute(); player.playVideo(); } catch(e) {}   // não deixou: segue mudo, tocando
+      try { player.mute(); player.playVideo(); } catch(e) {}{# não deixou: segue mudo, tocando #}
     } else {
-      setTimeout(confere, 500);   // carregando de novo (estado 3/-1): confere daqui a pouco
+      setTimeout(confere, 500);{# carregando de novo (estado 3/-1): confere daqui a pouco #}
     }
   };
   confere();
 }
 
-// Som voltou sozinho fora da tela cheia (precisa de um toque): mostra o botão de tela cheia por 8 s (V-S5-04)
+{# Som voltou sozinho fora da tela cheia (precisa de um toque): mostra o botão de tela cheia por 8 s (V-S5-04) #}
 function _lembrarTelaCheia() {
   if (document.fullscreenElement) return;
   const fsb = document.getElementById('fs-btn');
@@ -1189,10 +1196,10 @@ function _lembrarTelaCheia() {
   window._selTimer = setTimeout(() => fsb.classList.remove('visible'), 8000);
 }
 
-// Qualquer toque/clique (ou Enter/espaço no controle) liga a TV enquanto ela está muda
+{# Qualquer toque/clique (ou Enter/espaço no controle) liga a TV enquanto ela está muda #}
 document.addEventListener('click', () => { if (_isMuted) ligarTV(); });
 
-// ── Promoção Relâmpago — countdown ───────────────────────────────────────────
+{# ── Promoção Relâmpago — countdown ─────────────────────────────────────────── #}
 let _promoTimer = null;
 let _promoExpira = null;
 
@@ -1211,14 +1218,14 @@ function _promoCabe(el) {
 }
 function atualizarPromo(promo) {
   const el = document.getElementById('promo-relampago');
-  document.body.classList.toggle('com-promo', !!promo);   // V-S5-06: a pílula "Sem som" desce
+  document.body.classList.toggle('com-promo', !!promo);{# V-S5-06: a pílula "Sem som" desce #}
   if (!promo) {
     el.classList.remove('show');
     clearInterval(_promoTimer);
     _promoExpira = null;
     return;
   }
-  // Atualiza conteúdo
+{# Atualiza conteúdo #}
   document.getElementById('promo-emoji').textContent = promo.emoji || '🍺';
   document.getElementById('promo-msg').textContent   = promo.msg;
   el.classList.add('show');
@@ -1227,7 +1234,7 @@ function atualizarPromo(promo) {
   if (_promoExpira !== promo.expira) {
     _promoExpira = promo.expira;
     clearInterval(_promoTimer);
-    // 15/10/26: o servidor manda quantos segundos faltam (sem briga de fuso); o texto fica de reserva
+{# 15/10/26: o servidor manda quantos segundos faltam (sem briga de fuso); o texto fica de reserva #}
     const _fimPromo = (typeof promo.segundos_restantes === 'number')
       ? Date.now() + promo.segundos_restantes * 1000
       : new Date(promo.expira).getTime();
@@ -1243,7 +1250,7 @@ function atualizarPromo(promo) {
       const min  = Math.floor(diff / 60000);
       const sec  = Math.floor((diff % 60000) / 1000);
       timerEl.textContent = `${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
-      // Últimos 60s: pisca urgente
+{# Últimos 60s: pisca urgente #}
       if (diff < 60000) timerEl.classList.add('urgente');
       else timerEl.classList.remove('urgente');
     }, 500);
@@ -1258,7 +1265,7 @@ function aplicarVolumeTV(v) {
   try {
     if (!player || !player.setVolume) return;
     if (v === 0) { player.mute(); }
-    else if (_videoSemSom()) { /* 🔇 vídeo sem música: segue mudo; o volume novo vale quando o som voltar */ }
+    else if (_videoSemSom()) { {# 🔇 vídeo sem música: segue mudo; o volume novo vale quando o som voltar #} }
     else { if (player.isMuted && player.isMuted() && !_isMuted) player.unMute(); player.setVolume(v); }
   } catch (e) {}
 }
@@ -1267,7 +1274,7 @@ function volumeAtualTV() { return (typeof window._tvVolume === 'number') ? windo
 // ── YouTube IFrame API ────────────────────────────────────────────────────────
 function onYouTubeIframeAPIReady() {
   if (!VIDEOS.length) {
-    // Página carregou sem vídeos — fallback para rock (29/10/26: dentro do estilo do bar; TV de teste não grava)
+{# Página carregou sem vídeos — fallback para rock (29/10/26: dentro do estilo do bar; TV de teste não grava) #}
     const fallback = _canalReserva();
     if (!fallback || MODO_TESTE) { setTimeout(() => location.reload(), 60000); return; }
     fetch(`${BASE_URL}/api/trocar-canal/${CODE}`, {
@@ -1284,7 +1291,7 @@ function onYouTubeIframeAPIReady() {
     videoId: v.youtube_id,
     playerVars: {
       autoplay:        1,
-      mute:            1,  // inicia mutado — evita bloqueio de autoplay do browser
+      mute:            1,{# inicia mutado — evita bloqueio de autoplay do browser #}
       rel:             0,
       modestbranding:  1,
       controls:        0,
@@ -1304,67 +1311,67 @@ function onYouTubeIframeAPIReady() {
 
 function onPlayerReady(e) {
   e.target.playVideo();
-  // Se alguém já tocou em LIGAR antes do player carregar, desmuta agora
+{# Se alguém já tocou em LIGAR antes do player carregar, desmuta agora #}
   if (window._autoUnmute) {
-    if (_videoSemSom()) e.target.setVolume(1);   // 🔇 vai voltar a ficar mudo já já: nada de estalo no volume cheio
+    if (_videoSemSom()) e.target.setVolume(1);{# 🔇 vai voltar a ficar mudo já já: nada de estalo no volume cheio #}
     e.target.unMute();
     e.target.setVolume(_videoSemSom() ? 1 : volumeAtualTV());
     _isMuted = false;
-    _aplicarSomDoVideo();   // 🔇 1º vídeo de canal que não é música, interruptor ligado: volta a ficar mudo
+    _aplicarSomDoVideo();{# 🔇 1º vídeo de canal que não é música, interruptor ligado: volta a ficar mudo #}
   } else {
-    _tentarSomSozinho();       // 16/10/26 (V-S5-03): tenta sempre (antes só com a marca 'ps_tv_ligada')
+    _tentarSomSozinho();{# 16/10/26 (V-S5-03): tenta sempre (antes só com a marca 'ps_tv_ligada') #}
   }
   atualizarNowPlaying(VIDEOS[videoIdx]);
   esconderNowPlayingComDelay();
   iniciarStallDetector();
-  // V-S5-04: tocou em LIGAR antes do player ficar pronto → furar a fila que já estava na memória corta agora
+{# V-S5-04: tocou em LIGAR antes do player ficar pronto → furar a fila que já estava na memória corta agora #}
   if (window._autoUnmute) _furarFilaQueEsperava();
 }
 
 function onPlayerStateChange(e) {
-  // YT.PlayerState.ENDED = 0
+{# YT.PlayerState.ENDED = 0 #}
   if (e.data === 0) {
-    if (_palcoAtivo) return;   // 24/10/26 (momentos no telão): o palco decide o que vem depois dele
-    // TVP-1: recarga que esperou esta música acabar (o próximo pedido continua na fila do servidor). Com momento
-    // pendente, a cena passa antes (o fim da cena recarrega)
+    if (_palcoAtivo) return;{# 24/10/26 (momentos no telão): o palco decide o que vem depois dele #}
+{# TVP-1: recarga que esperou esta música acabar (o próximo pedido continua na fila do servidor). Com momento
+ pendente, a cena passa antes (o fim da cena recarrega) #}
     {# 🙋 17/11/26: nem com a faixa do 🙋 na tela (ela sai em 15 s e o _garcomFim recarrega) #}
     if (window._recarregarPendente && !overlayAtivo && !_momentoPend && !_garcomAtivo) { location.reload(); return; }
     clearTimeout(proximoTimer);
     clearTimeout(stallTimer);
     document.getElementById('proximo-card').classList.remove('show');
-    _intervalo();   // 24/10/26: a música acabou = o intervalo (momento pendente → cena; depois a fila)
+    _intervalo();{# 24/10/26: a música acabou = o intervalo (momento pendente → cena; depois a fila) #}
   }
-  // 24/10/26 (momentos no telão): com o palco na tela o player nunca toca (nada na frente do clipe tocando). Revisão
-  // TV-2: nem arma o detector de travada (o vídeo parado de propósito não vai pra lista de vídeos ruins)
+{# 24/10/26 (momentos no telão): com o palco na tela o player nunca toca (nada na frente do clipe tocando). Revisão
+ TV-2: nem arma o detector de travada (o vídeo parado de propósito não vai pra lista de vídeos ruins) #}
   if ((e.data === 1 || e.data === 3) && _palcoAtivo) {
     clearTimeout(stallTimer);
     if (e.data === 1) { try { player.pauseVideo(); } catch(_e) {} }
     return;
   }
-  // ⏸️ 25/10/26: pausada pelo dono → o que tentar tocar (vídeo que já carregava, toque no LIGAR) fica parado
+{# ⏸️ 25/10/26: pausada pelo dono → o que tentar tocar (vídeo que já carregava, toque no LIGAR) fica parado #}
   if ((e.data === 1 || e.data === 3) && _pausaBar) {
     clearTimeout(stallTimer);
     if (e.data === 1) { try { player.pauseVideo(); } catch(_e) {} }
     return;
   }
-  // YT.PlayerState.PLAYING = 1 — vídeo tocando, cancela detector de stall
+{# YT.PlayerState.PLAYING = 1 — vídeo tocando, cancela detector de stall #}
   if (e.data === 1) {
-    _paradoDesde = 0;     // 24/10/26 (momentos no telão, visual): o clipe voltou, o próximo intervalo conta do zero
+    _paradoDesde = 0;{# 24/10/26 (momentos no telão, visual): o clipe voltou, o próximo intervalo conta do zero #}
     clearTimeout(stallTimer);
-    _loopGuard  = 0;      // vídeo tocou de verdade → zera o guard
+    _loopGuard  = 0;{# vídeo tocou de verdade → zera o guard #}
     _skipCount  = 0;
-    _pedidoYtId = null;   // pedido carregou com sucesso
+    _pedidoYtId = null;{# pedido carregou com sucesso #}
     agendarProximoCard();
   }
-  // YT.PlayerState.BUFFERING = 3 — reinicia o detector (pode estar carregando)
-  // Se estamos carregando um pedido específico, mantém o timeout longo (8s)
+{# YT.PlayerState.BUFFERING = 3 — reinicia o detector (pode estar carregando)
+ Se estamos carregando um pedido específico, mantém o timeout longo (8s) #}
   if (e.data === 3) {
     iniciarStallDetector(_pedidoYtId ? 8000 : 2500);
   }
 }
 
 function _marcarVideoRuim() {
-  // Marca o vídeo atual como ruim para não repetir
+{# Marca o vídeo atual como ruim para não repetir #}
   if (VIDEOS.length && VIDEOS[videoIdx]) {
     const yid = VIDEOS[videoIdx].youtube_id;
     if (yid) {
@@ -1375,7 +1382,7 @@ function _marcarVideoRuim() {
 }
 
 function onPlayerError(e) {
-  // Erro 100/101/150 = vídeo indisponível ou sem embed
+{# Erro 100/101/150 = vídeo indisponível ou sem embed #}
   console.warn('YT erro código:', e.data, '→ pulando...');
   clearTimeout(stallTimer);
   const _deQuem = _pedidoYtId;   // 🧹 06/11/26: a resposta do YouTube vale só pro pedido que estava abrindo
@@ -1383,14 +1390,14 @@ function onPlayerError(e) {
 }
 
 function iniciarStallDetector(delayMs) {
-  // Se após delayMs ainda não está tocando, vídeo está travado ou indisponível
+{# Se após delayMs ainda não está tocando, vídeo está travado ou indisponível #}
   // Pedidos específicos usam timeout maior (8s) para dar tempo ao YouTube de carregar
   const delay = delayMs || 2500;
   clearTimeout(stallTimer);
   stallTimer = setTimeout(() => {
-    if (!player || _palcoAtivo || _pausaBar) return;   // 24/10/26 (revisão TV-2) / ⏸️ 25/10/26: parado de propósito
+    if (!player || _palcoAtivo || _pausaBar) return;{# 24/10/26 (revisão TV-2) / ⏸️ 25/10/26: parado de propósito #}
     const state = player.getPlayerState();
-    // -1=unstarted, 2=paused/indisponível, 5=cued — não começou a tocar
+{# -1=unstarted, 2=paused/indisponível, 5=cued — não começou a tocar #}
     if (state === -1 || state === 2 || state === 5) {
       console.warn('Stall detectado (state=' + state + ', delay=' + delay + 'ms) → pulando...');
       _pularVideo();
@@ -1408,14 +1415,14 @@ function _avisarFalha(id, tent, erro) {
     .then(r => { if (!r.ok) denovo(); }).catch(denovo);
 }
 
-// Pula para o próximo vídeo por erro/stall — NÃO conta como vídeo tocado
-// (evita acionar slide de propaganda durante recuperação de erro)
-// 16/10/26 (TV-15): o pulo confere a FILA antes da biblioteca (pedido não espera mais 1 música inteira)
+{# Pula para o próximo vídeo por erro/stall — NÃO conta como vídeo tocado
+ (evita acionar slide de propaganda durante recuperação de erro)
+ 16/10/26 (TV-15): o pulo confere a FILA antes da biblioteca (pedido não espera mais 1 música inteira) #}
 function _pularVideo(erroYT) {
   clearTimeout(stallTimer);
-  if (_palcoAtivo) return;   // 24/10/26 (revisão TV-2): no palco nada é "vídeo ruim"; o fim da cena segue a fila
+  if (_palcoAtivo) return;{# 24/10/26 (revisão TV-2): no palco nada é "vídeo ruim"; o fim da cena segue a fila #}
   if (_pedidoYtId) {
-    // Stall num pedido específico — não marca nenhum vídeo da biblioteca como ruim
+{# Stall num pedido específico — não marca nenhum vídeo da biblioteca como ruim #}
     console.warn('Pedido específico (' + _pedidoYtId + ') não carregou → segue a fila');{% if karaoke %}
     // 🎤 09/11/26 (V2b): só a vez do cantor (pedido com 'k') vai pro _karaokeFalhou. O ⚡ e a grátis seguem o
     // _avisarFalha de sempre, com o erro (a quarentena do acervo e o "PIX a devolver" do ⚡ dependem dele)
@@ -1433,10 +1440,10 @@ function _pularVideo(erroYT) {
   avancarFila({semSlide: true});
 }
 
-// ⏭️ Pular agora (comando do dono pelo painel) — interrompe o vídeo atual,
-// some o card "próxima" e avança considerando a fila de pedidos.
+{# ⏭️ Pular agora (comando do dono pelo painel) — interrompe o vídeo atual,
+ some o card "próxima" e avança considerando a fila de pedidos. #}
 function pularMusicaAgora() {
-  if (_palcoAtivo) return;   // 24/10/26 (momentos no telão): não há música no palco; a cena paga segue (≤ 20 s)
+  if (_palcoAtivo) return;{# 24/10/26 (momentos no telão): não há música no palco; a cena paga segue (≤ 20 s) #}
   clearTimeout(stallTimer);
   clearTimeout(proximoTimer);
   const card = document.getElementById('proximo-card');
@@ -1444,9 +1451,9 @@ function pularMusicaAgora() {
   avancarFila();
 }
 
-// ⏸️ 25/10/26 (Garage: "cantaram parabéns e não tem pause"): o dono pausa pelo painel e a TV vê no poll (~2,5 s). Pausada:
-// o player para; a fila, a cena e o slide esperam (_pausaPend guarda o passo seguinte); a coluna diz "⏸️ Pausado pelo
-// bar" (nada por cima do clipe, nenhum som). Voltou: roda o passo guardado, ou a música continua de onde parou.
+{# ⏸️ 25/10/26 (Garage: "cantaram parabéns e não tem pause"): o dono pausa pelo painel e a TV vê no poll (~2,5 s). Pausada:
+ o player para; a fila, a cena e o slide esperam (_pausaPend guarda o passo seguinte); a coluna diz "⏸️ Pausado pelo
+ bar" (nada por cima do clipe, nenhum som). Voltou: roda o passo guardado, ou a música continua de onde parou. #}
 function _pausaAplicar(pausada, restaS) {
   if (pausada) {
     _pausaAteLocal = Date.now() + (Math.max(0, +restaS || 0) + 5) * 1000;
@@ -1471,11 +1478,11 @@ function _pausaAplicar(pausada, restaS) {
 }
 setInterval(() => { if (_pausaBar && _pausaAteLocal && Date.now() > _pausaAteLocal) _pausaAplicar(false); }, 1000);
 
-// ── Lógica de avanço com fila ─────────────────────────────────────────────────
-// opts.semSlide: fim de slide / pulo por erro → sem pedido, vai direto pro próximo vídeo (não conta pro slide)
+{# ── Lógica de avanço com fila ─────────────────────────────────────────────────
+ opts.semSlide: fim de slide / pulo por erro → sem pedido, vai direto pro próximo vídeo (não conta pro slide) #}
 async function avancarFila(opts) {
-  if (_palcoAtivo) return;   // 24/10/26 (momentos no telão): o fim da cena chama de novo (nada carrega embaixo dela)
-  if (_pausaBar) { _pausaPend = () => avancarFila(opts); return; }   // ⏸️ 25/10/26: a fila espera o ▶️ Voltar
+  if (_palcoAtivo) return;{# 24/10/26 (momentos no telão): o fim da cena chama de novo (nada carrega embaixo dela) #}
+  if (_pausaBar) { _pausaPend = () => avancarFila(opts); return; }{# ⏸️ 25/10/26: a fila espera o ▶️ Voltar #}
   const seq = ++_avancoSeq;
   _garcomDepois = null;
   {# 🙋 16/11/26: o ⏭️ (ou o erro do clipe) avançou: o _intervalo que esperava a faixa sair não roda mais (pularia a
@@ -1483,37 +1490,38 @@ async function avancarFila(opts) {
      depois (TV-07) #}
   clearTimeout(window._slideTimer);
   _esconderSlide();
-  // ── Race condition fix: se não há pedido em memória, consulta API imediatamente ──
-  // O polling (a cada ~3s) pode ter perdido o pedido se o vídeo terminou entre dois ciclos
+{# ── Race condition fix: se não há pedido em memória, consulta API imediatamente ──
+ O polling (a cada ~3s) pode ter perdido o pedido se o vídeo terminou entre dois ciclos #}
   if (!pedidoMusica && _somLigado()) {
     try {
       const _r = await _fetchTV(_urlStatus(), {cache: 'no-store'});
       const _d = await _r.json();
-      // outra chamada mais nova já decidiu o que toca, ou a cena abriu enquanto o servidor respondia (24/10/26,
-      // revisão TV-2: nada carrega embaixo dela e nenhuma 2ª cena abre por cima; o fim da cena chama de novo)
+{# outra chamada mais nova já decidiu o que toca, ou a cena abriu enquanto o servidor respondia (24/10/26,
+ revisão TV-2: nada carrega embaixo dela e nenhuma 2ª cena abre por cima; o fim da cena chama de novo) #}
       if (seq !== _avancoSeq || _palcoAtivo) return;
       if (_d.pedido_musica && !_consumidos.has(_d.pedido_musica.id) && !pedidoMusica) {
         pedidoMusica = _d.pedido_musica;
         mostrarBadgeFila(_d.total_fila);
       }
-    } catch(_e) { /* silencioso — fallback para próximo vídeo da biblioteca */ }
+    } catch(_e) { {# silencioso — fallback para próximo vídeo da biblioteca #} }
     if (seq !== _avancoSeq || _palcoAtivo) return;
-    if (_pausaBar) { _pausaPend = () => avancarFila(opts); return; }   // ⏸️ pausou enquanto o servidor respondia
+    if (_pausaBar) { _pausaPend = () => avancarFila(opts); return; }{# ⏸️ pausou enquanto o servidor respondia #}
   }
 
-  // TV muda não gasta pedido (16/10/26, TV-03): segue a biblioteca até alguém tocar na TV
+{# TV muda não gasta pedido (16/10/26, TV-03): segue a biblioteca até alguém tocar na TV #}
   if (pedidoMusica && _somLigado()) {
     const p = pedidoMusica;
     pedidoMusica = null;
     esconderBadgeFila();
     _marcarExibido(p.id);
-    _filaAtualizar(window._filaUlt, false);   // 22/10/26: a linha sai da fila do canto na hora, sem esperar o poll
+    _filaAtualizar(window._filaUlt, false);{# 22/10/26: a linha sai da fila do canto na hora, sem esperar o poll #}
 
     if (p.youtube_id) {
       {# 24/10/26 (momentos no telão, D2): ⚡ furar ganha a "Entrada de estrela" (4 s, player parado) antes do clipe.
          Revisão P3: no ⏭️ do painel (e no ⚡ que esperava a TV ligar) o clipe ainda toca: a vinheta espera ele parar.
          🙋 16/11/26: e espera a faixa do garçom sair (≤ 15 s; o _intervalo já esperava, o ⏭️ e o erro do clipe não) #}
-      if (p.tipo === 'flash') { _pausarEDepois(() => _garcomEspera(() => _vinhetaFurar(p, () => _tocarPedido(p)))); return; }
+      {# 🚀 23/11/26: o super fura fila também (com a cena dele, mais forte) #}
+      if (_ehPago(p)) { _pausarEDepois(() => _garcomEspera(() => _vinhetaFurar(p, () => _tocarPedido(p)))); return; }
       _tocarPedido(p);
       return;
     }
@@ -1526,20 +1534,20 @@ async function avancarFila(opts) {
   }
 }
 
-// 🎯 Música específica — toca o vídeo exato pedido pelo cliente
+{# 🎯 Música específica — toca o vídeo exato pedido pelo cliente #}
 function _tocarPedido(p) {
-  // ⏸️ 25/10/26: pausou durante a vinheta do ⚡ furar → o clipe pedido nem carrega (nenhum som escapa); entra no ▶️ Voltar
+{# ⏸️ 25/10/26: pausou durante a vinheta do ⚡ furar → o clipe pedido nem carrega (nenhum som escapa); entra no ▶️ Voltar #}
   if (_pausaBar) { _pausaPend = () => _tocarPedido(p); return; }
-  _pedidoYtId  = p.youtube_id; // flag para stall detector não marcar vídeos como ruins
+  _pedidoYtId  = p.youtube_id;{# flag para stall detector não marcar vídeos como ruins #}
   _pedidoId    = p.id;
   _tocandoPago = _ehPago(p);
   _tocandoPedido = true;
   _pedidoDesde   = Date.now();
   player.loadVideoById(p.youtube_id);
-  _aplicarSomDoVideo();   // 🔇 pedido de música toca com som (depois do load: nada do vídeo anterior escapa)
+  _aplicarSomDoVideo();{# 🔇 pedido de música toca com som (depois do load: nada do vídeo anterior escapa) #}
   atualizarNowPlaying({
     titulo:  p.titulo_pedido || '🎯 Pedido especial',
-    artista: `${p.tipo === 'flash' ? '⚡ ' : ''}pedido por ${p.nome_cliente || 'alguém'}`,
+    artista: `${p.tipo === 'flash' ? '⚡ ' : p.tipo === 'vip' ? '🚀 ' : ''}pedido por ${p.nome_cliente || 'alguém'}`,
   });
   esconderNowPlayingComDelay();
   iniciarStallDetector(8000); // 8s para pedidos — YouTube demora mais que 2.5s para carregar{% if karaoke %}
@@ -1552,8 +1560,8 @@ function _tocarPedido(p) {
 function carregarVideo(idx) {
   if (!VIDEOS.length || !player) return;
 
-  // Guard contra loop infinito: se tentou mais que (qtd vídeos × 2) vezes sem
-  // jamais entrar no estado PLAYING, para tudo e exibe aviso.
+{# Guard contra loop infinito: se tentou mais que (qtd vídeos × 2) vezes sem
+ jamais entrar no estado PLAYING, para tudo e exibe aviso. #}
   _loopGuard++;
   if (_loopGuard > VIDEOS.length * 2 + 2) {
     _loopGuard = 0;
@@ -1561,13 +1569,13 @@ function carregarVideo(idx) {
     return;
   }
 
-  // Pula vídeos já marcados como ruins (máx. VIDEOS.length tentativas)
+{# Pula vídeos já marcados como ruins (máx. VIDEOS.length tentativas) #}
   let tentativas = 0;
   while (_skipSet.has(VIDEOS[idx % VIDEOS.length].youtube_id) && tentativas < VIDEOS.length) {
     idx = (idx + 1) % VIDEOS.length;
     tentativas++;
   }
-  // Se todos na skip list, limpa e recomeça — mas _loopGuard continua contando
+{# Se todos na skip list, limpa e recomeça — mas _loopGuard continua contando #}
   if (tentativas >= VIDEOS.length) {
     _skipSet.clear();
     try { localStorage.removeItem('ps_skip_'+CANAL_KEY); } catch(e){}
@@ -1580,7 +1588,7 @@ function carregarVideo(idx) {
   _tocandoPedido = false;
   _grupoTocando = _grupoDoVideo(v);{% if karaoke %}
   _kPalcoSai();   // 🎤 rotação: ninguém no palco{% endif %}
-  // 🔇 vídeo sem música: muda ANTES do load (o motor não escapa); voltando pra música, devolve o som DEPOIS
+{# 🔇 vídeo sem música: muda ANTES do load (o motor não escapa); voltando pra música, devolve o som DEPOIS #}
   if (_videoSemSom()) _aplicarSomDoVideo();
   player.loadVideoById(v.youtube_id);
   if (!_videoSemSom()) _aplicarSomDoVideo();
@@ -1590,12 +1598,12 @@ function carregarVideo(idx) {
 }
 
 function mostrarErroSemVideos() {
-  // Todos os vídeos do tema falharam — exibe aviso e troca para Rock
+{# Todos os vídeos do tema falharam — exibe aviso e troca para Rock #}
   clearTimeout(stallTimer);
   document.getElementById('np-titulo').textContent  = 'Tema temporariamente indisponível';
   document.getElementById('np-artista').textContent = 'Aguarde, trocando de tema...';
   document.getElementById('now-playing').classList.remove('hidden');
-  // Após 4s, tenta trocar para rock automaticamente (29/10/26: o próximo do estilo do bar; sem outro, tenta de novo)
+{# Após 4s, tenta trocar para rock automaticamente (29/10/26: o próximo do estilo do bar; sem outro, tenta de novo) #}
   setTimeout(() => {
     const fallback = _canalReserva();
     if (fallback) trocarCanal(fallback);
@@ -1603,7 +1611,7 @@ function mostrarErroSemVideos() {
   }, 4000);
 }
 
-// ── "Próximo na fila" — aparece ~20s antes do fim ────────────────────────────
+{# ── "Próximo na fila" — aparece ~20s antes do fim ──────────────────────────── #}
 function agendarProximoCard() {
   clearTimeout(proximoTimer);
   if (!pedidoMusica) return;
@@ -1625,12 +1633,12 @@ function mostrarProximoCard(p) {
   document.getElementById('prox-tipo').textContent = label;
   document.getElementById('prox-nome').textContent = `de ${p.nome_cliente || 'alguém'}`;
   document.getElementById('proximo-card').classList.add('show');
-  const _q = document.getElementById('qr-fixo'); if (_q) _q.classList.remove('grande');   // QR grande não cobre o próximo
+  const _q = document.getElementById('qr-fixo'); if (_q) _q.classList.remove('grande');{# QR grande não cobre o próximo #}
 }
 
-// ── Badge da fila ─────────────────────────────────────────────────────────────
+{# ── Badge da fila ───────────────────────────────────────────────────────────── #}
 function mostrarBadgeFila(total) {
-  if (document.body.classList.contains('fila-on')) return;   // 22/10/26: a fila do canto diz isso (e não pisca)
+  if (document.body.classList.contains('fila-on')) return;{# 22/10/26: a fila do canto diz isso (e não pisca) #}
   const badge = document.getElementById('fila-badge');
   document.getElementById('fila-txt').textContent =
     total === 1 ? '1 pedido na fila' : `${total} pedidos na fila`;
@@ -1642,12 +1650,12 @@ function esconderBadgeFila() {
   document.getElementById('proximo-card').classList.remove('show');
 }
 
-// ── 🎶 Fila no canto + o tempo da música (22/10/26, pedido do Garage via Diogo; spec do juiz + moldura) ─────────────
-// "mostrar a lista de músicas que tem na fila; aí o cliente vê que vai demorar e pede pra pular … o tempo que falta
-// pra acabar a música … Tudo bem harmonioso." A fila vem no /api/status que a TV já busca (fila, fila_n, fila_pagos,
-// furar_preco); o tempo, do player a cada 1 s. Nenhuma request nova. Só redesenha quando a fila muda; título por
-// textContent (é dado de fora). TV muda não mostra o cartão: a fila não anda e o tempo mentiria.
-const FILA_SEG = 240;   // 4 min por música na estimativa (a mesma conta do celular)
+{# ── 🎶 Fila no canto + o tempo da música (22/10/26, pedido do Garage via Diogo; spec do juiz + moldura) ─────────────
+ "mostrar a lista de músicas que tem na fila; aí o cliente vê que vai demorar e pede pra pular … o tempo que falta
+ pra acabar a música … Tudo bem harmonioso." A fila vem no /api/status que a TV já busca (fila, fila_n, fila_pagos,
+ furar_preco); o tempo, do player a cada 1 s. Nenhuma request nova. Só redesenha quando a fila muda; título por
+ textContent (é dado de fora). TV muda não mostra o cartão: a fila não anda e o tempo mentiria. #}
+const FILA_SEG = 240;{# 4 min por música na estimativa (a mesma conta do celular) #}
 let _fila = {itens: [], n: 0, pagos: 0, preco: null}, _filaZeros = 0, _filaAssin = '', _filaIdsAnt = new Set();
 let _restAnt = null, _minGrAnt = '', _minFuAnt = '';
 
@@ -1656,14 +1664,14 @@ function _tituloSemEnfeite(t) {
   t = t.replace(/\([^)]*\)|\[[^\]]*\]/g, ' ').replace(/clipe oficial|official video|lyrics/gi, ' ');
   return t.replace(/\s+/g, ' ').replace(/[\s\-–—:]+$/, '').trim();
 }
-// 23/10/26 (Diogo: "o outro estava mais slim"): o "tocando agora" da coluna, limpo e com artista e música
+{# 23/10/26 (Diogo: "o outro estava mais slim"): o "tocando agora" da coluna, limpo e com artista e música #}
 function _limparTituloInteiro(t) {
   return _tituloSemEnfeite(t).replace(/\s[-–—]\s/, ' – ');
 }
 function _limparTitulo(t) {
   t = _tituloSemEnfeite(t);
-  // 22/10/26: na linha da fila só o NOME DA MÚSICA ("AC/DC - Highway to Hell" → "Highway to Hell"): com 13–17 letras
-  // é o que o cliente reconhece. Sem nada depois do 1º " - ", o título inteiro. O "tocando agora" segue com os dois.
+{# 22/10/26: na linha da fila só o NOME DA MÚSICA ("AC/DC - Highway to Hell" → "Highway to Hell"): com 13–17 letras
+ é o que o cliente reconhece. Sem nada depois do 1º " - ", o título inteiro. O "tocando agora" segue com os dois. #}
   const m = t.match(/\s[-–—]\s(.+)$/);
   return (m && m[1].trim()) || t;
 }
@@ -1672,7 +1680,7 @@ function _filaMin(seg) {
   return m > 60 ? `~${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}` : `~${m} min`;
 }
 
-// doPoll: veio do /api/status (conta os 2 polls seguidos com fila vazia pra devolver o QR); false = avancarFila
+{# doPoll: veio do /api/status (conta os 2 polls seguidos com fila vazia pra devolver o QR); false = avancarFila #}
 function _filaAtualizar(data, doPoll) {
   if (!data || !Array.isArray(data.fila)) return;
   window._filaUlt = data;
@@ -1681,7 +1689,7 @@ function _filaAtualizar(data, doPoll) {
     body.classList.add('fila-on');
     const q1 = document.querySelector('#qr-fixo .qr-txt1'), q2 = document.getElementById('qr-preco');
     if (q1) q1.textContent = '📱 Pede a tua música';
-    if (q2) q2.textContent = 'GRÁTIS';
+    if (q2) q2.textContent = '{{ tv_musica_txt or 'GRÁTIS' }}';
   }
   let n = Number(data.fila_n) || 0, pagos = Number(data.fila_pagos) || 0;
   const itens = [];
@@ -1689,9 +1697,9 @@ function _filaAtualizar(data, doPoll) {
     if (_consumidos.has(it.id)) { n--; if (it.tipo === 'flash' || it.tipo === 'vip') pagos--; }
     else itens.push(it);
   });
-  // 25/10/26 (trava do ⚡ furar): os minutos do "⏳ Grátis" e do "⚡ Furar" contam as músicas que tocam ANTES de um pedido
-  // novo na ordem real do servidor (fila_frente: com 2 furar seguidos, 1 da fila passa antes), menos as que esta TV já
-  // começou. Servidor antigo: a conta de sempre (todas / as pagas)
+{# 25/10/26 (trava do ⚡ furar): os minutos do "⏳ Grátis" e do "⚡ Furar" contam as músicas que tocam ANTES de um pedido
+ novo na ordem real do servidor (fila_frente: com 2 furar seguidos, 1 da fila passa antes), menos as que esta TV já
+ começou. Servidor antigo: a conta de sempre (todas / as pagas) #}
   const fr = data.fila_frente, ja = data.fila.length - itens.length;
   const frGr = (fr && typeof fr.gratis === 'number') ? Math.max(0, fr.gratis - ja) : Math.max(0, n);
   const frFu = (fr && typeof fr.flash === 'number') ? Math.max(0, fr.flash - ja) : Math.max(0, pagos);
@@ -1718,15 +1726,15 @@ function _filaRender() {
   box.textContent = '';
   itens.slice(0, 6).forEach((it, i) => {   // até 6 linhas (Diogo: "não mostra a fila toda"; 22/11/26: letra maior, 8 → 6)
     const li = document.createElement('div');
-    // 24/10/26 (momentos no telão, D4): a linha do ⚡ furar fica dourada desde que entra na fila (pago)
-    li.className = 'ft-item' + (it.tipo === 'flash' ? ' furar' : '') + (primeira || antes.has(it.id) ? '' : ' novo');
+{# 24/10/26 (momentos no telão, D4): a linha do ⚡ furar fica dourada desde que entra na fila (pago) #}
+    li.className = 'ft-item' + (it.tipo === 'flash' ? ' furar' : it.tipo === 'vip' ? ' super' : '') + (primeira || antes.has(it.id) ? '' : ' novo');
     const num = document.createElement('span');
     num.className = 'ft-num';
     num.textContent = String(i + 1);
     const tit = document.createElement('span');
     tit.className = 'ft-tit';
-    // 24/10/26: ⏩ pular a espera ganha só o prefixo "⏩ " (sem cena, de propósito)
-    const pre = it.tipo === 'vip' ? '👑 ' : (it.tipo === 'flash' ? '⚡ ' : (it.tipo === 'pular_espera' ? '⏩ ' : ''));
+{# 24/10/26: ⏩ pular a espera ganha só o prefixo "⏩ " (sem cena, de propósito) #}
+    const pre = it.tipo === 'vip' ? '🚀 ' : (it.tipo === 'flash' ? '⚡ ' : (it.tipo === 'pular_espera' ? '⏩ ' : ''));
     tit.textContent = it.yt ? pre + (_limparTitulo(it.t) || '🎵 Música') : pre + '🎲 Surpresa';{% if karaoke %}
     // 🎤 09/11/26 (V2b): a linha do cantor ('k') diz o NOME, nunca o título; as outras seguem com o título de sempre
     if (it.k) tit.textContent = '🎤 ' + (it.n || 'alguém');{% endif %}
@@ -1734,7 +1742,7 @@ function _filaRender() {
     box.append(li);
   });
   const fu = document.getElementById('ft-furar');
-  const temFurar = !!preco && (n - pagos) >= 2;   // só com 2+ grátis na frente: furar adianta de verdade
+  const temFurar = !!preco && (n - pagos) >= 2;{# só com 2+ grátis na frente: furar adianta de verdade #}
   document.getElementById('ft-furar-txt').textContent = temFurar ? `⚡ Furar ${preco}` : '';
   fu.style.display = temFurar ? '' : 'none';
   const mais = document.getElementById('ft-mais');
@@ -1744,7 +1752,7 @@ function _filaRender() {
     mais.style.display = resto > 0 ? '' : 'none';
   };
   poeMais();
-  // tela baixa (ou o espaço acima da janela no modo fundo): nada corta; sai a última linha e soma no "+N"
+{# tela baixa (ou o espaço acima da janela no modo fundo): nada corta; sai a última linha e soma no "+N" #}
   const card = document.getElementById('fila-tv');
   card.classList.remove('apertado');
   while (box.children.length > 1 && card.scrollHeight > card.clientHeight + 1) {
@@ -1756,9 +1764,9 @@ function _filaRender() {
   _filaTick();
 }
 
-// a cada 1 s, do player (sem servidor): a barra que ESVAZIA, o m:ss, a linha 1 âmbar nos últimos 20 s e os minutos
+{# a cada 1 s, do player (sem servidor): a barra que ESVAZIA, o m:ss, a linha 1 âmbar nos últimos 20 s e os minutos #}
 function _filaTick() {
-  // 23/10/26: na coluna (fora do modo fundo) a barra anda também com a fila vazia
+{# 23/10/26: na coluna (fora do modo fundo) a barra anda também com a fila vazia #}
   const naColuna = document.body.classList.contains('fila-on') && !document.body.classList.contains('modo-fundo');
   if ((!document.body.classList.contains('com-fila') && !naColuna) || !player || !player.getDuration) return;
   let d = 0, t = 0, st = -1;
@@ -1767,7 +1775,7 @@ function _filaTick() {
   const rest = ok ? Math.max(0, d - t) : null;
   const fill = document.getElementById('ft-barra');
   if (ok) {
-    if (_restAnt !== null && rest > _restAnt + 2) {   // música nova: volta a 100% sem animar
+    if (_restAnt !== null && rest > _restAnt + 2) { {# música nova: volta a 100% sem animar #}
       fill.style.transition = 'none';
       fill.style.width = (rest / d * 100) + '%';
       fill.getBoundingClientRect();
@@ -1776,14 +1784,14 @@ function _filaTick() {
       fill.style.width = (rest / d * 100) + '%';
     }
     _restAnt = rest;
-  }   // duração inválida: a barra fica parada
+  }{# duração inválida: a barra fica parada #}
   const r = Math.round(rest || 0);
   document.getElementById('ft-rest').textContent = ok ? `${Math.floor(r / 60)}:${String(r % 60).padStart(2, '0')}` : '--:--';
   document.getElementById('ft-ico').textContent = _pausaBar ? '⏸' : (_videoSemSom() ? '⚽' : '▶');
   const l1 = document.querySelector('#ft-linhas .ft-item');
   if (l1) l1.classList.toggle('vez', ok && rest <= 20);
   const base = ok ? rest : 120;
-  const mg = _filaMin(base + (_fila.frGr ?? _fila.n) * FILA_SEG), mf = _filaMin(base + (_fila.frFu ?? _fila.pagos) * FILA_SEG);
+  const mg = _filaMin(base + (_fila.frGr != null ? _fila.frGr : _fila.n) * FILA_SEG), mf = _filaMin(base + (_fila.frFu != null ? _fila.frFu : _fila.pagos) * FILA_SEG);
   if (mg !== _minGrAnt) { document.getElementById('ft-min-gratis').textContent = mg; _minGrAnt = mg; }
   if (mf !== _minFuAnt) { document.getElementById('ft-min-furar').textContent = mf; _minFuAnt = mf; }
 }
@@ -1929,22 +1937,22 @@ setInterval(() => {
   if (d > 0 && d <= 3600 && r <= Math.min(120, d / 2) && r >= 15 && _esqLivre() && !_esqT && !_garcomPend) _kavMostra(p);
 }, 1000);{% endif %}
 
-// ── Now Playing ───────────────────────────────────────────────────────────────
-// Escapa texto do cliente antes de ir pro innerHTML (15/10/26: o título do pedido era HTML cru na TV)
+{# ── Now Playing ───────────────────────────────────────────────────────────────
+ Escapa texto do cliente antes de ir pro innerHTML (15/10/26: o título do pedido era HTML cru na TV) #}
 function _esc(t) {
   return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-// 20/10/26: no 'variado' (2+ estilos acesos, ou o botão Variado) o selo diz o botão do vídeo QUE TOCA (⚽ Esporte,
-// 🎸 Rock…), não "🎶 Variado". Pedido do cliente (sem categoria) e categoria sem botão: o selo do canal.
+{# 20/10/26: no 'variado' (2+ estilos acesos, ou o botão Variado) o selo diz o botão do vídeo QUE TOCA (⚽ Esporte,
+ 🎸 Rock…), não "🎶 Variado". Pedido do cliente (sem categoria) e categoria sem botão: o selo do canal. #}
 const ROTULO_CAT = {{ rotulos_cat | tojson }};
 function _seloDoCanal() { const c = CANAIS_JS[CANAL_KEY] || {}; return `${c.emoji || ''} ${c.nome || CANAL_KEY}`; }
 
 function atualizarNowPlaying(v) {
   document.getElementById('np-titulo').textContent  = v.titulo  || '';
   document.getElementById('np-artista').textContent = v.artista || '';
-  // 22/10/26 (moldura): o "tocando agora" da coluna da direita (a faixa de baixo some: ela cobria o clipe)
-  // 23/10/26: sem "(Official Video)", "(Live …)" nem "| canal"; título só de parênteses fica como veio
+{# 22/10/26 (moldura): o "tocando agora" da coluna da direita (a faixa de baixo some: ela cobria o clipe)
+ 23/10/26: sem "(Official Video)", "(Live …)" nem "| canal"; título só de parênteses fica como veio #}
   document.getElementById('ct-titulo').textContent  = _limparTituloInteiro(v.titulo) || v.titulo || '';
   document.getElementById('ct-artista').textContent = v.artista || '';
   const np = document.getElementById('now-playing');
@@ -1962,21 +1970,21 @@ function esconderNowPlayingComDelay() {
   }, 6000);
 }
 
-// ── Overlay especial ──────────────────────────────────────────────────────────
-// 16/10/26 (crítico C1): QR grande por 20 s a cada 4 min (1ª vez 1 min depois de abrir), fora dos momentos
+{# ── Overlay especial ──────────────────────────────────────────────────────────
+ 16/10/26 (crítico C1): QR grande por 20 s a cada 4 min (1ª vez 1 min depois de abrir), fora dos momentos #}
 function _qrGrande() {
-  if (document.body.classList.contains('fila-on')) return;   // 22/10/26: com a fila do canto o QR já fica grande por CSS
+  if (document.body.classList.contains('fila-on')) return;{# 22/10/26: com a fila do canto o QR já fica grande por CSS #}
   const q = document.getElementById('qr-fixo');
   const _px = document.getElementById('proximo-card');
-  if (!q || overlayAtivo || (_px && _px.classList.contains('show'))) return;   // não cobre o card do próximo
+  if (!q || overlayAtivo || (_px && _px.classList.contains('show'))) return;{# não cobre o card do próximo #}
   q.classList.add('grande');
   setTimeout(() => q.classList.remove('grande'), 20000);
 }
 setTimeout(_qrGrande, 60 * 1000);
 setInterval(_qrGrande, 4 * 60 * 1000);
 
-// O cartão de hoje (TIPO_CONFIG). 24/10/26 (momentos no telão): só entra no palco do intervalo (mostrarCena), com o
-// player parado; depois = o que vem quando ele sai (a fila)
+{# O cartão de hoje (TIPO_CONFIG). 24/10/26 (momentos no telão): só entra no palco do intervalo (mostrarCena), com o
+ player parado; depois = o que vem quando ele sai (a fila) #}
 function mostrarOverlay(pedido, depois) {
   overlayAtivo = true;
   const _q = document.getElementById('qr-fixo'); if (_q) _q.classList.remove('grande');
@@ -2022,18 +2030,18 @@ function mostrarOverlay(pedido, depois) {
   }, cfg.duracao);
 }
 
-// ── 🎬 Momentos no telão (24/10/26, momentos no telão; BRIEF D1–D9) ───────────────────────────────────────────────────
-// O intervalo: a música acabou (ENDED) ou o slide do bar acabou. 1) momento pendente → a cena dele (tela cheia, player
-// parado); 2) depois a fila (⚡ furar ganha a vinheta de 4 s); 3) o slide do bar só num intervalo SEM momento (vai pro
-// seguinte). Teto: 1 momento (≤ 16 s) + a vinheta do furar (4 s) = 20 s de player parado. TV muda não gasta nada.
-// 24/10/26 (momentos no telão, visual; revisão F3/P4): a hora em que o clipe parou (o ENDED, o fim do slide, o corte da
-// D3). A vinheta do furar conta o teto de 20 s daqui. Zera quando um clipe volta a TOCAR
+{# ── 🎬 Momentos no telão (24/10/26, momentos no telão; BRIEF D1–D9) ───────────────────────────────────────────────────
+ O intervalo: a música acabou (ENDED) ou o slide do bar acabou. 1) momento pendente → a cena dele (tela cheia, player
+ parado); 2) depois a fila (⚡ furar ganha a vinheta de 4 s); 3) o slide do bar só num intervalo SEM momento (vai pro
+ seguinte). Teto: 1 momento (≤ 16 s) + a vinheta do furar (4 s) = 20 s de player parado. TV muda não gasta nada.
+ 24/10/26 (momentos no telão, visual; revisão F3/P4): a hora em que o clipe parou (o ENDED, o fim do slide, o corte da
+ D3). A vinheta do furar conta o teto de 20 s daqui. Zera quando um clipe volta a TOCAR #}
 let _paradoDesde = 0;
 function _intervalo(opts) {
   if (_palcoAtivo) return;
   {# 🙋 16/11/26 (faixa de 15 s): só a cena do momento espera a faixa sair; a próxima música entra por baixo dela #}
   if (_garcomAtivo && _momentoPend && _somLigado() && !_consumidos.has(_momentoPend.id)) { _garcomDepois = () => _intervalo(opts); return; }
-  if (_pausaBar) { _pausaPend = () => _intervalo(opts); return; }   // ⏸️ 25/10/26: cena e próxima música esperam
+  if (_pausaBar) { _pausaPend = () => _intervalo(opts); return; }{# ⏸️ 25/10/26: cena e próxima música esperam #}
   if (!_paradoDesde) _paradoDesde = performance.now();
   const p = _momentoPend;
   if (p && _somLigado() && !_consumidos.has(p.id)) {
@@ -2047,7 +2055,7 @@ function _intervalo(opts) {
   avancarFila(opts);
 }
 
-// O /api/status manda o momento mais antigo pendente (o brinde respeita a trava do servidor). Guarda, sem marcar exibido.
+{# O /api/status manda o momento mais antigo pendente (o brinde respeita a trava do servidor). Guarda, sem marcar exibido. #}
 function _momentoAtualizar(p) {
   if (p && _somLigado() && !_consumidos.has(p.id)) {
     {# 🎂 16/11/26 (leva 2): a musiquinha só baixa quando chega um 🎂, 1 vez por pedido (nunca repete a cada status) #}
@@ -2067,8 +2075,8 @@ function _momentoAtualizar(p) {
   }
 }
 
-// D3: momento esperando 5 min e o que toca é vídeo da ROTAÇÃO → encerra o vídeo e vai pro intervalo.
-// Pedido de cliente (pago ou grátis) nunca é cortado pelo momento; slide e palco já são intervalo.
+{# D3: momento esperando 5 min e o que toca é vídeo da ROTAÇÃO → encerra o vídeo e vai pro intervalo.
+ Pedido de cliente (pago ou grátis) nunca é cortado pelo momento; slide e palco já são intervalo. #}
 function _esperaMaxMomento() {
   {# 🙋 17/11/26: com a faixa do garçom na tela o corte espera ela sair (senão eram ~12 s de player parado até a cena) #}
   if (!_momentoPend || !_somLigado() || _palcoAtivo || _tocandoPedido || !player || _pausaBar || _garcomAtivo) return;
@@ -2080,15 +2088,15 @@ function _esperaMaxMomento() {
   _intervalo();
 }
 
-// Coluna (D4/D7): "Depois desta" no topo (também com a fila vazia) e o pino do aniversariante. Texto por textContent.
+{# Coluna (D4/D7): "Depois desta" no topo (também com a fila vazia) e o pino do aniversariante. Texto por textContent. #}
 const DEPOIS_DESTA = {
   parabens:    () => '🎂 Depois desta: parabéns surpresa! 🤫',   {# 🎂 16/11/26 (leva 2, V1): o nome só na cena; depois, o pino #}
   brinde:      n => n ? `🍻 Depois desta: brinde de ${n}. Prepara o copo.` : '🍻 Depois desta: brinde. Prepara o copo.',
   dedicatoria: n => n ? `💌 Depois desta: dedicatória de ${n}` : '💌 Depois desta: uma dedicatória',
   chegada:     n => n ? `🎉 Depois desta: chegada de ${n}` : '🎉 Depois desta: uma chegada',
-  casamento:   () => '💕 Depois desta: um pedido especial',   // surpresa: o nome só na cena
-  gorjeta:     () => '🙏 Depois desta: gorjeta pra equipe',    // nunca o valor
-  donate_bar:  () => '🙏 Depois desta: um donate para o bar',  // 27/10/26: nunca o valor
+  casamento:   () => '💕 Depois desta: um pedido especial',{# surpresa: o nome só na cena #}
+  gorjeta:     () => '🙏 Depois desta: gorjeta pra equipe',{# nunca o valor #}
+  donate_bar:  () => '🙏 Depois desta: um donate para o bar',{# 27/10/26: nunca o valor #}
   cantada:     () => '😏 Depois desta: uma cantada',
   salve:       n => n ? `📣 Depois desta: salve de ${n}` : '📣 Depois desta: um salve',
 };
@@ -2191,10 +2199,17 @@ const CHAM = {
   F6: ['{n} tá mandando na fila: 3ª hoje ⚡', 'Pela 3ª vez hoje: {n} ⚡'],
   F7: ['{n} garantiu a vez ⚡', 'Lugar marcado: {n} ⚡', '{n} cravou a próxima ⚡'],
   F8: ['Fila disputada! Agora é {n} ⚡', 'Raio atrás de raio: {n} ⚡'],
+  S0: ['🚀 Alguém pagou o super fura fila… quem será?', '🚀 Opa! Vem aí um super fura fila…'],
+  S1: ['🚀 Abre caminho: {n} pagou o super', '🚀 {n} passou na frente de todo mundo', '🚀 Lá vem {n}, de super fura fila'],
+  S2: ['🚀 Primeiro super fura fila da noite: {n}', '🚀 {n} estreou o super de hoje'],
+  S3: ['🚀 IIIIH, {n} de novo no super!', '🚀 Mas é {n} DE NOVO no super?!'],
+  S4: ['🚀 {x}º super fura fila da noite: {n}', '🚀 Abre caminho: {n} · {x}º super de hoje',
+    '🚀 {n} passou na frente de todo mundo · {x}º super'],
+  S5: ['Foi {n}! Mistério resolvido 🚀'],
   N1: ['🔥 Casa cheia! {x} já pediram música', '🔥 Hoje tem {x} DJs no bar', '🔥 Casa cheia: {x} celulares já pediram'],
   N2: ['🎉 {x}ª música pedida da noite!', '🎵 Já são {x} músicas pedidas hoje!'],
 };
-let _chS = {}, _chUlt = 0, _chHora = [], _chMeu = 0, _chF = null, _chVis = null, _chNovo = 0, _chNovoId = 0, _chSusp = 0,
+let _chS = {}, _chUlt = 0, _chHora = [], _chMeu = 0, _chF = null, _chVis = null, _chNovo = 0, _chNovoId = 0, _chNovoS = 0, _chSusp = 0,
   _chSuspT = -36e5, _chLivreT = -12e5;
 {# a memória vale primeiro: TV que não grava (modo privado, Smart TV) não repete a casa cheia nem o marco #}
 const _chMem = {};
@@ -2244,11 +2259,14 @@ function _chProx() {
   const c = p.ch || {}, n = _chNome(p), m = _chMus(p.titulo_pedido) || (p.youtube_id ? '🎵 Música' : '🎲 Surpresa'); {# igual à coluna #}
   if (p.tipo === 'flash') return [(n ? _chTxt(_chSusp === p.id ? 'F0' : c.fv ? 'F7' : c.nf == 2 ? 'F5' : c.nf == 3 ? 'F6'
     : c.f1 ? 'F4' : c.disp ? 'F8' : 'F2', n) + '\n' : '') + (c.fv ? '▶ vez garantida · ' : '▶ furou a fila · ') + m, 'ouro', 15000];
+  {# 🚀 23/11/26: a PRÓXIMA do super: 1º da noite, a mesma pessoa de novo, ou o Nº da noite (pela hora do PIX) #}
+  if (p.tipo === 'vip') return [(n ? _chTxt(_chSusp === p.id ? 'S5' : c.sn == 1 ? 'S2' : c.ns > 1 ? 'S3' : c.sn > 1 ? 'S4' : 'S1',
+    n, '', c.sn) + '\n' : '') + '▶ super fura fila · ' + m, 'super', 15000];
   return [n ? _chTxt(c.p1 ? 'P4' : c.np == 2 ? 'P5' : c.np == 3 ? 'P6' : 'P1', n, m) : _chTxt('P3', '', m)];
 }
 function _chOutra(fr) {
   const f = window._filaUlt || {}, no = f.noite, agora = Date.now();
-  if (_chNovo && agora - _chNovo < 1e4 && agora - _chSuspT >= 36e5) { _chNovo = 0; _chSusp = _chNovoId; _chSuspT = agora; return _chVez('F1'); }
+  if (_chNovo && agora - _chNovo < 1e4 && agora - _chSuspT >= 36e5) { _chNovo = 0; _chSusp = _chNovoId; _chSuspT = agora; return _chVez(_chNovoS ? 'S0' : 'F1'); }
   if (fr < .4 || fr > .6) return;
   if (no && no.m30) {
     let g = _chLer('ps_cham_noite'), x;
@@ -2270,9 +2288,12 @@ setInterval(() => {
   _chS.t = t;
   const r = d > 0 && d <= 3600 ? d - t : 0;
   if (f && f !== _chF) { {# ⚡ novo na fila; o 1º poll só semeia (recarregar a TV não dispara suspense velho) #}
-    const nv = f.fila.filter(x => x.tipo === 'flash' && _chVis && !_chVis.has(x.id));
+    const nv = f.fila.filter(x => (x.tipo === 'flash' || x.tipo === 'vip') && _chVis && !_chVis.has(x.id));{# 🚀 o super também #}
     _chF = f; _chVis = _chVis || new Set(); f.fila.forEach(x => _chVis.add(x.id));
-    if (nv.length && f.fila.some(x => x.tipo !== 'flash' && x.tipo !== 'vip') && r > 90 && st === 1) { _chNovo = agora; _chNovoId = nv[0].id; }
+    {# 🚀 23/11/26: o super passa o ⚡ também (alguém esperando que não é super); o ⚡, só a grátis, como antes #}
+    if (nv.length && f.fila.some(x => x.tipo !== 'vip' && (x.tipo !== 'flash' || nv[0].tipo === 'vip')) && r > 90 && st === 1) {
+      _chNovo = agora; _chNovoId = nv[0].id; _chNovoS = nv[0].tipo === 'vip';
+    }
   }
   if (st !== 1 || !r || _esqT || !_esqLivre(){% if karaoke %} || _kavT{% endif %} || !document.body.classList.contains('fila-on')
       || document.body.classList.contains('com-promo')) return;{# 🔠 22/11/26: a promoção mora na tarja #}
@@ -2292,7 +2313,7 @@ function _avisosAtualizar() {
   const body = document.body, p = _momentoPend;
   const n = p ? String(p.nome_cliente || '').trim() : '';
   let tm = (p && _somLigado() && !_palcoAtivo) ? (DEPOIS_DESTA[p.tipo] || (() => '✨ Depois desta: um momento na TV'))(n) : '';
-  if (_pausaBar) tm = '⏸️ Pausado pelo bar';   // 25/10/26: na coluna, nunca por cima do clipe
+  if (_pausaBar) tm = '⏸️ Pausado pelo bar';{# 25/10/26: na coluna, nunca por cima do clipe #}
   const an = (window._filaUlt && Array.isArray(window._filaUlt.aniversariantes)) ? window._filaUlt.aniversariantes.slice(0, 3) : [];
   const tp = !an.length ? '' : (an.length === 1 ? `🎂 Aniversariante na casa: ${an[0]}`
     : `🎂 Aniversariantes na casa: ${an.slice(0, -1).join(', ')} e ${an[an.length - 1]}`);
@@ -2303,23 +2324,23 @@ function _avisosAtualizar() {
   document.getElementById('ft-pino').textContent = tp;
   body.classList.toggle('com-momento', !!tm);
   body.classList.toggle('com-pino', !!tp);
-  _filaAssin = '';      // a coluna mudou de altura: a fila se refaz (nada cortado)
+  _filaAssin = '';{# a coluna mudou de altura: a fila se refaz (nada cortado) #}
   _filaRender();
 }
 
-// ── o palco: abre, passos com hora marcada, fecha (sem sobra de timer nem de som) ──
-// 24/10/26 (momentos no telão, visual): a cena é o clone do <template> dela (furar, brinde, parabens) no #pc-cena. O
-// fechar joga o clone fora, para o laço das partículas e tira as classes das peças que ficam (palco, flash, fim, canto,
-// marca): fechou = zero partícula, zero timer, zero som, zero classe de animação, nada cobrindo o clipe seguinte.
+{# ── o palco: abre, passos com hora marcada, fecha (sem sobra de timer nem de som) ──
+ 24/10/26 (momentos no telão, visual): a cena é o clone do <template> dela (furar, brinde, parabens) no #pc-cena. O
+ fechar joga o clone fora, para o laço das partículas e tira as classes das peças que ficam (palco, flash, fim, canto,
+ marca): fechou = zero partícula, zero timer, zero som, zero classe de animação, nada cobrindo o clipe seguinte. #}
 let _palcoTimers = [];
-let _pcFixas = [];   // [elemento, classe] postas nas peças que ficam fora do clone: saem quando a cena troca ou fecha
+let _pcFixas = [];{# [elemento, classe] postas nas peças que ficam fora do clone: saem quando a cena troca ou fecha #}
 function _palcoPasso(ms, fn) { _palcoTimers.push(setTimeout(fn, ms)); }
 function _palcoAbrir(classe, cena) {
   _palcoAtivo = true;
   overlayAtivo = true;
   clearTimeout(stallTimer);
   clearTimeout(proximoTimer);
-  // player PARADO: depois do ENDED já está; no corte (D3, furar que esperava a TV ligar) pausa aqui
+{# player PARADO: depois do ENDED já está; no corte (D3, furar que esperava a TV ligar) pausa aqui #}
   try { const st = player && player.getPlayerState ? player.getPlayerState() : 0; if (st === 1 || st === 3) player.pauseVideo(); } catch(e) {}
   const _q = document.getElementById('qr-fixo'); if (_q) _q.classList.remove('grande');
   const ov = document.getElementById('overlay');
@@ -2335,9 +2356,9 @@ function _palcoFechar() {
   _palcoTimers.forEach(clearTimeout);
   _palcoTimers = [];
   _pararSom();
-  _limparConfetes();   // revisão TV-1: confete que sobra cairia por cima do clipe seguinte
-  _fxDesligar();       // o laço das partículas para aqui: nada roda escondido com o clipe tocando
-  _pcMontar('');       // a cena sai inteira
+  _limparConfetes();{# revisão TV-1: confete que sobra cairia por cima do clipe seguinte #}
+  _fxDesligar();{# o laço das partículas para aqui: nada roda escondido com o clipe tocando #}
+  _pcMontar('');{# a cena sai inteira #}
   const ov = document.getElementById('overlay');
   ov.classList.remove('show', 'palco-cena', 'cena-furar');
   delete ov.dataset.fase;
@@ -2346,7 +2367,7 @@ function _palcoFechar() {
   pedidoAtual = null;
   _avisosAtualizar();
 }
-// troca a cena do palco ('' = nenhuma: os 6 cartões de hoje só usam o canto)
+{# troca a cena do palco ('' = nenhuma: os 6 cartões de hoje só usam o canto) #}
 function _pcMontar(cena) {
   const pc = document.getElementById('palco'), alvo = document.getElementById('pc-cena');
   _pcFixas.forEach(([el, c]) => el.classList.remove(c));
@@ -2409,8 +2430,8 @@ function _modeloDaVez(tipo) {
   return m;
 }
 function _modeloForcar(tipo, m) { if (MODELOS_CENA[tipo]) _modeloVez[tipo] = m; }
-function _modeloAplicar(tipo) {
-  const m = _modeloDaVez(tipo), M = m ? MODELOS_CENA[tipo][m - 1] : null, pc = document.getElementById('palco');
+function _modeloAplicar(tipo, fixo) {   {# 🚀 23/11/26: fixo = um modelo fora do rodízio (o do super; data-modelo="s") #}
+  const m = fixo ? 's' : _modeloDaVez(tipo), M = fixo || (m ? MODELOS_CENA[tipo][m - 1] : null), pc = document.getElementById('palco');
   if (!M || !M.f) return M ? Object.assign({m}, M) : {m: 0};
   pc.dataset.modelo = m;
   Object.entries({mf1: M.f[0], mf2: M.f[1], n1: M.c[0], n2: M.c[1], n3: M.c[2], brilho: M.g, sombra: M.s || '#000',
@@ -2432,16 +2453,16 @@ function _pcClasse(ms, el, cls) {
   };
   if (ms > 0) _palcoPasso(ms, f); else f();
 }
-// a fase na tela (overlay.dataset.fase): pros testes e pra quem depura
+{# a fase na tela (overlay.dataset.fase): pros testes e pra quem depura #}
 function _pcFase(nome, ms) {
   const f = () => { document.getElementById('overlay').dataset.fase = nome; };
   if (ms > 0) _palcoPasso(ms, f); else f();
 }
 
-// ── a área do nome (momento.js): maiúscula pt-BR, até 20 letras cortando por PALAVRA inteira, e a letra encolhe pra
-// caber na largura do palco. Texto do cliente: sempre textContent ──
+{# ── a área do nome (momento.js): maiúscula pt-BR, até 20 letras cortando por PALAVRA inteira, e a letra encolhe pra
+ caber na largura do palco. Texto do cliente: sempre textContent ── #}
 let _pcNomes = [];
-// "MARIA CLARA FERNANDES SOUZA" vira "MARIA CLARA", nunca "FERNANDE" (conta letra, não byte: emoji não quebra ao meio)
+{# "MARIA CLARA FERNANDES SOUZA" vira "MARIA CLARA", nunca "FERNANDE" (conta letra, não byte: emoji não quebra ao meio) #}
 function _pcCorta(t, max) {
   t = String(t || '').trim().replace(/\s+/g, ' ');
   if ([...t].length <= max) return t;
@@ -2456,20 +2477,20 @@ function _pcNome(el, texto, maxLarg, maxLetras) {
   _pcNomes.push([el, maxLarg || .86]);
   return t;
 }
-// mede num span solto com a mesma fonte (a caixa engana: bloco esticado, posição absoluta, o scale(4) do começo). A
-// fonte já veio quando a TV abriu (_pcFontes); sem internet mede com a reserva, que é a que aparece na tela
+{# mede num span solto com a mesma fonte (a caixa engana: bloco esticado, posição absoluta, o scale(4) do começo). A
+ fonte já veio quando a TV abriu (_pcFontes); sem internet mede com a reserva, que é a que aparece na tela #}
 function _pcAjusta() {
   const larg = document.getElementById('palco').offsetWidth || innerWidth;
   for (const [el, maxLarg] of _pcNomes) {
     if (!el.textContent) continue;
     const cs = getComputedStyle(el), m = document.createElement('span'), max = larg * maxLarg, px0 = parseFloat(cs.fontSize);
-    const pad = (parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)) / px0;   // o padding do .pc-nome é em em
+    const pad = (parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)) / px0;{# o padding do .pc-nome é em em #}
     m.textContent = el.textContent;
     Object.assign(m.style, {position: 'absolute', visibility: 'hidden', whiteSpace: 'nowrap', fontFamily: cs.fontFamily,
       fontWeight: cs.fontWeight, fontStyle: cs.fontStyle, letterSpacing: cs.letterSpacing});
     document.body.appendChild(m);
-    // 24/10/26 (momentos no telão, visual): a letra encolhe mas o espaço entre as letras (.5vh) não, e a conta de uma
-    // volta só (a do template) passava um pouco dos 86%; refaz até caber (2 voltas bastam, 4 no máximo)
+{# 24/10/26 (momentos no telão, visual): a letra encolhe mas o espaço entre as letras (.5vh) não, e a conta de uma
+ volta só (a do template) passava um pouco dos 86%; refaz até caber (2 voltas bastam, 4 no máximo) #}
     let px = px0;
     for (let i = 0; i < 4; i++) {
       m.style.fontSize = px + 'px';
@@ -2481,9 +2502,9 @@ function _pcAjusta() {
     if (px < px0) el.style.fontSize = (px / innerHeight * 100) + 'vh';
   }
 }
-// "AC/DC - Highway to Hell (Official Video)" → música "Highway to Hell" e artista "AC/DC"; sem " - ", só a música
-// 24/10/26 (momentos no telão, visual; revisão F4): depois do traço vindo só a versão ("Evidências - Ao Vivo", "- Live",
-// "- Acústico", "- Remastered"…), ela sai antes de separar: "▶ Evidências" e só "tocando agora"
+{# "AC/DC - Highway to Hell (Official Video)" → música "Highway to Hell" e artista "AC/DC"; sem " - ", só a música
+ 24/10/26 (momentos no telão, visual; revisão F4): depois do traço vindo só a versão ("Evidências - Ao Vivo", "- Live",
+ "- Acústico", "- Remastered"…), ela sai antes de separar: "▶ Evidências" e só "tocando agora" #}
 const PC_VERSAO = /\s[-–—]\s(ao vivo|live|ac[uú]stic[oa]|acoustic|remaster(ed|izad[oa])?|vers[aã]o[^-–—]*|cover|karaok[eê]|letra|lyrics?|[aá]udio|audio oficial|clipe|videoclipe|v[ií]deo oficial|oficial|official|hd|4k)$/i;
 function _pcMusica(t) {
   const s = _tituloSemEnfeite(t).replace(PC_VERSAO, '').trim();
@@ -2491,23 +2512,23 @@ function _pcMusica(t) {
   return m ? {artista: m[1].trim(), musica: m[2].trim()} : {artista: '', musica: s};
 }
 
-// 24/10/26 (momentos no telão, visual; revisão F2): o recado (até 80 letras) é a última linha do bloco do meio e, com 2
-// linhas, entrava embaixo do convite do canto do QR. Se o recado desce até a faixa do canto, a coluna dele fica estreita
-// o bastante pra acabar antes do canto (centrada) e a letra encolhe até caber em 2 linhas (nunca menos de 3vh)
+{# 24/10/26 (momentos no telão, visual; revisão F2): o recado (até 80 letras) é a última linha do bloco do meio e, com 2
+ linhas, entrava embaixo do convite do canto do QR. Se o recado desce até a faixa do canto, a coluna dele fica estreita
+ o bastante pra acabar antes do canto (centrada) e a letra encolhe até caber em 2 linhas (nunca menos de 3vh) #}
 function _pcLivraCanto(el) {
   if (!el || !el.textContent) return;
   const pc = document.getElementById('palco'), q = document.getElementById('palco-qr').getBoundingClientRect();
   const rp = pc.getBoundingClientRect(), esc = rp.width / (pc.offsetWidth || 1), folga = innerHeight * .02 * esc;
   const caixas = () => { const r = document.createRange(); r.selectNodeContents(el); return [...r.getClientRects()]; };
-  // só mexe se alguma linha cruza o canto (com folga; o recado ainda vai subir 2vh com o pc-sobe): recado curto, de
-  // 1 linha que acaba antes do canto, fica como no template
+{# só mexe se alguma linha cruza o canto (com folga; o recado ainda vai subir 2vh com o pc-sobe): recado curto, de
+ 1 linha que acaba antes do canto, fica como no template #}
   const cruza = x => x.left < q.right + folga && x.right > q.left - folga && x.top < q.bottom + folga && x.bottom > q.top - 2 * folga;
   if (!caixas().some(cruza)) return;
   const larg = (2 * (q.left - rp.left - rp.width / 2) - 2 * folga) / esc;
   if (!(larg > 0)) return;
   el.style.maxWidth = larg + 'px';
   let px = parseFloat(getComputedStyle(el).fontSize);
-  const linhas = () => {   // o emoji vem em outra fonte e ganha outra caixa na mesma linha: junta as de altura parecida
+  const linhas = () => { {# o emoji vem em outra fonte e ganha outra caixa na mesma linha: junta as de altura parecida #}
     let n = 0, u = -1e9;
     for (const t of caixas().map(x => x.top).sort((a, b) => a - b)) if (t - u > px * esc * .5) { n++; u = t; }
     return n;
@@ -2516,30 +2537,31 @@ function _pcLivraCanto(el) {
   while (linhas() > 2 && px > min) { px = Math.max(min, px * .92); el.style.fontSize = px + 'px'; }
 }
 
-// ── canto do QR (decisão do Diogo, 24/10): o convite de cada momento + o preço do bar, em TODA cena do palco (as 3
-// novas e os 6 cartões de hoje). O convite mora aqui (um lugar só); o preço vem do servidor (PRECOS_CANTO = o MESMO
-// número que o cardápio do celular mostra pro tipo; a gorjeta é "a partir de", nunca o valor que a pessoa deu) ──
+{# ── canto do QR (decisão do Diogo, 24/10): o convite de cada momento + o preço do bar, em TODA cena do palco (as 3
+ novas e os 6 cartões de hoje). O convite mora aqui (um lugar só); o preço vem do servidor (PRECOS_CANTO = o MESMO
+ número que o cardápio do celular mostra pro tipo; a gorjeta é "a partir de", nunca o valor que a pessoa deu) ── #}
 const CANTO_CONVITE = {
   flash: 'Fura você também', brinde: 'Pague o próximo brinde', parabens: 'Tem aniversariante?',
   dedicatoria: 'Dedique a sua', chegada: 'Anuncie a sua turma', cantada: 'Manda a sua', salve: 'Manda um salve',
-  gorjeta: 'Deixe a sua gorjeta', casamento: 'Coragem custa',   // casamento = o "Pedido de Namoro 💕"
+  gorjeta: 'Deixe a sua gorjeta', casamento: 'Coragem custa',{# casamento = o "Pedido de Namoro 💕" #}
   donate_bar: 'Faça um donate para o bar',   // 27/10/26
+  vip: 'Seja o próximo super',   // 🚀 23/11/26
 };
 function _pcCanto(tipo, ms) {
   const conv = CANTO_CONVITE[tipo], preco = PRECOS_CANTO && PRECOS_CANTO[tipo];
-  const ok = !!(conv && preco);   // tipo que o bar desligou depois de pago: o canto chama pra música (grátis sempre)
+  const ok = !!(conv && preco);{# tipo que o bar desligou depois de pago: o canto chama pra música (grátis sempre) #}
   document.getElementById('pq-convite').textContent = ok ? conv : 'Peça a sua música';
-  document.getElementById('pq-preco').textContent = !ok ? 'GRÁTIS' : ((tipo === 'gorjeta' || tipo === 'donate_bar') ? `a partir de ${preco}` : preco);
+  document.getElementById('pq-preco').textContent = !ok ? '{{ tv_musica_txt or 'GRÁTIS' }}' : ((tipo === 'gorjeta' || tipo === 'donate_bar') ? `a partir de ${preco}` : preco);
   _pcClasse(ms, document.getElementById('palco-qr'), 'pc-aparece');
   _pcClasse(ms, document.getElementById('pq-bar'), 'pc-aparece');
 }
 
-// ── partículas (faísca, confete, bolha, balão) num canvas SÓ do palco (momento.js). O laço requestAnimationFrame só roda
-// com a cena na tela e para no _palcoFechar (o template rodava pra sempre). TV box fraca: com o quadro passando de ~33 ms
-// as próximas rajadas saem com metade (e com ~50 ms, um terço): cai a quantidade, o visual fica ──
-// 24/10/26 (momentos no telão, visual; revisão P2/F6): a conta é a MEDIANA dos últimos 10 quadros (um quadro lento só,
-// como os do raio, não derruba a rajada; a TV fraca de verdade cai já antes da 1ª rajada, que só sai em 0,8 s) e a
-// escala fica de uma cena pra outra (a TV é a mesma: o furar depois do parabéns não volta pra rajada cheia)
+{# ── partículas (faísca, confete, bolha, balão) num canvas SÓ do palco (momento.js). O laço requestAnimationFrame só roda
+ com a cena na tela e para no _palcoFechar (o template rodava pra sempre). TV box fraca: com o quadro passando de ~33 ms
+ as próximas rajadas saem com metade (e com ~50 ms, um terço): cai a quantidade, o visual fica ──
+ 24/10/26 (momentos no telão, visual; revisão P2/F6): a conta é a MEDIANA dos últimos 10 quadros (um quadro lento só,
+ como os do raio, não derruba a rajada; a TV fraca de verdade cai já antes da 1ª rajada, que só sai em 0,8 s) e a
+ escala fica de uma cena pra outra (a TV é a mesma: o furar depois do parabéns não volta pra rajada cheia) #}
 const _fx = {P: [], raf: 0, quadros: 0, cx: null, W: 0, H: 0, escala: 1, ult: 0, dts: [], n: 0};
 function _fxLigar() {
   const cv = document.getElementById('pc-fx'), pc = document.getElementById('palco');
@@ -2554,11 +2576,11 @@ function _fxDesligar() {
   _fx.raf = 0;
   _fx.P = [];
   const cv = document.getElementById('pc-fx');
-  if (cv) { cv.width = 0; cv.height = 0; }   // zera o quadro (e a memória dele na TV box)
+  if (cv) { cv.width = 0; cv.height = 0; }{# zera o quadro (e a memória dele na TV box) #}
 }
 function _fxN(n) { return Math.max(1, Math.round(n * _fx.escala)); }
-// 24/10/26 (momentos no telão, visual): a partícula é "pt", nunca "p" (no tv.html o "p" é o pedido, e o v11 do v_S5
-// confere cada campo dele contra o /api/status)
+{# 24/10/26 (momentos no telão, visual): a partícula é "pt", nunca "p" (no tv.html o "p" é o pedido, e o v11 do v_S5
+ confere cada campo dele contra o /api/status) #}
 function _fxPoe(pt) {
   if (_fx.P.length < 900) _fx.P.push(Object.assign({vida: 1, dv: .012, g: .35, ar: .985, rot: 0, vr: 0, tam: 3.5}, pt));
 }
@@ -2570,10 +2592,10 @@ function _fxEstoura(x, y, n, o) {
     const v = (o.vmin || 4) + Math.random() * ((o.vmax || 16) - (o.vmin || 4));
     _fxPoe({x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - (o.sobe || 3), tipo: o.tipo || 'faisca',
             cor: cores[(Math.random() * cores.length) | 0], tam: (o.tam || 3.5) * (.6 + Math.random() * .8),
-            rot: Math.random() * 6.28, vr: (Math.random() - .5) * .3, g: o.g ?? .35, dv: o.dv ?? .012, ar: o.ar ?? .985});
+            rot: Math.random() * 6.28, vr: (Math.random() - .5) * .3, g: (o.g != null ? o.g : .35), dv: (o.dv != null ? o.dv : .012), ar: (o.ar != null ? o.ar : .985)});
   }
 }
-// subida de baixo (bolha, balão)
+{# subida de baixo (bolha, balão) #}
 function _fxChuva(n, o) {
   o = o || {};
   const cores = o.cores || ['#fbbf24'];
@@ -2581,7 +2603,7 @@ function _fxChuva(n, o) {
     _fxPoe({x: Math.random() * _fx.W, y: o.cai ? -20 - Math.random() * 200 : _fx.H + 20 + Math.random() * 200,
             vx: (Math.random() - .5) * (o.vento || 1.5), vy: (o.cai ? 1 : -1) * (o.v || 2) * (.6 + Math.random() * .8),
             tipo: o.tipo || 'bolha', cor: cores[(Math.random() * cores.length) | 0], tam: (o.tam || 8) * (.6 + Math.random() * .8),
-            rot: Math.random() * 6.28, vr: (Math.random() - .5) * .2, g: o.g ?? 0, ar: 1, dv: o.dv ?? .002, balanca: Math.random() * 6.28});
+            rot: Math.random() * 6.28, vr: (Math.random() - .5) * .2, g: (o.g != null ? o.g : 0), ar: 1, dv: (o.dv != null ? o.dv : .002), balanca: Math.random() * 6.28});
   }
 }
 function _fxDesenha(cx, pt) {
@@ -2605,7 +2627,7 @@ function _fxDesenha(cx, pt) {
 function _fxAnda(t) {
   _fx.raf = 0;
   if (!_palcoAtivo || !_fx.cx) return;
-  // os 2 primeiros quadros depois de montar a cena são lentos por natureza: a conta começa no 3º
+{# os 2 primeiros quadros depois de montar a cena são lentos por natureza: a conta começa no 3º #}
   if (_fx.ult && ++_fx.n > 2) {
     _fx.dts.push(t - _fx.ult);
     if (_fx.dts.length > 10) _fx.dts.shift();
@@ -2630,14 +2652,14 @@ function _fxAnda(t) {
   _fx.raf = requestAnimationFrame(_fxAnda);
 }
 
-// Entrada da cena de um momento. Marca exibido quando a cena COMEÇA (como o cartão de hoje)
+{# Entrada da cena de um momento. Marca exibido quando a cena COMEÇA (como o cartão de hoje) #}
 function mostrarCena(p, depois) {
   pedidoAtual = p;
   if (_momentoPend && _momentoPend.id === p.id) _momentoPend = null;
   const fim = () => { _palcoFechar(); _esqDepois(p); if (depois) depois(); };   {# 🔥 15/11/26: o DEPOIS do Esquenta #}
   if (p.tipo === 'parabens') { _palcoAbrir('', 'parabens'); _marcarExibido(p.id); _cenaParabens(p, fim); return; }
   if (p.tipo === 'brinde')   { _palcoAbrir('', 'brinde'); _marcarExibido(p.id); _cenaBrinde(p, fim); return; }
-  // os outros 6: o cartão de hoje, no palco (player parado), com o convite + o preço + o QR no canto
+{# os outros 6: o cartão de hoje, no palco (player parado), com o convite + o preço + o QR no canto #}
   _palcoAbrir();
   document.getElementById('overlay').classList.remove('palco-cena');
   _pcCanto(p.tipo, 0);
@@ -2731,9 +2753,9 @@ function _cenaParabens(p, fim) {
   _palcoPasso(16000, fim);
 }
 
-// 🍻 brinde (8 s, brinde.html): bolhas subindo o tempo todo, "🍻 brinde geral 🍻", 3·2·1 (0,4/1,1/1,8 s) com as canecas
-// vindo dos cantos; 2,5 s elas batem: flash, espuma, tremor, SAÚDE! e o tilintar (~0,8 s) → 3,3 s "quem puxou o brinde"
-// → 3,5 s o NOME → 4,2 s o recado → o canto em 4,6 s → escurece 7,3 s → fecha 8,0 s, com o preto completo (no template o
+{# 🍻 brinde (8 s, brinde.html): bolhas subindo o tempo todo, "🍻 brinde geral 🍻", 3·2·1 (0,4/1,1/1,8 s) com as canecas
+ vindo dos cantos; 2,5 s elas batem: flash, espuma, tremor, SAÚDE! e o tilintar (~0,8 s) → 3,3 s "quem puxou o brinde"
+ → 3,5 s o NOME → 4,2 s o recado → o canto em 4,6 s → escurece 7,3 s → fecha 8,0 s, com o preto completo (no template o #}
 // _dur é 8,3 s). "saúde", nunca "vira" nem "bebe"; nunca "por conta de" (soaria como rodada paga); sem placar.
 function _cenaBrinde(p, fim) {
   const $ = id => document.getElementById(id);
@@ -2771,15 +2793,15 @@ function _cenaBrinde(p, fim) {
   _palcoPasso(8000, fim);
 }
 
-// ⚡ "Entrada de estrela" (4 s, furar.html): feixes de luz, o raio desenhando em 0,1 s (o estalo, ≤ 1 s), flash em
-// 0,25 s, "⚡ furou a fila ⚡", o NOME dourado batendo em 0,75 s com faíscas (0,8 s), o traço, "▶ <música>" + "<artista> ·
-// tocando agora", o canto em 1,8 s, escurece em 3,5 s e o clipe em 4,0 s. Os tempos dos pedaços do clone são os atrasos
-// do CSS do template. O pedido já foi marcado exibido no avancarFila (a linha sai da fila na hora).
-// 24/10/26 (momentos no telão, visual; revisão F3/P4): o teto de 20 s de player parado é do intervalo inteiro, contado
-// de quando o clipe parou (_paradoDesde), não da vinheta. Depois de um parabéns (16 s, e mais o atraso de timer da TV
-// fraca) a vinheta encurta o fim parado (o canto) pra fechar em PALCO_TETO_MS − PALCO_RESERVA_MS (a reserva é o clipe
-// seguinte carregar); sozinha, ou depois do brinde, fica com os 4 s do template. Nunca menos de FURAR_MIN_MS: o nome,
-// a música e o canto saem sempre (o cliente pagou)
+{# ⚡ "Entrada de estrela" (4 s, furar.html): feixes de luz, o raio desenhando em 0,1 s (o estalo, ≤ 1 s), flash em
+ 0,25 s, "⚡ furou a fila ⚡", o NOME dourado batendo em 0,75 s com faíscas (0,8 s), o traço, "▶ <música>" + "<artista> ·
+ tocando agora", o canto em 1,8 s, escurece em 3,5 s e o clipe em 4,0 s. Os tempos dos pedaços do clone são os atrasos
+ do CSS do template. O pedido já foi marcado exibido no avancarFila (a linha sai da fila na hora).
+ 24/10/26 (momentos no telão, visual; revisão F3/P4): o teto de 20 s de player parado é do intervalo inteiro, contado
+ de quando o clipe parou (_paradoDesde), não da vinheta. Depois de um parabéns (16 s, e mais o atraso de timer da TV
+ fraca) a vinheta encurta o fim parado (o canto) pra fechar em PALCO_TETO_MS − PALCO_RESERVA_MS (a reserva é o clipe
+ seguinte carregar); sozinha, ou depois do brinde, fica com os 4 s do template. Nunca menos de FURAR_MIN_MS: o nome,
+ a música e o canto saem sempre (o cliente pagou) #}
 const PALCO_TETO_MS = 20000, PALCO_RESERVA_MS = 500, FURAR_MS = 4000, FURAR_MIN_MS = 2500;
 // 10/11/26 (rodízio de torcida): com som e com os arquivos prontos, o ⚡ sozinho dura 7 s: a intro e, emendada no fim
 // dela, a torcida da vez (5 arquivos de 4,05 s, mesmo volume, um depois do outro). Sem som, sem arquivo ou sem 7 s de
@@ -2787,6 +2809,10 @@ const PALCO_TETO_MS = 20000, PALCO_RESERVA_MS = 500, FURAR_MS = 4000, FURAR_MIN_
 const FURAR_TORCIDA_MS = 7000, TORCIDA_APOS_MS = 2700, TORCIDAS = 5;
 let _torcidaVez = 1 + Math.floor(Math.random() * TORCIDAS);
 function _torcidaPronta() { return !_isMuted && volumeAtualTV() > 0 && !!_sonsBuf.intro && !!_sonsBuf['torcida' + _torcidaVez]; }
+{# 🚀 23/11/26 (Super fura fila): a cena do ⚡ com cor, luz e festa próprias, sempre a mesma (fora do rodízio dos 3
+   modelos): fundo roxo, 2 holofotes rosa, o nome flutuando e 2 rajadas (o ⚡ tem 1). Nada aleatório #}
+const SUPER_CENA = {f: ['#581c87', '#0a0014'], c: ['#fff', '#f9a8d4', '#db2777'], g: 'rgba(236,72,153,.75)', s: '#3b0764',
+  lc: 'rgba(244,114,182,.55)', luz: 'holofotes', idle: 'flutua', bc: ['#f472b6', '#c084fc', '#fff', '#fbbf24']};
 function _vinhetaFurar(p, depois) {
   const ini = _paradoDesde || performance.now();
   const sobra = ini + PALCO_TETO_MS - PALCO_RESERVA_MS - performance.now();
@@ -2796,7 +2822,7 @@ function _vinhetaFurar(p, depois) {
   _palcoAbrir('cena-furar', 'furar');
   pedidoAtual = p;
   const $ = id => document.getElementById(id);
-  const mod = _modeloAplicar('flash');
+  const sup = p.tipo === 'vip', c = p.ch || {}, mod = sup ? _modeloAplicar('vip', SUPER_CENA) : _modeloAplicar('flash');
   _pcNome($('pcf-nome'), p.nome_cliente);
   const m = _pcMusica(p.titulo_pedido), mu = $('pcf-musica');
   if (m.musica) {
@@ -2805,7 +2831,8 @@ function _vinhetaFurar(p, depois) {
     sm.textContent = (m.artista ? m.artista + ' · ' : '') + 'tocando agora';
     mu.append(sm);
   }
-  if ((p.ch || {}).fv) $('pcf-rotulo').textContent = '⚡ vez garantida ⚡'; else $('pcf-frase').textContent = _chVez('F3');{# 📺 18/11/26 (chamadas, pacote 1): 3ª linha em rodízio; ninguém esperava = ninguém furou #}
+  if (sup) { $('pcf-rotulo').textContent = '🚀 super fura fila 🚀'; $('pcf-frase').textContent = c.sn ? c.sn + 'º super da noite' : 'passou na frente de todo mundo'; }
+  else if (c.fv) $('pcf-rotulo').textContent = '⚡ vez garantida ⚡'; else $('pcf-frase').textContent = _chVez('F3');{# 📺 18/11/26 (chamadas, pacote 1): 3ª linha em rodízio; ninguém esperava = ninguém furou #}
   _pcAjusta();
   _pcClasse(0, $('palco'), 'pc-zoom4');
   _pcFase('furar:raio');
@@ -2815,10 +2842,11 @@ function _vinhetaFurar(p, depois) {
   });
   _pcClasse(250, $('pc-flash'), 'pc-flash-f');
   _pcFase('furar:nome', 750);
-  _palcoPasso(800, () => _fxEstoura(_fx.W / 2, _fx.H / 2, _fxN(260), {cores: mod.bc || ['#fbbf24', '#fbbf24', '#fff'], vmin: 4, vmax: 20}));
+  _palcoPasso(800, () => _fxEstoura(_fx.W / 2, _fx.H / 2, _fxN(sup ? 420 : 260), {cores: mod.bc || ['#fbbf24', '#fbbf24', '#fff'], vmin: 4, vmax: 20}));
   if (mod.idle) _pcClasse(1600, document.querySelector('#pc-cena .pc-centro'), 'pc-i-' + mod.idle);
   _pcFase('furar:musica', 1400);
-  _pcCanto('flash', 1800);
+  if (sup) _palcoPasso(1500, () => _fxEstoura(_fx.W / 2, _fx.H / 2, _fxN(300), {cores: mod.bc, vmin: 6, vmax: 24}));
+  _pcCanto(p.tipo, 1800);
   _pcFase('furar:canto', 1800);
   _pcClasse(dur - 500, $('pc-fim'), 'pc-escurece-f');
   _pcFase('furar:escurece', dur - 500);
@@ -2826,10 +2854,10 @@ function _vinhetaFurar(p, depois) {
 }
 
 // 24/10/26 (momentos no telão, visual; revisão P3): o YouTube de verdade pausa por mensagem (postMessage) e o
-// getPlayerState() só vira "pausado" quando o iframe responde. Nos caminhos em que o clipe ainda TOCA quando o palco vai
-// abrir (⏭️ do painel com um ⚡ na fila, a espera máxima D3, o ⚡ que esperava a TV ligar), pausa e só abre quando o
-// player confirma que parou (até 1,5 s; depois disso abre assim mesmo e o _palcoAbrir pausa de novo). Enquanto espera,
-// o _palcoAtivo segura o ENDED, o ⏭️ e o avancarFila (nada carrega nem abre por cima)
+{# getPlayerState() só vira "pausado" quando o iframe responde. Nos caminhos em que o clipe ainda TOCA quando o palco vai
+ abrir (⏭️ do painel com um ⚡ na fila, a espera máxima D3, o ⚡ que esperava a TV ligar), pausa e só abre quando o
+ player confirma que parou (até 1,5 s; depois disso abre assim mesmo e o _palcoAbrir pausa de novo). Enquanto espera,
+ o _palcoAtivo segura o ENDED, o ⏭️ e o avancarFila (nada carrega nem abre por cima) #}
 function _clipeTocando() {
   try { const s = player && player.getPlayerState ? player.getPlayerState() : 0; return s === 1 || s === 3; } catch(e) { return false; }
 }
@@ -2845,8 +2873,8 @@ function _pausarEDepois(fn) {
   })();
 }
 
-// 🔊 Som da cena (D6): sintetizado na hora (WebAudio), sem arquivo e sem música de ninguém, ≤ 1,5 s, só com o player
-// parado. Volume = o tv_volume do painel. Navegador que não deixa: fica mudo, sem erro.
+{# 🔊 Som da cena (D6): sintetizado na hora (WebAudio), sem arquivo e sem música de ninguém, ≤ 1,5 s, só com o player
+ parado. Volume = o tv_volume do painel. Navegador que não deixa: fica mudo, sem erro. #}
 let _ac = null, _somNos = [];
 function _somCena(qual) {
   // 24/10/26 (momentos no telão, visual; revisão P3): clipe ainda tocando = nenhum som do app por cima dele
@@ -3112,7 +3140,7 @@ const _sonsPre = setInterval(() => {
 // ── Propaganda do bar — slide entre vídeos ───────────────────────────────────
 function proximoVideoOuSlide() {
   _videosPlayed++;
-  // A cada 3 vídeos exibe slide do bar (propaganda/cardápio)
+{# A cada 3 vídeos exibe slide do bar (propaganda/cardápio) #}
   if (ANUNCIOS_EFETIVOS.length && _videosPlayed % 3 === 0) {
     const slide = ANUNCIOS_EFETIVOS[_anuncioIdx % ANUNCIOS_EFETIVOS.length];
     _anuncioIdx++;
@@ -3130,13 +3158,13 @@ function _esconderSlide() {
 }
 
 function mostrarSlide(slide) {
-  const duracao = 8000; // 8s
+  const duracao = 8000;{# 8s #}
   const el     = document.getElementById('slide-propaganda');
   const box    = document.getElementById('slide-box');
   const imgBox = document.getElementById('slide-img-box');
 
   if (slide.tipo === 'imagem' && slide.url) {
-    // ── Slide de imagem ──────────────────────────────────────────────────
+{# ── Slide de imagem ────────────────────────────────────────────────── #}
     box.style.display    = 'none';
     imgBox.style.display = 'flex';
     document.getElementById('slide-img').src = slide.url;
@@ -3145,7 +3173,7 @@ function mostrarSlide(slide) {
     bar.offsetHeight;
     bar.style.animation = `shrink ${duracao/1000}s linear forwards`;
   } else {
-    // ── Slide de texto ───────────────────────────────────────────────────
+{# ── Slide de texto ─────────────────────────────────────────────────── #}
     box.style.display    = '';
     imgBox.style.display = 'none';
     document.getElementById('slide-emoji').textContent  = slide.emoji || '📢';
@@ -3164,14 +3192,14 @@ function mostrarSlide(slide) {
   clearTimeout(window._slideTimer);
   window._slideTimer = setTimeout(() => {
     _esconderSlide();
-    // 16/10/26 (TV-15): fim do slide confere a fila (antes ia direto pra biblioteca)
-    // 24/10/26 (momentos no telão, D2): o fim do slide também é intervalo: momento pendente entra antes da fila
+{# 16/10/26 (TV-15): fim do slide confere a fila (antes ia direto pra biblioteca)
+ 24/10/26 (momentos no telão, D2): o fim do slide também é intervalo: momento pendente entra antes da fila #}
     _intervalo({semSlide: true});
   }, duracao);
 }
 
-// 24/10/26 (momentos no telão, revisão TV-1): o confete só existe no palco. O fim da cena tira os que estão caindo e
-// cancela os que ainda iam nascer (antes ficavam até 5 s por cima do clipe seguinte)
+{# 24/10/26 (momentos no telão, revisão TV-1): o confete só existe no palco. O fim da cena tira os que estão caindo e
+ cancela os que ainda iam nascer (antes ficavam até 5 s por cima do clipe seguinte) #}
 let _confeteTimers = [];
 function _limparConfetes() {
   _confeteTimers.forEach(clearTimeout);
@@ -3202,9 +3230,9 @@ function lancarConfetes(corPrincipal) {
   }
 }
 
-// ── Seletor de nicho — abas ───────────────────────────────────────────────────
+{# ── Seletor de nicho — abas ─────────────────────────────────────────────────── #}
 function _mostrarNicho(nichoKey, cor) {
-  // Mostra só os canais do nicho, ativa a aba
+{# Mostra só os canais do nicho, ativa a aba #}
   document.querySelectorAll('.canal-nicho-group').forEach(el => {
     el.style.display = el.dataset.nicho === nichoKey ? 'flex' : 'none';
   });
@@ -3221,25 +3249,25 @@ function selecionarNicho(nichoKey, cor, tabEl) {
   _mostrarNicho(nichoKey, cor);
 }
 
-// ── Lista nova do acervo sem recarregar a página (15/10/26) ─────────────────────
+{# ── Lista nova do acervo sem recarregar a página (15/10/26) ───────────────────── #}
 async function recarregarListaVideos() {
   try {
     const r = await fetch(`${BASE_URL}/api/videos/${CANAL_KEY}?bar=${encodeURIComponent(CODE)}`, {cache: 'no-store'});
     const d = await r.json();
     const novos = (d && d.videos) || [];
-    if (!novos.length) return;   // lista vazia: fica com a atual (nunca entra em loop)
+    if (!novos.length) return;{# lista vazia: fica com a atual (nunca entra em loop) #}
     const atual = VIDEOS[videoIdx] && VIDEOS[videoIdx].youtube_id;
     VIDEOS.length = 0;
     novos.forEach(v => VIDEOS.push(v));
     const i = VIDEOS.findIndex(v => v.youtube_id === atual);
     videoIdx = i >= 0 ? i : Math.floor(Math.random() * VIDEOS.length);
     _loopGuard = 0;
-  } catch(e) { /* silencioso: segue com a lista que tem */ }
+  } catch(e) { {# silencioso: segue com a lista que tem #} }
 }
 
-// ── Polling da API ────────────────────────────────────────────────────────────
+{# ── Polling da API ──────────────────────────────────────────────────────────── #}
 async function pollStatus() {
-  if (_pollEmVoo) return;   // 16/10/26 (TV-17): a pergunta anterior ainda não voltou → não empilha
+  if (_pollEmVoo) return;{# 16/10/26 (TV-17): a pergunta anterior ainda não voltou → não empilha #}
   _pollEmVoo = true;
   try {
     const res  = await _fetchTV(_urlStatus(), {cache: 'no-store'});
@@ -3247,8 +3275,8 @@ async function pollStatus() {
     // 🎤 03/11/26 (V2a): o "Não veio" pôs de volta na fila o MESMO pedido (uma linha = um PIX): esta TV esquece que já tocou
     if (data.karaoke && Array.isArray(data.karaoke.voltou)) data.karaoke.voltou.forEach(id => { _consumidos.delete(id); delete _exibidoEm[id]; });{% endif %}
 
-    // Pedido que esta TV JÁ tocou/mostrou (resposta atrasada, ou o "exibido" se perdeu): não repete;
-    // só manda o "exibido" de novo pra fila andar.
+{# Pedido que esta TV JÁ tocou/mostrou (resposta atrasada, ou o "exibido" se perdeu): não repete;
+ só manda o "exibido" de novo pra fila andar. #}
     if (data.pedido && _consumidos.has(data.pedido.id)) { _marcarExibido(data.pedido.id); data.pedido = null; }
     if (data.pedido_musica && _consumidos.has(data.pedido_musica.id)) {
       _marcarExibido(data.pedido_musica.id); data.pedido_musica = null;
@@ -3257,27 +3285,27 @@ async function pollStatus() {
     // Promoção Relâmpago
     atualizarPromo(data.promo || null);
 
-    // 🎶 Fila do canto (22/10/26): vem nesta resposta; sem o campo (servidor antigo) a TV fica como hoje
+{# 🎶 Fila do canto (22/10/26): vem nesta resposta; sem o campo (servidor antigo) a TV fica como hoje #}
     _filaAtualizar(data, true);{% if karaoke %}
     _karaokeTv(data);   // 🎤 o QR, o Rei da noite e o nome no palco{% endif %}
 
-    // Preço do QR (V-S5-06): happy hour começou/acabou com a TV aberta → o mesmo preço do celular.
-    // 22/10/26: com a fila do canto o QR diz "📱 Pede a tua música" / "GRÁTIS" (o furar está no cartão)
+{# Preço do QR (V-S5-06): happy hour começou/acabou com a TV aberta → o mesmo preço do celular.
+ 22/10/26: com a fila do canto o QR diz "📱 Pede a tua música" / "GRÁTIS" (o furar está no cartão) #}
     const _qp = document.getElementById('qr-preco');
     if (!Array.isArray(data.fila) && typeof data.qr_preco === 'string' && _qp && _qp.textContent !== data.qr_preco) {
       _qp.textContent = data.qr_preco;
     }
-    // 24/10/26 (momentos no telão, visual): o preço do canto das cenas acompanha o do cardápio (vale na próxima cena)
+{# 24/10/26 (momentos no telão, visual): o preço do canto das cenas acompanha o do cardápio (vale na próxima cena) #}
     if (data.precos_canto && typeof data.precos_canto === 'object') PRECOS_CANTO = data.precos_canto;
 
-    // 🔄 Algo DESTE bar mudou (anúncio, slide, Novo QR) ou o admin apertou "Atualizar TVs" → recarrega
-    // a página. (15/10/26: antes qualquer bar salvando propaganda recarregava a TV de todos os bares.)
+{# 🔄 Algo DESTE bar mudou (anúncio, slide, Novo QR) ou o admin apertou "Atualizar TVs" → recarrega
+ a página. (15/10/26: antes qualquer bar salvando propaganda recarregava a TV de todos os bares.) #}
     if (data.tv_version !== undefined) {
       if (window._tvVersion === undefined) {
-        window._tvVersion = data.tv_version;           // 1ª leitura: sincroniza
+        window._tvVersion = data.tv_version;{# 1ª leitura: sincroniza #}
       } else if (data.tv_version !== window._tvVersion && (_pedidoTocandoAgora() || overlayAtivo || _garcomAtivo)) {
-        // pedido tocando ou momento na tela (TVP-1): recarrega no fim DESTA música (onPlayerStateChange), antes
-        // do próximo pedido — senão, com a fila cheia, a TV ficava a noite com o QR velho depois do "Novo QR"
+{# pedido tocando ou momento na tela (TVP-1): recarrega no fim DESTA música (onPlayerStateChange), antes
+ do próximo pedido — senão, com a fila cheia, a TV ficava a noite com o QR velho depois do "Novo QR" #}
         window._recarregarPendente = true;
       } else if (data.tv_version !== window._tvVersion) {
         window._tvVersion = data.tv_version;
@@ -3286,10 +3314,10 @@ async function pollStatus() {
       }
     }
 
-    // 📚 Acervo mudou no admin (apagou/adicionou) → troca a lista EM MEMÓRIA, sem recarregar
+{# 📚 Acervo mudou no admin (apagou/adicionou) → troca a lista EM MEMÓRIA, sem recarregar #}
     if (data.videos_version !== undefined) {
       if (window._videosVersion === undefined) {
-        window._videosVersion = data.videos_version;   // 1ª leitura: sincroniza
+        window._videosVersion = data.videos_version;{# 1ª leitura: sincroniza #}
       } else if (data.videos_version !== window._videosVersion) {
         window._videosVersion = data.videos_version;
         recarregarListaVideos();
@@ -3301,52 +3329,52 @@ async function pollStatus() {
       aplicarVolumeTV(data.tv_volume);
     }
 
-    // ⏸️ Pausar a música — comando do dono (botão no painel). Servidor antigo (sem o campo): nada muda
+{# ⏸️ Pausar a música — comando do dono (botão no painel). Servidor antigo (sem o campo): nada muda #}
     if (typeof data.musica_pausada === 'boolean') _pausaAplicar(data.musica_pausada, data.pausa_resta_s);
 
-    // ⏭️ Pular música — comando do dono (botão no painel)
+{# ⏭️ Pular música — comando do dono (botão no painel) #}
     if (typeof data.skip_seq === 'number') {
       if (window._lastSkipSeq === undefined) {
-        window._lastSkipSeq = data.skip_seq;   // 1ª leitura: sincroniza, não pula
+        window._lastSkipSeq = data.skip_seq;{# 1ª leitura: sincroniza, não pula #}
       } else if (data.skip_seq > window._lastSkipSeq) {
         window._lastSkipSeq = data.skip_seq;
         pularMusicaAgora();
-        return;                                 // não processa o resto neste tick
+        return;{# não processa o resto neste tick #}
       }
     }
 
-    // Troca de canal pelo dono do bar (sem reload). Com pedido tocando (TVP-1) espera ele acabar: a próxima
-    // pergunta depois disso ainda vê o canal novo e troca
-    // 29/10/26 (pendência 3): a TV de teste (?teste=1) troca só ela; segue o servidor só quando o canal MUDA lá
+{# Troca de canal pelo dono do bar (sem reload). Com pedido tocando (TVP-1) espera ele acabar: a próxima
+ pergunta depois disso ainda vê o canal novo e troca
+ 29/10/26 (pendência 3): a TV de teste (?teste=1) troca só ela; segue o servidor só quando o canal MUDA lá #}
     if (data.canal_atual && data.canal_atual !== window._canalAtual && !(MODO_TESTE && data.canal_atual === window._canalServTeste)
         && !_pedidoTocandoAgora() && !_palcoAtivo && !_pausaBar) {
       trocarCanal(data.canal_atual);
     }
     if (data.canal_atual) window._canalServUltimo = data.canal_atual;
 
-    // Pedido especial. 24/10/26 (momentos no telão, D1): NÃO abre mais por cima do clipe. Fica pendente (sem marcar
-    // exibido), a coluna anuncia "Depois desta…" e a cena entra no próximo intervalo (_intervalo). Com a TV MUDA
-    // (ninguém tocou em LIGAR / voltou de uma recarga) continua na fila e NÃO é marcado exibido (16/10/26, TV-03)
+{# Pedido especial. 24/10/26 (momentos no telão, D1): NÃO abre mais por cima do clipe. Fica pendente (sem marcar
+ exibido), a coluna anuncia "Depois desta…" e a cena entra no próximo intervalo (_intervalo). Com a TV MUDA
+ (ninguém tocou em LIGAR / voltou de uma recarga) continua na fila e NÃO é marcado exibido (16/10/26, TV-03) #}
     _momentoAtualizar((data.pedido && (!pedidoAtual || data.pedido.id !== pedidoAtual.id)) ? data.pedido : null);
     _esperaMaxMomento();
     _garcomAtualizar(data.garcom || null);   {# 🙋 15/11/26: na hora, por cima do clipe #}
 
-    // Pedido de música — entra na fila, espera vídeo acabar
-    if (data.pedido_musica && data.pedido_musica.id !== pedidoMusica?.id) {
+{# Pedido de música — entra na fila, espera vídeo acabar #}
+    if (data.pedido_musica && data.pedido_musica.id !== (pedidoMusica ? pedidoMusica.id : undefined)) {
       pedidoMusica = data.pedido_musica;
       mostrarBadgeFila(data.total_fila);
 
       // ⚡ FURAR A FILA NÃO corta (16/10/26, Diogo, produção a5970fc) e, desde 25/10/26 (pacote do dinheiro), o 👑 VIP
-      // também não: viram o 1º da fila (o servidor ordena vip, flash) e tocam quando a música atual acabar (ENDED).
+{# também não: viram o 1º da fila (o servidor ordena vip, flash) e tocam quando a música atual acabar (ENDED). #}
 
-      // Mostra banner "PRÓXIMA" imediatamente ao detectar pedido (não só 20s antes)
-      // Isso garante que o dono veja que a música está na fila antes de clicar "Tocou"
+{# Mostra banner "PRÓXIMA" imediatamente ao detectar pedido (não só 20s antes)
+ Isso garante que o dono veja que a música está na fila antes de clicar "Tocou" #}
       mostrarProximoCard(pedidoMusica);
 
-      agendarProximoCard(); // agenda para reexibir ~20s antes do fim
+      agendarProximoCard();{# agenda para reexibir ~20s antes do fim #}
     }
 
-    // Sem pedido de música — limpa indicadores
+{# Sem pedido de música — limpa indicadores #}
     if (!data.pedido_musica && pedidoMusica) {
       pedidoMusica = null;
       esconderBadgeFila();
@@ -3366,17 +3394,17 @@ async function pollStatus() {
   }
 }
 
-// ── Trocar canal (sem reload de página) ──────────────────────────────────────
+{# ── Trocar canal (sem reload de página) ────────────────────────────────────── #}
 async function trocarCanal(canal) {
   if (canal === CANAL_KEY) return;
 
-  // Cancela timers ativos ANTES do await para evitar race condition
-  // (stall detector ou proximoTimer podem disparar durante o fetch e bagunçar o estado)
+{# Cancela timers ativos ANTES do await para evitar race condition
+ (stall detector ou proximoTimer podem disparar durante o fetch e bagunçar o estado) #}
   clearTimeout(stallTimer);
   clearTimeout(proximoTimer);
   document.getElementById('proximo-card').classList.remove('show');
 
-  // 1. Notifica o servidor (29/10/26: a TV de teste, ?teste=1, nunca troca o canal do bar)
+{# 1. Notifica o servidor (29/10/26: a TV de teste, ?teste=1, nunca troca o canal do bar) #}
   if (MODO_TESTE) window._canalServTeste = window._canalServUltimo;
   else fetch(`${BASE_URL}/api/trocar-canal/${CODE}`, {
     method: 'POST',
@@ -3384,7 +3412,7 @@ async function trocarCanal(canal) {
     body: JSON.stringify({canal}),
   }).catch(() => {});
 
-  // 2. Busca vídeos do novo canal
+{# 2. Busca vídeos do novo canal #}
   let novosVideos;
   try {
     const r = await fetch(`${BASE_URL}/api/videos/${canal}?bar=${encodeURIComponent(CODE)}`);
@@ -3395,13 +3423,13 @@ async function trocarCanal(canal) {
   }
 
   if (!novosVideos.length) {
-    // Canal sem vídeos — reverte o servidor e mantém o canal atual
+{# Canal sem vídeos — reverte o servidor e mantém o canal atual #}
     if (!MODO_TESTE) fetch(`${BASE_URL}/api/trocar-canal/${CODE}`, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({canal: CANAL_KEY}),
     }).catch(() => {});
-    // Aviso visual temporário
+{# Aviso visual temporário #}
     const np = document.getElementById('np-titulo');
     const npOrig = np ? np.textContent : '';
     if (np) np.textContent = '⚠️ Canal sem vídeos — mantendo atual';
@@ -3409,7 +3437,7 @@ async function trocarCanal(canal) {
     return;
   }
 
-  // 3. Atualiza estado interno
+{# 3. Atualiza estado interno #}
   const info = CANAIS_JS[canal] || {};
   CANAL_KEY = canal;
   window._canalAtual = canal;
@@ -3417,7 +3445,7 @@ async function trocarCanal(canal) {
   VIDEOS.length = 0;
   novosVideos.forEach(v => VIDEOS.push(v));
 
-  // Carrega skip list do novo canal (se existir)
+{# Carrega skip list do novo canal (se existir) #}
   _skipSet.clear();
   try {
     const stored = localStorage.getItem('ps_skip_' + canal);
@@ -3432,13 +3460,13 @@ async function trocarCanal(canal) {
   try { localStorage.removeItem('ps_skip_' + canal); } catch(e) {}
   esconderBadgeFila();
 
-  // 4. Atualiza visual — badge do canal
+{# 4. Atualiza visual — badge do canal #}
   const nowPlaying = document.getElementById('now-playing');
   nowPlaying.style.setProperty('--canal-cor', info.cor || '#ef4444');
   const badge = nowPlaying.querySelector('.np-canal-badge');
   if (badge) badge.textContent = `${info.emoji || ''} ${info.nome || canal}`;
 
-  // 5. Atualiza botões do seletor + aba de nicho
+{# 5. Atualiza botões do seletor + aba de nicho #}
   document.querySelectorAll('.canal-btn').forEach(btn => {
     btn.classList.remove('ativo');
     btn.style.borderColor = '';
@@ -3449,22 +3477,22 @@ async function trocarCanal(canal) {
     btnAtivo.classList.add('ativo');
     btnAtivo.style.borderColor = info.cor || '#ef4444';
     btnAtivo.style.setProperty('--canal-cor', info.cor || '#ef4444');
-    // Garante que o nicho do novo canal está visível
+{# Garante que o nicho do novo canal está visível #}
     const nicho = info.grupo || 'musica';
     _mostrarNicho(nicho, info.cor || '#ef4444');
   }
 
-  // 6. Carrega o primeiro vídeo
-  // Usa cueVideoById para preparar sem auto-play imediato, depois dá um curto delay
-  // antes de chamar carregarVideo — evita conflito se o player ainda estava carregando
+{# 6. Carrega o primeiro vídeo
+ Usa cueVideoById para preparar sem auto-play imediato, depois dá um curto delay
+ antes de chamar carregarVideo — evita conflito se o player ainda estava carregando #}
   clearTimeout(stallTimer);
-  // TVP-1: se um pedido começou nesses 300 ms (ou o canal foi trocado na própria TV durante um pedido), a lista
-  // nova já está valendo e entra quando ele acabar — não corta o pedido
-  // 24/10/26 (momentos no telão): cena no palco = player parado; a lista nova entra quando ela sair
+{# TVP-1: se um pedido começou nesses 300 ms (ou o canal foi trocado na própria TV durante um pedido), a lista
+ nova já está valendo e entra quando ele acabar — não corta o pedido
+ 24/10/26 (momentos no telão): cena no palco = player parado; a lista nova entra quando ela sair #}
   setTimeout(() => { if (!_pedidoTocandoAgora() && !_palcoAtivo) carregarVideo(videoIdx); }, 300);
 }
 
-// ── Fullscreen ────────────────────────────────────────────────────────────────
+{# ── Fullscreen ──────────────────────────────────────────────────────────────── #}
 function toggleFullscreen() {
   if (!document.fullscreenElement) {
     document.documentElement.requestFullscreen().catch(() => {});
@@ -3482,15 +3510,15 @@ document.addEventListener('fullscreenchange', () => {
   }
 });
 
-// Tecla F = fullscreen; Enter/espaço (controle da TV) liga a TV muda
+{# Tecla F = fullscreen; Enter/espaço (controle da TV) liga a TV muda #}
 document.addEventListener('keydown', e => {
   if (_isMuted && (e.key === 'Enter' || e.key === ' ')) { ligarTV(); return; }
   if (e.key === 'f' || e.key === 'F') toggleFullscreen();
 });
 
-// Mouse move → mostra seletor de canal + botão fullscreen + cursor; parado 3 s, somem os três
+{# Mouse move → mostra seletor de canal + botão fullscreen + cursor; parado 3 s, somem os três #}
 document.addEventListener('mousemove', e => {
-  // o navegador manda "mousemove" sem o mouse sair do lugar (tela mudou embaixo dele): ignora
+{# o navegador manda "mousemove" sem o mouse sair do lugar (tela mudou embaixo dele): ignora #}
   if (e.clientX === window._mx && e.clientY === window._my) return;
   window._mx = e.clientX; window._my = e.clientY;
   const sel = document.getElementById('canal-selector');
@@ -3506,12 +3534,12 @@ document.addEventListener('mousemove', e => {
   _esconderCursorDepois(3000);
 });
 
-// ── Init ──────────────────────────────────────────────────────────────────────
+{# ── Init ────────────────────────────────────────────────────────────────────── #}
 window._canalAtual = CANAL_KEY;
-window._canalServUltimo = CANAL_KEY;   // 29/10/26: o canal do bar no servidor (a TV de teste não mexe nele)
-setInterval(pollStatus, 2500); // 2.5s — mais responsivo para pedidos VIP e fila
+window._canalServUltimo = CANAL_KEY;{# 29/10/26: o canal do bar no servidor (a TV de teste não mexe nele) #}
+setInterval(pollStatus, 2500);{# 2.5s — mais responsivo para pedidos VIP e fila #}
 
-// Já foi ligada neste aparelho (recarga, queda de luz): nada de botão grande; só o aviso pequeno
+{# Já foi ligada neste aparelho (recarga, queda de luz): nada de botão grande; só o aviso pequeno #}
 if (_jaLigou) {
   document.getElementById('ligar-tv').classList.add('hidden');
   document.getElementById('sem-som').classList.add('show');
@@ -3533,7 +3561,7 @@ if (_jaLigou) {
   v.muted = true;
   v.addEventListener('ended', proximo);
   v.addEventListener('playing', () => { falhas = 0; });
-  // vídeo que não abre (bucket fora, arquivo apagado): pula; se nenhum abre, fica o fundo preto (a música segue)
+{# vídeo que não abre (bucket fora, arquivo apagado): pula; se nenhum abre, fica o fundo preto (a música segue) #}
   v.addEventListener('error', () => { if (++falhas <= CLIPES.length) proximo(); else v.style.display = 'none'; });
   proximo();
 })();

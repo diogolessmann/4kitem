@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Anton&display=swap">
-{% macro brl(v) %}R$ {{ ('%.0f' if v == (v|int) else '%.2f')|format(v)|replace('.',',') }}{% endmacro %}
+{% macro brl(v) %}R$ {{ ('%.0f' if v == (v|int) else '%.2f')|format(v)|replace('.',',') }}{% endmacro %}{#- 💎 23/11/26 (planos): MP = Plano Zero, a música é o ⏩ de R$ 2 no PIX #}{%- set MP = musica_paga and 'pular_espera' in tipos %}{%- set MP_TXT = brl(tipos.pular_espera.preco + pix_conv) if MP else '' %}
 {#- 28/10/26 (Diogo, no bar): no cardápio o cliente lê o que o botão faz, não a divisão do dinheiro (o dono vê a divisão
     no painel; o cliente vê no formulário e na tela do PIX, na hora de pagar). Frase curta, cabe no card de 2 colunas,
     e só promete o que a TV faz (a TV não toca o parabéns nem garante que o bar brinde). #}
@@ -188,7 +188,8 @@
     color:#fff;font-size:16px;font-weight:900;font-family:inherit;cursor:pointer;margin-top:10px;-webkit-tap-highlight-color:transparent}
   .btn-gratis{background:linear-gradient(135deg,#16a34a,#15803d)}
   .btn-flash{background:linear-gradient(135deg,#f59e0b,#d97706)}
-  .btn-pular{background:linear-gradient(135deg,#14b8a6,#0f766e)}   /* ⏩ Pular a espera (20/10/26) */
+  .btn-pular{background:linear-gradient(135deg,#14b8a6,#0f766e)}
+  .btn-flash.btn-super{background:linear-gradient(135deg,#9333ea,#db2777)}   /* 🚀 23/11/26: Super fura fila */   /* ⏩ Pular a espera (20/10/26) */
   .btn-gratis small,.btn-flash small,.btn-pular small{display:block;font-size:12px;font-weight:600;opacity:.85;margin-top:2px}
   .btn-gratis:disabled,.btn-flash:disabled,.btn-pular:disabled{opacity:.6}
 
@@ -425,6 +426,7 @@
   /* 25/10/26 (leva 1 da fama): "Só pra maiores de 18." em letra pequena logo embaixo do botão de pagar do ⚡ (some com ele) */
   .aviso-18{font-size:11px;color:var(--text2);text-align:center;margin:6px 0 2px;line-height:1.4}
   #btn-flash[style*="none"] + .aviso-18{display:none}
+  #btn-super[style*="none"] + .aviso-18{display:none}
 </style>
 <!-- celular do cliente do bar: sem balão global do WhatsApp do 4kitem (a marca 'wa-float-4k' impede a injeção) -->
 <style>#wa-float-4k{display:none !important}</style>
@@ -482,7 +484,8 @@ function copiarPayload() {
 </script>
   <div class="pix-screen-title">{{ pix_pendente.tipo_emoji }} {{ pix_pendente.tipo_nome }}</div>
   <div class="pix-valor-big">R$ {{ '%.2f'|format(pix_pendente.valor)|replace('.',',') }}</div>
-  {% if pix_pendente.taxa_conv and pix_pendente.taxa_conv > 0 %}
+  {#- 💎 24/11/26 (revisão final; Diogo: "Esconde também"): o cliente vê só o total em todo plano (div_oculta); a divisão fica pro dono #}
+  {% if pix_pendente.taxa_conv and pix_pendente.taxa_conv > 0 and not div_oculta %}
   {#- Lote D B (16/10/26): "R$ 1 do app", nunca "taxa de serviço" (no bar isso é o 10% do garçom; Procon-GO x iFood) #}
   {#- 27/10/26 (D3/D4): a divisão GRAVADA neste pedido (o antigo mostra a regra antiga) #}
   <div class="pix-taxa-breakdown">
@@ -635,7 +638,7 @@ function _pixStatus(estado, icone, texto, sub) {
 // 25/10/26 (leva 1 da fama, BRIEF_LEVA1_FRASES_NOME): no ⚡ furar com o PIX confirmado (na fila, 'pendente'), embaixo da
 // posição. Nunca "a próxima" e nunca "a música que você pagou" (YouTube III.F.3: vende-se a cena com o nome, não o clipe).
 // O texto só vem na tela do PIX do ⚡ (nos outros tipos fica vazio e nada aparece)
-const FRASE_FAMA = '{% if pix_pendente.tipo == "flash" %}Teu nome entra na TV antes da música. 📸 Pede pra alguém da mesa filmar a TV.{% endif %}';
+const FRASE_FAMA = '{% if pix_pendente.tipo in ("flash", "vip") %}Teu nome entra na TV antes da música. 📸 Pede pra alguém da mesa filmar a TV.{% endif %}';
 function _fraseFama(mostrar) {
   const el = document.getElementById('pix-fama-frase');
   if (!el) return;
@@ -647,6 +650,7 @@ function _textoPago() {
   if (PIX_TIPO === 'pular_espera') return '✅ Pago! Tua música entrou na fila.';
   {#- 🙋 16/11/26 (L1): sai na hora, sem prometer que alguém vai até a mesa #}
   if (PIX_TIPO === 'garcom') return '✅ Pago! A TV chama a tua mesa em instantes. Quando tocar, levanta a mão 🙋';
+  if (PIX_TIPO === 'vip') return '✅ Pago! Super fura fila: tua música passa na frente de todo ⚡. 🚀';   // 🚀 23/11/26
   if (TIPOS_MUSICA.includes(PIX_TIPO)) return '✅ Pago! Tua música entra na frente da fila.';
   // 24/10/26 (momentos no telão, D9): o momento sai no próximo intervalo (nada por cima do clipe), não "em instantes"
   // revisão CEL-1: a TV mostra 1 momento por intervalo; com N na frente, sai depois de N+1 músicas
@@ -736,7 +740,7 @@ async function _atualizarPosicao() {
       // 25/10/26 (trava do ⚡ furar): a posição real numa frase só (#pix-pos-frase), a mesma do cartão antes do PIX
       if (musica && d.posicao) sub = `<span id="pix-pos-frase">${_frasePosicao(d.posicao, d.tempo_min)}</span>`;
       _pixStatus('pago', '✅', _textoPago(), sub);
-      _fraseFama(PIX_TIPO === 'flash');   // 25/10/26 (leva 1 da fama): "Teu nome entra na TV antes da música. 📸 …"
+      _fraseFama(PIX_TIPO === 'flash' || PIX_TIPO === 'vip');   // 25/10/26 (leva 1 da fama): "Teu nome entra na TV antes da música. 📸 …"
     } else if (d.status === 'exibido' && PIX_TIPO === 'garcom') {   {#- 🙋 16/11/26 (L1) #}
       clearInterval(_posicaoTimer);
       _pixStatus('pago', '📺', '📺 A TV chamou! Levanta a mão 🙋', '');
@@ -822,7 +826,7 @@ async function jaPaguei() {
     <span class="bar-nome">{{ b.nome }}</span>
   </div>
   {% if aberto %}
-  <div class="tocando-agora"><span class="dot-live"></span>Jukebox ativo · pedir música é grátis</div>
+  <div class="tocando-agora"><span class="dot-live"></span>Jukebox ativo · {% if MP %}música {{ MP_TXT }} no PIX{% else %}pedir música é grátis{% endif %}</div>
   {% else %}
   <div class="tocando-agora"><span class="dot-off"></span>Jukebox pausado</div>
   {% endif %}
@@ -986,12 +990,22 @@ async function jaPaguei() {
   </script>
   {%- endif %}
   {%- if 'musica_externa' in tipos or 'musica_especifica' in tipos %}
+  {%- if MP %}
+  {#- 💎 23/11/26 (planos): no Plano Zero a música é paga (o ⏩ pular_espera, R$ 2 no PIX), sem a espera da grátis #}
+  <div class="sec-tit" id="sec-musica">🎵 Pedir música <small>{{ MP_TXT }} NO PIX</small></div>
+  <button type="button" class="btn-tocar-gratis" id="btn-tocar-gratis" onclick="irBusca('pular')">
+    <span class="tg-emoji">🎵</span>
+    <span><span class="tg-nome">Escolher a música</span><span class="tg-sub">escolhe a música e paga no PIX</span></span>
+    <span class="tg-preco">{{ MP_TXT }}</span>
+  </button>
+  {%- else %}
   <div class="sec-tit" id="sec-musica">🎵 Pedir música <small>GRÁTIS{% if gratis_min %} · 1 a cada {{ gratis_min }} min{% endif %}</small></div>
   <button type="button" class="btn-tocar-gratis" id="btn-tocar-gratis" onclick="irBusca('gratis')">
     <span class="tg-emoji">🎵</span>
     <span><span class="tg-nome">Tocar grátis</span><span class="tg-sub">escolhe a música e toca de graça</span></span>
     <span class="tg-preco">GRÁTIS</span>
   </button>
+  {%- endif %}
   <div id="busca-section">
     <div class="dica-flash" id="dica-flash">⚡ Escolhe a música e toca em <strong>⚡ Furar</strong>.</div>
     {#- 26/10/26 (Diogo: "a aba YouTube e a Lista do bar precisam virar uma única aba: PEDIR MÚSICA"): saíram os 2
@@ -1104,7 +1118,7 @@ async function jaPaguei() {
     <div class="t">🎶 NA FILA AGORA</div>
     {%- for p in fila_musicas[:3] %}
     {#- 🎤 09/11/26 (V2b): a vez paga no palco aparece com o 🎤 (o título já vem limpo da busca de karaokê) #}
-    <div class="m"><span>{% if p.karaoke %}🎤{% elif p.tipo in ('flash', 'vip') %}⚡{% else %}{{ loop.index }}º{% endif %}</span><span>{{ (p.titulo_pedido or 'Música')[:40] }} <span class="n">· {{ p.nome_cliente }}</span></span></div>
+    <div class="m"><span>{% if p.karaoke %}🎤{% elif p.tipo == 'vip' %}🚀{% elif p.tipo == 'flash' %}⚡{% else %}{{ loop.index }}º{% endif %}</span><span>{{ (p.titulo_pedido or 'Música')[:40] }} <span class="n">· {{ p.nome_cliente }}</span></span></div>
     {%- else %}
     <div class="m n">Fila vazia: a tua toca já já 🎶</div>
     {%- endfor %}
@@ -1178,7 +1192,7 @@ async function jaPaguei() {
       {%- if 'pular_espera' in tipos %}
       {#- 20/10/26 (Diogo): só aparece com a grátis esperando; entra na fila normal (na frente é o furar) #}
       <button type="button" class="btn-pular" id="btn-pular" style="display:none" onclick="enviarMusica('pular')">
-        ⏩ Pular a espera · {{ brl(tipos.pular_espera.preco + pix_conv) }}<small id="sh-pular-sub">entra na fila agora, sem esperar a grátis</small>
+        {% if MP %}🎵 Escolher a música · {{ MP_TXT }}<small id="sh-pular-sub">entra na fila · paga no PIX</small>{% else %}⏩ Pular a espera · {{ brl(tipos.pular_espera.preco + pix_conv) }}<small id="sh-pular-sub">entra na fila agora, sem esperar a grátis</small>{% endif %}
       </button>
       {%- if 'flash' in tipos %}
       {#- 24/10/26 (momentos no telão, D9): o degrau de baixo mostra o de cima (o ⏩ não tem cena; o ⚡ tem) #}
@@ -1193,6 +1207,17 @@ async function jaPaguei() {
       {#- 25/10/26 (leva 1 da fama): letra pequena logo embaixo do botão de pagar do ⚡, sem caixinha e sem passo a mais #}
       <div class="aviso-18" id="sh-flash-18">Só pra maiores de 18.</div>
       {% endif %}
+      {%- if 'vip' in tipos %}
+      {#- 🚀 23/11/26 (Diogo: "Sim, assim"): o Super fura fila, embaixo do ⚡. Toca logo depois da música que está tocando
+          (nunca corta) e passa na frente de todo ⚡. 1 por celular e 3 esperando no bar: cheio, fica cinza e diz por quê #}
+      <button type="button" class="btn-flash btn-super" id="btn-super" onclick="enviarMusica('super')">
+        🚀 Super fura fila · {{ brl(tipos.vip.preco + pix_conv) }}
+        <small id="sh-super-sub">toca logo depois desta música</small>
+      </button>
+      {%- if 'flash' not in tipos %}
+      <div class="aviso-18" id="sh-super-18">Só pra maiores de 18.</div>
+      {%- endif %}
+      {%- endif %}
       <button type="button" class="btn-voltar" onclick="fecharSheet()">Cancelar</button>
     </form>
   </div>
@@ -1415,7 +1440,7 @@ function irBusca(modo) {   // fichas "🎵 Tocar grátis", "⚡ Furar a fila" e 
   mostrarAba('musicas');
   const df = document.getElementById('dica-flash');
   if (df) {
-    df.innerHTML = modo === 'pular' ? '⏩ Escolhe a música. Com a grátis esperando, toca em <strong>⏩ Pular</strong>.'
+    df.innerHTML = modo === 'pular' ? {% if MP %}'🎵 Digita a música e toca em <strong>▶️ {{ MP_TXT }}</strong>.'{% else %}'⏩ Escolhe a música. Com a grátis esperando, toca em <strong>⏩ Pular</strong>.'{% endif %}
                  : modo === 'gratis' ? '🎵 Digita a música e toca em <strong>▶️ Grátis</strong>.'
                  : '⚡ Escolhe a música e toca em <strong>⚡ Furar</strong>.';
     df.classList.toggle('dica-gratis', modo === 'gratis');
@@ -2035,7 +2060,7 @@ function _cardHtml(v, i, origem) {
   // 20/10/26 (desenho aprovado): "▶️ Grátis" e "⚡ Furar R$ X" em cada música, sem abrir a folha pra ver o furar
   const _g = PRECOS[_tipoGratis(v)];   // 26/10/26: o grátis de cada música (lista do bar ou busca livre)
   const _f = PRECOS.flash;   // 22/10/26: lista do bar fura igual ao YouTube
-  const btns = (_g || _f) ? `<div class="yt-btns">${_g ? `<button type="button" class="b-gratis" onclick="pedirDireto(event,${i},'${origem}','gratis')">▶️ Grátis</button>` : ''}${_f ? `<button type="button" class="b-furar" onclick="pedirDireto(event,${i},'${origem}','flash')">⚡ Furar ${FURAR_TXT}</button>` : ''}</div>` : '';
+  const btns = (_g || _f) ? `<div class="yt-btns">${_g ? `<button type="button" class="b-gratis" onclick="pedirDireto(event,${i},'${origem}','{{ 'pular' if MP else 'gratis' }}')">▶️ {{ MP_TXT if MP else 'Grátis' }}</button>` : ''}${_f ? `<button type="button" class="b-furar" onclick="pedirDireto(event,${i},'${origem}','flash')">⚡ Furar ${FURAR_TXT}</button>` : ''}</div>` : '';
   return `<div class="yt-card${v.na_fila ? ' na-fila' : ''}" id="${origem}-${i}" data-yid="${_esc(v.id || '')}" data-fonte="${v.fonte === 'bar' ? 'bar' : 'livre'}" onclick="${clique}">
       <div class="yt-capa"><img src="${_esc(_capa(v))}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'">${v.duracao ? `<span class="yt-dur">${_esc(v.duracao)}</span>` : ''}${_seloHtml(v)}</div>
       <div class="yt-info"><div class="yt-titulo">${_esc(v.titulo)}</div><div class="yt-sub">${_subYt(v)}</div></div>${btns}
@@ -2051,7 +2076,7 @@ function pedirDireto(ev, i, origem, modo) {
   const bg = document.getElementById('btn-gratis'), bf = document.getElementById('btn-flash');
   const bp = document.getElementById('btn-pular');
   if (modo === 'flash') { if (bg) bg.style.display = 'none'; if (bf) bf.style.display = ''; if (bp) bp.style.display = 'none'; }
-  else if (!_gratisTravada) { if (bf) bf.style.display = 'none'; }
+  else if (!_gratisTravada) { if (bf) bf.style.display = 'none'; _superVer(false); }
   _pintarCartaoFurar(_filaInfo, true);   // 24/10/26 (momentos no telão, D9): ⚡ = o cartão + "Pagar R$ X no PIX"
 }
 function _mostrarFurarSeGratisTravada() {   // a grátis está esperando: o ⏩ pular a espera (Efí) e, no "Grátis", o furar
@@ -2060,6 +2085,12 @@ function _mostrarFurarSeGratisTravada() {   // a grátis está esperando: o ⏩ 
   if (_modoDireto !== 'gratis') return;
   const bf = document.getElementById('btn-flash');
   if (bf && PRECOS.flash) bf.style.display = '';
+  _superVer(true);
+}
+// 🚀 23/11/26: o Super fura fila aparece junto com o ⚡ (folha inteira, ⚡ da música, grátis travada) e some no "Grátis"
+function _superVer(on) {
+  const bs = document.getElementById('btn-super');
+  if (bs) bs.style.display = on ? '' : 'none';
 }
 function _esqueleto(n) {
   return Array.from({length: n}, () =>
@@ -2299,11 +2330,14 @@ function abrirSheet(v) {
   // lista do bar, igual à do YouTube. A regra de 16/10 (c7273fb, só com música do YouTube) era da tela antiga e
   // deixava as 2 folhas diferentes.
   if (bf) { bf.disabled = false; bf.style.display = ''; }
+  _superVer(true);   // 🚀 23/11/26: o _pintarSheet acerta a vez e o cinza do teto
   const av = document.getElementById('sh-aviso-gratis');
   if (av) av.style.display = 'none';
   const bp = document.getElementById('btn-pular');   // ⏩ só quando a grátis estiver esperando (_pintarSheet / 1 por vez)
   if (bp) { bp.style.display = 'none'; bp.disabled = false; }
-  _pintarCartaoFurar(null, true);      // 24/10/26: o cartão do ⚡ só no modo ⚡ (pedirDireto liga); o botão volta ao normal
+{% if MP %}  if (bg) bg.style.display = 'none';   // 💎 23/11/26 (Plano Zero): sem grátis; a música é o 🎵 R$ 2 (o ⏩)
+  if (bp) bp.style.display = '';
+{% endif %}  _pintarCartaoFurar(null, true);      // 24/10/26: o cartão do ⚡ só no modo ⚡ (pedirDireto liga); o botão volta ao normal
   _pintarSheet(v, _filaInfo, false);   // na hora, com o que já sabe
   document.getElementById('sheet').classList.add('on');
   _conferirGratisNaFila();
@@ -2346,8 +2380,9 @@ function _pintarSheet(v, d, fresco) {
   if (bp) {
     bp.disabled = naFila;
     const ps = document.getElementById('sh-pular-sub');
-    if (ps && d) ps.textContent = d.gratis.na_frente === 0 ? 'entra agora, sem esperar a grátis · toca a seguir'
-                                                         : `entra agora, sem esperar a grátis · ${d.gratis.posicao}º na fila`;
+    {% if MP %}if (ps && d) ps.textContent = d.gratis.na_frente === 0 ? 'paga no PIX · toca a seguir'
+                                                         : `paga no PIX · entra em ${d.gratis.posicao}º na fila`;{% else %}if (ps && d) ps.textContent = d.gratis.na_frente === 0 ? 'entra agora, sem esperar a grátis · toca a seguir'
+                                                         : `entra agora, sem esperar a grátis · ${d.gratis.posicao}º na fila`;{% endif %}
   }
   const bf = document.getElementById('btn-flash');
   if (bf) {
@@ -2357,6 +2392,14 @@ function _pintarSheet(v, d, fresco) {
       const quando = d.flash.na_frente === 0 ? 'toca a seguir' : `entra em ${d.flash.posicao}º`;
       fs.textContent = quando;
     }
+  }
+  const bs = document.getElementById('btn-super');   // 🚀 23/11/26: a vez do super e o teto (1 por celular, 3 no bar)
+  if (bs) {
+    const sv = d && d.vip, cheio = !!(sv && sv.cheio);
+    bs.disabled = naFila || cheio;
+    const ss = document.getElementById('sh-super-sub');
+    if (ss && sv) ss.textContent = cheio ? sv.cheio : sv.na_frente === 0 ? 'toca logo depois desta música'
+      : `entra em ${sv.posicao}º: depois de ${sv.na_frente} super`;
   }
   _pintarCartaoFurar(d);   // 24/10/26: a posição e a fila de agora no cartão do ⚡
 }
@@ -2402,11 +2445,11 @@ function enviarMusica(prioridade) {
     nome.placeholder = 'Põe teu nome aqui 👆';
     return;
   }
-  const tipo = prioridade === 'flash' ? 'flash' : prioridade === 'pular' ? 'pular_espera'
+  const tipo = prioridade === 'flash' ? 'flash' : prioridade === 'super' ? 'vip' : prioridade === 'pular' ? 'pular_espera'
              : _tipoGratis(videoSel);   // 26/10/26: lista do bar = musica_especifica; busca livre = musica_externa
   if (!PRECOS[tipo]) return;
   // 25/10/26 (leva 1 da fama): nome do ⚡ fora da regra → o aviso embaixo do nome e nada sai (o servidor recusa igual)
-  if (prioridade === 'flash' && !_nomeFurarOk(nome, 'sh-nome-erro')) return;
+  if ((prioridade === 'flash' || prioridade === 'super') && !_nomeFurarOk(nome, 'sh-nome-erro')) return;   // 🚀 o nome vai pra TV
   if (prioridade === 'flash' && !PIX_DIRETO) {
     // sem PIX automático o formulário mostra a chave do bar / o aviso do balcão antes de enviar
     document.getElementById('inp-nome').value = nome.value.trim();
@@ -2418,7 +2461,8 @@ function enviarMusica(prioridade) {
   document.getElementById('sh-youtube-id').value    = videoSel.id;
   document.getElementById('sh-titulo-pedido').value = (videoSel.titulo || '').slice(0, 80);
   document.querySelectorAll('#form-musica button').forEach(b => { b.disabled = true; });
-  const btn = document.getElementById(prioridade === 'flash' ? 'btn-flash' : prioridade === 'pular' ? 'btn-pular' : 'btn-gratis');
+  const btn = document.getElementById(prioridade === 'flash' ? 'btn-flash' : prioridade === 'super' ? 'btn-super'
+                                      : prioridade === 'pular' ? 'btn-pular' : 'btn-gratis');
   if (btn) btn.firstChild.textContent = '⏳ Enviando... ';
   document.getElementById('form-musica').submit();
 }
@@ -2533,7 +2577,7 @@ function copiarPix() {
     if (_rem) _rem.value = {{ (request.form.get('remetente') or '')[:40]|tojson }};
     _pintarCartao();   // 24/10/26 (revisão CEL-2): o .value não dispara 'input'; o cartão mostra o nome que voltou
   } catch(e) {}
-  {% elif erro and tipo_post in ['musica','musica_especifica','musica_externa','flash'] %}
+  {% elif erro and tipo_post in ['musica','musica_especifica','musica_externa','flash','vip'] %}
   mostrarAba('musicas');   // 20/10/26: erro na música volta pra busca (com a faixa "toca aqui pra tentar de novo")
   {% endif %}
   // 20/10/26 (Diogo): abre direto na busca do YouTube. A lista do bar continua carregada por trás (volta se a busca
@@ -2543,7 +2587,7 @@ function copiarPix() {
   if (YT_LIBERADO) _carregarMaisPedidas();
 })();
 {% set yt_post = request.form.get('youtube_id', '') if request.method == 'POST' else '' %}
-{% if erro and yt_post and tipo_post in ['musica_especifica','musica_externa','flash'] and erro_tipo not in ('musica_na_fila', 'musica_longa', 'politica_musica', 'karaoke_so_cartao') %}
+{% if erro and yt_post and tipo_post in ['musica_especifica','musica_externa','flash','vip'] and erro_tipo not in ('musica_na_fila', 'musica_longa', 'politica_musica', 'karaoke_so_cartao') %}
 // 16/10/26 (crítico C2): erro na música (palavrão no nome, 2ª grátis…) — a música escolhida fica a 1 toque
 (function(){
   const v = {id: {{ yt_post[:11]|tojson }}, titulo: {{ (request.form.get('titulo_pedido') or '')[:80]|tojson }}, sub: ''};

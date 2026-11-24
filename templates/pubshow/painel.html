@@ -97,6 +97,7 @@
   .selo-prox{font-size:10px;font-weight:800;color:#22c55e;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:2px}{% if karaoke_ok %}
   .k-mesa{font-size:24px;font-weight:900;color:#f59e0b;line-height:1.2;margin:2px 0}   /* 🎤 18/11/26: a mesa do cantor, de longe */{% endif %}
   .selo-pago{font-size:10px;font-weight:800;color:#fbbf24;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.35);padding:1px 7px;border-radius:100px;margin-left:6px;white-space:nowrap}
+  .selo-pago.selo-super{color:#f9a8d4;background:rgba(236,72,153,.14);border-color:rgba(236,72,153,.45)}   /* 🚀 23/11/26 */
   .pedido-dispensar{background:none;border:1px solid var(--border2);color:var(--text2);min-width:44px;min-height:44px;border-radius:10px;font-size:17px;cursor:pointer;font-family:inherit}
   .pedido-dispensar:hover,.pedido-dispensar[aria-expanded="true"]{color:#ef4444;border-color:#ef444466}
   .tirar-box{display:flex;flex-direction:column;gap:8px;padding:4px 0 12px}
@@ -323,7 +324,7 @@
 
   {# ── Trial countdown ── #}
   {# VCa-02 (16/10/26): bar na Efí não tem teste nem assinatura no Asaas (a mensalidade sai dos momentos) #}
-  {% if not b.plano_ativo and b.trial_ends and not efi %}
+  {% if not b.plano_ativo and b.trial_ends and (not efi or nivel) and nivel != 'zero' %}{#- 💎 23/11/26: o Zero não tem teste nem assinatura; Básico/VIP no split assinam no Asaas #}
     {% set dias_str = b.trial_ends[:10] %}
   <div style="background:linear-gradient(135deg,rgba(249,115,22,.1),rgba(234,179,8,.06));border:1px solid rgba(249,115,22,.25);border-radius:14px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
     <div style="display:flex;align-items:center;gap:10px">
@@ -596,7 +597,7 @@
           <span class="pedido-emoji">{{ t.get('emoji','🎵') }}</span>
           <div class="pedido-info">
             {% if loop.first %}<span class="selo-prox">▶ Próximo</span>{% endif %}
-            <div class="pedido-nome">{{ p.nome_cliente }}{% if p.tipo in ('flash', 'vip', 'pular_espera') and p.pago_em %}<span class="selo-pago">⚡ PAGO</span>{% elif p.karaoke_pago and p.pago_em %}<span class="selo-pago">🎤 PAGO</span>{% endif %}</div>{% if karaoke_on and p.karaoke and p.karaoke_mesa %}{# 🎤 18/11/26: a mesa do cantor (só com o modo ligado) #}
+            <div class="pedido-nome">{{ p.nome_cliente }}{% if p.tipo == 'vip' and p.pago_em %}<span class="selo-pago selo-super">🚀 SUPER</span>{% elif p.tipo in ('flash', 'pular_espera') and p.pago_em %}<span class="selo-pago">⚡ PAGO</span>{% elif p.karaoke_pago and p.pago_em %}<span class="selo-pago">🎤 PAGO</span>{% endif %}</div>{% if karaoke_on and p.karaoke and p.karaoke_mesa %}{# 🎤 18/11/26: a mesa do cantor (só com o modo ligado) #}
             <div class="k-mesa">🪑 {{ 'Balcão' if p.karaoke_mesa == 'BALCÃO' else 'Mesa ' ~ p.karaoke_mesa }}</div>{% endif %}
             <div class="pedido-tipo">{% if p.titulo_pedido %}🎵 {{ p.titulo_pedido[:40] }}{% else %}{{ t.get('nome', p.tipo) }}{% endif %}{% if p.mensagem %} · "{{ p.mensagem[:30] }}"{% endif %}</div>{% if karaoke_on and p.karaoke %}
             {% if p.karaoke_nome_oculto %}<div class="pedido-tipo">🙈 Na TV: Convidado</div>{% else %}<button type="button" class="btn-k-esconder" style="margin-top:6px" onclick="karaokeEsconder({{ p.id|int }}, this)">🙈 Esconder</button>{% endif %}{% endif %}
@@ -606,7 +607,7 @@
         </div>
         <div class="tirar-box" id="tirar-{{ p.id }}" hidden>
           {# 16/10/26 (C1-05): pedido JÁ PAGO avisa. 25/10/26: PIX na conta do PubShow (pix_volta) vai pro "PIX a devolver"; split/chave do bar como antes #}
-          {% if p.karaoke_pago and p.pago_em %}<div class="aviso-pago">⚠️ Essa pessoa pagou R$ 3. Se tirar, ela não canta e o PIX volta pra ela. Não sai do teu bolso.</div>{% elif p.pix_volta %}<div class="aviso-pago">⚠️ Esse cliente pagou R$ {{ _pago_cli }} no PIX. Se tirar, a música não toca e o PIX volta pro cliente. Não sai do seu bolso.</div>{% elif p.pago_em %}<div class="aviso-pago">⚠️ Esse cliente PAGOU R$ {{ _pago_cli }} no PIX. Se tirar, a TV não mostra e o dinheiro NÃO volta sozinho: devolva na mão.</div>{% endif %}
+          {% if p.karaoke_pago and p.pago_em %}<div class="aviso-pago">⚠️ Essa pessoa pagou R$ {{ _pago_cli }}. Se tirar, ela não canta e o PIX volta pra ela. Não sai do teu bolso.</div>{% elif p.pix_volta %}<div class="aviso-pago">⚠️ Esse cliente pagou R$ {{ _pago_cli }} no PIX. Se tirar, a música não toca e o PIX volta pro cliente. Não sai do seu bolso.</div>{% elif p.pago_em %}<div class="aviso-pago">⚠️ Esse cliente PAGOU R$ {{ _pago_cli }} no PIX. Se tirar, a TV não mostra e o dinheiro NÃO volta sozinho: devolva na mão.</div>{% endif %}
           <div class="botoes">
             <form method="POST" action="/pubshow/painel/pedido/{{ p.id }}/dispensar"><button type="submit" class="btn-tirar">🗑️ Tirar da fila</button></form>
             <button type="button" class="btn-voltar" onclick="abrirTirar(null)">Voltar</button>
@@ -710,14 +711,14 @@
     <div class="linha-chave" style="padding:0">
       <div>
         <div class="rot">🎤 Modo karaokê <span class="salvo" aria-live="polite"></span></div>
-        <div class="sub">Ligado: aparece o botão 🎤 Cante sua música (R$ 3) no celular. A TV vira palco na vez de cada um e volta sozinha.</div>
+        <div class="sub">Ligado: aparece o botão 🎤 Cante sua música ({{ k_preco_txt }}) no celular. A TV vira palco na vez de cada um e volta sozinha.</div>
         <div class="sub"{% if karaoke_pix %} id="k-cobra-txt"{% endif %}>{% if karaoke_pix %}{{ karaoke_cobra_txt }}{% else %}O botão 🎤 fica cinza no celular até a cobrança ser liberada pra este bar.{% endif %}</div>
       </div>
       <label class="sw"><input type="checkbox" id="karaoke-sw" aria-label="Ligar o modo karaokê"{% if karaoke_on %} checked{% endif %} onchange="trocarKaraoke(this)"><span class="sw-t"></span></label>
     </div>{% if karaoke_cobrar_ok %}
     <div class="linha-chave k-cobrar" id="k-cobrar-linha" style="padding-bottom:0">
       <div>
-        <div class="rot">🎤 Karaokê aberto hoje (R$ 3 a vez no palco) <span class="salvo" aria-live="polite"></span></div>
+        <div class="rot">🎤 Karaokê aberto hoje ({{ k_preco_txt }} a vez no palco) <span class="salvo" aria-live="polite"></span></div>
         <div class="sub">Desligado: pausa o karaokê e o botão 🎤 fica cinza no celular. Quem já pagou segue na fila e canta.</div>
       </div>
       <label class="sw"><input type="checkbox" id="k-cobrar-sw" aria-label="Karaokê aberto hoje"{% if karaoke_cobrar_on %} checked{% endif %} onchange="karaokeCobrar(this.checked, this)"><span class="sw-t"></span></label>
@@ -739,7 +740,7 @@
       <ul style="margin:6px 0 0 18px;padding:0">{% if karaoke_na_lista %}
         <li>o bar paga o ECAD;</li>
         <li>não anuncia prêmio (bebida, rodada) e não cobra entrada, couvert nem consumação por causa do karaokê;</li>
-        <li>cada vez no palco custa R$ 3 pro cliente e R$ 1,50 fica pro bar;</li>
+        <li>cada vez no palco custa {{ k_preco_txt }} pro cliente e {{ k_bar_txt }} fica pro bar;</li>
         <li>quem não cantar recebe de volta.</li>{% else %}
         <li>o bar paga o ECAD, inclusive do karaokê;</li>
         <li>não anuncia prêmio pelo ranking (bebida, rodada) e não cobra entrada, couvert nem consumação por causa do karaokê. Com prêmio, vira promoção, que precisa de autorização do governo.</li>
@@ -824,8 +825,9 @@
     meio do valor #}
 {% macro div_linha(txt) %}{% for x in (txt or '').split(' · ') %}{% if not loop.first %} · {% endif %}<span class="nw">{{ x }}</span>{% endfor %}{% endmacro %}
   {#- 15/11/26: 🙋 Ei, garçom! no lugar do namoro (só nos bares da Efí; preço fixo R$ 1,40 desde 17/11) #}
-  {% set PRINCIPAIS = ['flash', 'pular_espera', 'garcom', 'parabens', 'cantada', 'brinde', 'donate_bar', 'dedicatoria', 'chegada', 'salve'] %}
-  {% set NOMES_CURTOS = {'flash': 'Furar a fila', 'pular_espera': 'Pular a espera', 'parabens': 'Parabéns', 'dedicatoria': 'Dedicatória', 'brinde': 'Brinde',
+  {#- 🚀 23/11/26: o Super fura fila logo depois do ⚡ (só no bar com PIX automático: _tipos_config) #}
+  {% set PRINCIPAIS = ['flash', 'vip', 'pular_espera', 'garcom', 'parabens', 'cantada', 'brinde', 'donate_bar', 'dedicatoria', 'chegada', 'salve'] %}
+  {% set NOMES_CURTOS = {'flash': 'Furar a fila', 'vip': 'Super fura fila', 'pular_espera': 'Pular a espera', 'parabens': 'Parabéns', 'dedicatoria': 'Dedicatória', 'brinde': 'Brinde',
                          'chegada': 'Chegamos', 'cantada': 'Cantada', 'salve': 'Salve pro pessoal', 'garcom': 'Ei, garçom!',
                          'donate_bar': 'Donate para o bar'} %}
   {% set _princ = [] %}{% set _resto = [] %}
@@ -842,7 +844,7 @@
     {% set _v = (_sv|float) if _sv is not none and _sv != '' else 0 %}
     {% if not (_v > 0) %}{% set _v = t.preco|float %}{% endif %}
     {% if _v > 0 and _v < _piso and key not in ('pular_espera', 'garcom') %}{% set _v = _piso %}{% endif %}{#- ⏩: preço fixo #}
-    {% if preco_teto and _v > preco_teto %}{% set _v = preco_teto|float %}{% endif %}{% if promo_fds and promo_fds.get(key) %}{% set _v = promo_fds[key]|float %}{% endif %}{#- 06/11/26: só a tela; o campo escondido segue no salvo #}
+    {% if preco_teto and _v > preco_teto %}{% set _v = preco_teto|float %}{% endif %}{% if promo_fds and promo_fds.get(key) %}{% set _v = promo_fds[key]|float %}{% endif %}{% if preco_fixo and key in preco_fixo %}{% set _v = preco_fixo[key]|float %}{% endif %}{#- 06/11/26: só a tela; o campo escondido segue no salvo #}
     <div class="momento-row{% if key in bloqueados_parsed %} desligado{% endif %}" data-k="{{ key }}">
       <label class="sw"><input type="checkbox" id="mom-{{ key }}" name="tipos_ativos" value="{{ key }}" form="f-config" aria-label="Vender {{ _nome }}"{% if key not in bloqueados_parsed %} checked{% endif %}><span class="sw-t"></span></label>
       <label class="momento-txt" for="mom-{{ key }}">
@@ -864,7 +866,7 @@
     {% if loop.last and _resto %}</details>{% endif %}
     {% endfor %}
     {#- Lote D B (aprovado): nunca "taxa de serviço" — o selo já é o que o cliente paga. 27/10/26 (D2): os 20% do app #}
-    {% if asaas_ativo %}<div class="momento-preco-txt" id="taxa-app" style="margin-top:10px">💡 Rosa = o que o cliente paga no PIX. O app fica com {{ APP_REGRA_TXT }} do total{% if 'garcom' in tipos_config and 'garcom' not in bloqueados_parsed and GARCOM_APP_TXT %} (no 🙋, {{ GARCOM_APP_TXT }}){% endif %}; o resto é do bar.</div>{% endif %}{% if promo_fds and promo_fds|reject('in', bloqueados_parsed)|list %}<div class="momento-preco-txt" id="promo-fds-aviso" style="margin-top:8px">Preço de lançamento até sábado. Volta sozinho no domingo.</div>{% endif %}
+    {% if asaas_ativo %}<div class="momento-preco-txt" id="taxa-app" style="margin-top:10px">💡 Rosa = o que o cliente paga no PIX. O app fica com {{ APP_REGRA_TXT }} do total{% if 'garcom' in tipos_config and 'garcom' not in bloqueados_parsed and GARCOM_APP_TXT %} (no 🙋, {{ GARCOM_APP_TXT }}){% endif %}{% if DONATE_APP_TXT and DONATE_APP_TXT != APP_REGRA_TXT and 'donate_bar' in tipos_config and 'donate_bar' not in bloqueados_parsed %} (no donate, {{ DONATE_APP_TXT }}){% endif %}; o resto é do bar.{% if musica_paga %} A música ({{ musica_preco_txt }} no PIX): metade pro bar, metade pro app.{% endif %}</div>{% endif %}{% if promo_fds and promo_fds|reject('in', bloqueados_parsed)|list %}<div class="momento-preco-txt" id="promo-fds-aviso" style="margin-top:8px">Preço de lançamento até sábado. Volta sozinho no domingo.</div>{% endif %}
     {#- 17/10/26 (Lote D, críticos CD2/CD3): preço salvo fora da faixa diz QUAL momento e o preço de antes #}
     {%- if precos_cortados %}
     <div id="precos-cortados" style="font-size:12px;color:var(--text2);margin-top:8px;line-height:1.6">
@@ -889,9 +891,10 @@
   </div>
 
   <!-- 🎵 A regra da música grátis (só leitura) -->
+  {#- 💎 24/11/26 (revisão final): no Plano Zero a música é paga: o card diz o preço, nunca "grátis" #}
   <div class="card" id="sec-gratis" style="font-size:15px;line-height:1.5">
-    <div style="font-weight:900">🎵 Música é grátis</div>
-    <div style="color:var(--text2)">{% if gratis_min %}1 a cada {{ gratis_min }} min por celular. {% endif %}Pressa? ⚡ Furar a fila.</div>
+    <div style="font-weight:900">🎵 Música é {% if musica_paga %}{{ musica_preco_txt }} no PIX{% else %}grátis{% endif %}</div>
+    <div style="color:var(--text2)">{% if musica_paga %}Metade pro bar, metade pro app. {% elif gratis_min %}1 a cada {{ gratis_min }} min por celular. {% endif %}Pressa? ⚡ Furar a fila.</div>
   </div>
   </div><!-- /z-pedidos -->
 
@@ -947,7 +950,7 @@
     <div style="font-size:15px;line-height:1.7">Caiu na tua conta Efí este mês: <strong id="md-caiu" style="color:var(--green)">{{ brl_cent(md.caiu_cent.casa) }}</strong>{% if md.caiu_cent.gorjeta %} + <strong style="color:#4ade80">{{ brl_cent(md.caiu_cent.gorjeta) }}</strong> de gorjetas{% endif %}</div>
     <div style="font-size:13px;color:var(--text2)">Pagos pelos clientes: momentos {{ brl_cent(md.f.momentos_cent) }} · gorjetas da equipe {{ brl_cent(md.f.gorjetas_cent) }}</div>
     <div style="font-size:13px;color:var(--text2);margin-top:2px">Mensalidade:
-      {% if md.mens_no_asaas %}paga pela assinatura do Asaas
+      {% if md.mens_no_asaas %}{% if md.mens_nivel and md.mens_nivel.chave == 'zero' %}Plano Zero, sem mensalidade{% elif md.mens_nivel and not md.mens_tem_ass %}pela assinatura, ainda não assinada (🧾 Plano e senha){% else %}paga pela assinatura do Asaas{% endif %}
       {% elif md.f.plano_cent <= 0 %}✅ isento
       {% elif md.mens_mes_pago and not md.f.mensalidade_quitada %}os momentos não tiram mensalidade este mês (mês já pago)
       {% elif md.f.mensalidade_quitada %}✅ quitada{% if md.f.mensalidade_quitada_em %} no dia {{ md.f.mensalidade_quitada_em[8:10]|int }}{% endif %}
@@ -1308,6 +1311,7 @@
     <summary>⏰ Horário do jukebox <span class="resumo" id="horario-resumo">{% if _sempre %}sempre aberto{% else %}{{ b.jukebox_hora_ini }} até {{ b.jukebox_hora_fim }}{% endif %}</span></summary>
     <div class="dentro">
     <form method="POST" action="/pubshow/painel/config" id="f-config">
+      {% if 'vip' in tipos_config %}<input type="hidden" name="cfg_super" value="1">{% endif %}{#- 🚀 23/11/26: este painel tem a chave do super #}
       {#- as 2 linhas de música grátis não aparecem na tela: seguem como estão salvas #}
       {% for _k in ('musica', 'musica_especifica') if _k not in bloqueados_parsed %}<input type="hidden" name="tipos_ativos" value="{{ _k }}">{% endfor %}
       {#- 09/11/26 (revisão V2b): a versão do formulário. Sem ela (painel aberto desde antes da subida), o painel_config
@@ -1377,7 +1381,15 @@
     <summary>🧾 Plano e senha</summary>
     <div class="dentro">
     <div id="conta-plano">
-    {% if not b.plano_ativo and efi %}
+    {% if nivel == 'zero' %}
+    {#- 💎 23/11/26 (planos): o Plano Zero não tem mensalidade: nem Assinar nem Cancelar (o /assinar e o cancelar voltam pra cá) #}
+    <div id="plano-zero" style="font-size:13px;color:var(--text2);line-height:1.6">
+      <div style="font-weight:800;font-size:15px;margin-bottom:4px;color:var(--text)">⚪ Plano Zero · sem mensalidade</div>
+      {#- conserto da revisão: a música só quando é paga de verdade (sem a Efí ela volta a ser grátis); a frase do plano
+          vem da regra que cobra (plano_frase_txt: emergência = 100% pro bar; no mínimo R$ 1 pro bar) #}
+      {% if musica_paga %}O cliente paga {{ musica_preco_txt }} por música no PIX.{% else %}A música está grátis enquanto a Efí estiver desligada.{% endif %} {{ plano_frase }}
+    </div>
+    {% elif not b.plano_ativo and efi and not nivel %}
     {# VCa-01/02 (16/10/26): bar na Efí que cancelou (ou foi desativado) — sem "Assinar" no Asaas (seria mensalidade 2x) #}
     <div id="efi-desligado" style="font-size:13px;color:var(--text2);line-height:1.6">
       <div style="font-weight:800;font-size:15px;margin-bottom:4px;color:var(--text)">⚠️ PubShow desligado</div>
@@ -1388,14 +1400,21 @@
     <div style="font-size:13px;color:var(--text2);margin-bottom:12px">{% set _te = (b.trial_ends or '')[:10] %}{% if _te %}Seu teste grátis vai até {{ _te[8:10] }}/{{ _te[5:7] }}. {% endif %}Assine para manter o Jukebox ativo.</div>
     <a href="/pubshow/assinar/bar" class="btn-primary">{{ PLANO.emoji }} Assinar o {{ PLANO.nome }} · {{ PLANO.preco_fmt }}/mês →</a>
     {% else %}
-    <div style="font-size:15px;font-weight:700">{{ plano_info.get('emoji','') }} {{ plano_info.get('nome','') }} ativo</div>
+    <div style="font-size:15px;font-weight:700">{{ plano_info.get('emoji','') }} {{ plano_info.get('nome','') }} ativo{% if nivel_info %} · Plano {{ nivel_info.nome }}{% endif %}</div>
+    {%- if nivel_info %}
+    <div id="plano-regra" style="font-size:13px;color:var(--text2);margin-top:4px">💎 {{ plano_frase }}</div>
+    {%- endif %}
+    {%- if nivel_assinar %}{#- conserto da revisão: Básico/VIP no split pagam a mensalidade só no Asaas #}
+    <div id="plano-assinar" style="font-size:13px;color:#fbbf24;margin:8px 0">A mensalidade do Plano {{ nivel_info.nome }} ({{ PLANO.preco_fmt }}/mês) é paga pela assinatura: os momentos não pagam mensalidade.</div>
+    <a href="/pubshow/assinar/bar" class="btn-primary">{{ PLANO.emoji }} Assinar o Plano {{ nivel_info.nome }} · {{ PLANO.preco_fmt }}/mês →</a>
+    {%- endif %}
     {% if assinatura %}{% set proximo = assinatura.proximo_vencimento or '' %}
     <div style="font-size:13px;color:var(--text2);margin-top:4px">{% if proximo %}Próxima cobrança: {{ proximo[8:10] }}/{{ proximo[5:7] }}/{{ proximo[:4] }} · {% endif %}{{ assinatura.billing_type or 'PIX' }} · R$ {{ '%.2f'|format(assinatura.valor or 0)|replace('.',',') }}/mês</div>
     {% endif %}
     {% endif %}
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
       <a href="https://wa.me/{{ SUPORTE_WA }}?text=Quero+falar+sobre+minha+assinatura+PUBSHOW" target="_blank" class="btn-sm" style="color:#4ade80">💬 Falar com o suporte</a>
-      {% if b.plano_ativo %}<a href="/pubshow/painel/cancelar" class="btn-sm" style="color:#f87171;border-color:rgba(239,68,68,.2)">Cancelar assinatura</a>{% endif %}
+      {% if b.plano_ativo and nivel != 'zero' %}<a href="/pubshow/painel/cancelar" class="btn-sm" style="color:#f87171;border-color:rgba(239,68,68,.2)">Cancelar assinatura</a>{% endif %}
     </div>
     </div>
 
@@ -1507,8 +1526,8 @@ async function _kSalvar(ligado, aceite, alvo) {
     const d = await r.json();{% if karaoke_pix %}
     if (d.confirmar) {   // 🎤 03/11/26 (V2a): tem paga na fila: pergunta antes, nada mudou ainda
       document.getElementById('karaoke-desligar-txt').textContent = Number(d.pagas) === 1
-        ? 'Tem 1 paga na fila. Se desligar, ela não canta e os R$ 3 voltam pra ela.'
-        : `Tem ${Number(d.pagas) || 0} pagas na fila. Se desligar, elas não cantam e os R$ 3 voltam pra cada pessoa.`;
+        ? 'Tem 1 paga na fila. Se desligar, ela não canta e os {{ k_preco_txt }} voltam pra ela.'
+        : `Tem ${Number(d.pagas) || 0} pagas na fila. Se desligar, elas não cantam e os {{ k_preco_txt }} voltam pra cada pessoa.`;
       document.getElementById('karaoke-desligar').hidden = false;
       _kPintar();
       return;
@@ -1562,8 +1581,11 @@ async function karaokeNaoVeio(btn) {
   karaokeRanking();
 }
 // 🎤 04/11/26 (B4): a TV marcou que tocou e a pessoa não cantou. O PIX vai pro "a devolver" e a parte do bar sai
+let _kVal = {};   // 🎤 23/11/26: pid → {valor_txt, bar_txt} das linhas pagas do "Quem cantou hoje"
 async function karaokeNaoCantou(pid, btn) {
-  if (!pid || !confirm('Essa pessoa não cantou? Os R$ 3 voltam pra ela e o bar não fica com o R$ 1,50.')) return;
+  const _v = _kVal[pid] || {};   // 🎤 23/11/26: o valor DESTA linha (quem pagou R$ 3 antes do preço novo)
+  if (!pid || !confirm('Essa pessoa não cantou? Os ' + (_v.valor_txt || {{ k_preco_txt|tojson }}) + ' voltam pra ela e o bar '
+                       + 'não fica com o ' + (_v.bar_txt || {{ k_bar_txt|tojson }}) + '.')) return;
   btn.disabled = true;
   try {
     const r = await fetch(`/pubshow/painel/karaoke/${pid}/nao-cantou`, {method: 'POST', headers: _kJ, body: '{}'});
@@ -1588,7 +1610,8 @@ function _kPintarPago(d) {
   if (nv) nv.hidden = !_kPalcoPid;
   if (!_kPalcoPid) karaokeNaoVeioPedir(false);
   else document.getElementById('k-naoveio-txt').textContent = pc.so_devolve
-    ? (pc.faltas ? 'É a 2ª vez. O PIX de R$ 3 volta pra ela.' : 'A fila tá vazia. O PIX de R$ 3 volta pra ela.')
+    ? (pc.faltas ? 'É a 2ª vez. O PIX de ' : 'A fila tá vazia. O PIX de ') + (pc.valor_txt || {{ k_preco_txt|tojson }})
+      + ' volta pra ela.'
     : 'Ela vai pro fim da fila, sem pagar de novo.';
 }
 {% endif %}async function karaokeRanking() {
@@ -1598,6 +1621,7 @@ function _kPintarPago(d) {
     if (!d.ok) return;{% if karaoke_pix %}
     if (d.placar) _kPintarPago(d);{% endif %}
     const linhas = {% if karaoke_pix %}d.modo_pago ? (d.cantou || []) : {% endif %}d.noite || [];
+    {% if karaoke_pix %}_kVal = {}; linhas.forEach(l => { if (l && l.valor_txt) _kVal[Number(l.pid) || 0] = l; });{% endif %}
     const pc = d.palco, pbox = document.getElementById('k-palco');
     if (pbox) {
       pbox.hidden = !pc;
@@ -1724,7 +1748,8 @@ function pularMusica(btn, pid) {
   }).then(r => r.json()).then(d => {
     if (d && d.confirmar && conf) {
       // 25/10/26 (pacote do dinheiro): música PAGA tocando → confirma antes; não pulou nada ainda
-      document.getElementById('pular-pago-txt').textContent = {% if karaoke_pix %}d.karaoke ? 'Essa pessoa pagou R$ 3. Se pular, o PIX volta pra ela e o bar não ganha o R$ 1,50.' : {% endif %}'Essa música foi paga (' + d.valor + '). Se pular, o PIX volta pro cliente.';
+      document.getElementById('pular-pago-txt').textContent = {% if karaoke_pix %}d.karaoke ? 'Essa pessoa pagou ' + (d.k_valor || {{ k_preco_txt|tojson }}) + '. Se pular, o PIX volta pra ela e o bar '
+        + 'não ganha o ' + (d.k_bar || {{ k_bar_txt|tojson }}) + '.' : {% endif %}'Essa música foi paga (' + d.valor + '). Se pular, o PIX volta pro cliente.';
       document.getElementById('pular-pago-musica').textContent = d.titulo ? '🎵 ' + d.titulo : '';
       document.getElementById('pular-pago-sim').dataset.pid = d.pedido_id;
       conf.hidden = false;
@@ -2175,7 +2200,7 @@ function renderFila(fila) {
     // 16/10/26 (C1-05): pedido JÁ PAGO avisa que o dinheiro não volta sozinho
     const _pagoCli = (p.valor_cobrado || p.valor || 0).toFixed(2).replace('.', ',');
     // 25/10/26: PIX na conta do PubShow (pix_volta) vai pro "PIX a devolver"; split/chave do bar como antes
-    const avisoPago = {% if karaoke_pix %}(p.karaoke_pago && p.pago_em) ? '<div class="aviso-pago">⚠️ Essa pessoa pagou R$ 3. Se tirar, ela não canta e o PIX volta pra ela. Não sai do teu bolso.</div>' : {% endif %}p.pix_volta
+    const avisoPago = {% if karaoke_pix %}(p.karaoke_pago && p.pago_em) ? `<div class="aviso-pago">⚠️ Essa pessoa pagou R$ ${_pagoCli}. Se tirar, ela não canta e o PIX volta pra ela. Não sai do teu bolso.</div>` : {% endif %}p.pix_volta
       ? `<div class="aviso-pago">⚠️ Esse cliente pagou R$ ${_pagoCli} no PIX. Se tirar, a música não toca e o PIX volta pro cliente. Não sai do seu bolso.</div>`
       : (p.pago_em
       ? `<div class="aviso-pago">⚠️ Esse cliente PAGOU R$ ${_pagoCli} no PIX. Se tirar, a TV não mostra e o dinheiro NÃO volta sozinho: devolva na mão.</div>`
@@ -2188,7 +2213,8 @@ function renderFila(fila) {
     const isProximo = idx === 0;
     const proxStyle = isProximo ? ' style="border-left:3px solid #22c55e;padding-left:10px"' : '';
     const proxLabel = isProximo ? '<span class="selo-prox">▶ Próximo</span>' : '';
-    const seloPago = (p.tipo === 'flash' || p.tipo === 'vip' || p.tipo === 'pular_espera') && p.pago_em ? '<span class="selo-pago">⚡ PAGO</span>' : {% if karaoke_pix %}(p.karaoke_pago && p.pago_em) ? '<span class="selo-pago">🎤 PAGO</span>' : {% endif %}'';
+    const seloPago = (p.tipo === 'vip' && p.pago_em) ? '<span class="selo-pago selo-super">🚀 SUPER</span>' :   // 🚀 23/11/26
+      (p.tipo === 'flash' || p.tipo === 'pular_espera') && p.pago_em ? '<span class="selo-pago">⚡ PAGO</span>' : {% if karaoke_pix %}(p.karaoke_pago && p.pago_em) ? '<span class="selo-pago">🎤 PAGO</span>' : {% endif %}'';
     const extra = idx >= FILA_VISIVEL;
     const aberto = String(p.id) === String(_tirarAberto);
     // música grátis: "grátis" em cinza (o "R$ 0,00" em verde em quase toda linha só poluía)

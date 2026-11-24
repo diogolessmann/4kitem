@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+{#- 💎 23/11/26 (planos): P3 = o site dos 3 planos (fora do modelo novo, que segue com o plano único). Só com o PIX automático ligado e o app ficando com parte (taxa_txt): sem isso não existe "% do app", fica o plano único #}{%- set P3 = (planos_site and taxa_txt and not modelo_novo) %}{%- set MZ = pubshow_musica_zero() if P3 else "" %}{%- set VIP = (planos_site|selectattr("chave", "equalto", "vip")|first) if P3 else none %}
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -16,12 +17,12 @@
   gtag('js', new Date());
   gtag('config', 'G-0JQBJ01C0Z');
 </script>
-<meta name="description" content="Jukebox digital para bar, na TV que você já tem: o cliente lê o QR, pede música de graça e paga no PIX só se quiser aparecer. Plano único de {{ PLANO.preco_fmt }}/mês.">
+<meta name="description" content="Jukebox digital para bar, na TV que você já tem: {% if P3 %}o cliente lê o QR, pede música pelo celular (grátis no Básico e no VIP; {{ MZ }} no Zero) e paga no PIX quando quer aparecer na TV. 3 planos: Zero (sem mensalidade), Básico ({{ PLANO.preco_fmt }}/mês) e VIP ({{ VIP.mensal_txt }}).{% else %}o cliente lê o QR, pede música de graça e paga no PIX só se quiser aparecer. Plano único de {{ PLANO.preco_fmt }}/mês.{% endif %}">
 <link rel="canonical" href="https://www.4kitem.com.br/pubshow/">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="pt_BR">
 <meta property="og:title" content="Jukebox digital para bar com QR Code e PIX | PubShow">
-<meta property="og:description" content="O cliente lê o QR, pede música de graça e paga no PIX só se quiser aparecer na TV: parabéns, recado ou a vez dele. Plano único de {{ PLANO.preco_fmt }}/mês.">
+<meta property="og:description" content="{% if P3 %}O cliente lê o QR, pede música pelo celular e paga no PIX se quiser aparecer na TV: parabéns, recado ou a vez dele. 3 planos: Zero, Básico e VIP.{% else %}O cliente lê o QR, pede música de graça e paga no PIX só se quiser aparecer na TV: parabéns, recado ou a vez dele. Plano único de {{ PLANO.preco_fmt }}/mês.{% endif %}">
 <meta property="og:url" content="https://www.4kitem.com.br/pubshow/">
 <meta property="og:image" content="https://www.4kitem.com.br{{ url_for('static', filename='pubshow/prints/og_pubshow_26out.jpg') }}">
 <meta property="og:image:width" content="1200">
@@ -114,6 +115,21 @@
   .feats { list-style:none; display:grid; grid-template-columns:1fr 1fr; gap:10px 20px; margin:22px 0 26px; }
   .feats li { font-size:14px; display:flex; gap:8px; color:#d4d4ee; }
   .feats li::before { content:'✓'; color:var(--green); font-weight:900; }
+  /* 💎 23/11/26 (planos): os 3 cartões do #preco */
+  .planos3 { max-width:760px; margin:28px auto 0; display:grid; grid-template-columns:repeat(3,1fr); gap:14px; text-align:left; }
+  .plano3 { background:var(--surface); border:1px solid var(--border2); border-radius:18px; padding:20px 18px; }
+  .plano3#plano-vip { border-color:rgba(239,68,68,.45); }
+  .p3-nome { font-size:18px; font-weight:900; }
+  .p3-preco { font-size:24px; font-weight:900; margin:6px 0 10px; letter-spacing:-.5px; }
+  .p3-lista { list-style:none; display:flex; flex-direction:column; gap:7px; font-size:14px; color:#d4d4ee; }
+  .p3-lista li::before { content:'✓ '; color:var(--green); font-weight:900; }
+  .planos3-nota { max-width:760px; margin:12px auto 0; }
+  @media (max-width:860px) {   /* no celular: um embaixo do outro, nome e preço na mesma linha (menos rolagem) */
+    .planos3 { grid-template-columns:1fr; gap:10px; margin-top:20px; }
+    .plano3 { padding:14px 16px; display:grid; grid-template-columns:1fr auto; align-items:baseline; column-gap:10px; }
+    .p3-preco { font-size:19px; margin:0; }
+    .p3-lista { grid-column:1 / -1; margin-top:8px; gap:4px; font-size:13.5px; }
+  }
   .calc { margin-top:28px; padding-top:24px; border-top:1px solid var(--border2); }
   .calc h3 { font-size:18px; font-weight:800; margin-bottom:16px; }
   .calc-campos { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
@@ -178,12 +194,12 @@
 <header class="wrap">
   <div class="hero">
     <div>
-      <div class="tag">Música grátis pro cliente · Recados na TV · PIX</div>
+{% if P3 %}      <div class="tag">Música grátis no Básico e no VIP · Recados na TV · PIX</div>{% else %}      <div class="tag">Música grátis pro cliente · Recados na TV · PIX</div>{% endif %}
       <h1>Jukebox para bar na TV que você já tem. <span class="grad">A casa vira palco.</span></h1>
       {% if modelo_novo %}
       <p class="sub">Com o PubShow, o cliente aponta a câmera para o QR da mesa e pede música de graça, sem baixar app. Quem quer aparecer paga no PIX por um parabéns, um recado ou a vez dele na TV. O dinheiro cai na conta do bar na hora, e a mensalidade sai do próprio jukebox.</p>
       {% else %}
-      <p class="sub">Com o PubShow, o cliente aponta a câmera para o QR da mesa e pede música de graça, sem baixar app. Quem quer aparecer paga no PIX por um parabéns, um recado ou a vez dele na TV. Você acompanha no painel quanto os momentos renderam pro bar.</p>
+{% if P3 %}      <p class="sub">Com o PubShow, o cliente aponta a câmera para o QR da mesa e pede música sem baixar app (grátis no Básico e no VIP; {{ MZ }} no Zero). Quem quer aparecer paga no PIX por um parabéns, um recado ou a vez dele na TV. Você acompanha no painel quanto os momentos renderam pro bar.</p>{% else %}      <p class="sub">Com o PubShow, o cliente aponta a câmera para o QR da mesa e pede música de graça, sem baixar app. Quem quer aparecer paga no PIX por um parabéns, um recado ou a vez dele na TV. Você acompanha no painel quanto os momentos renderam pro bar.</p>{% endif %}
       {% endif %}
       <div class="hero-acoes">
         <a href="https://wa.me/{{ SUPORTE_WA }}?text=Quero+ver+o+PubShow+funcionando.+Meu+bar+%C3%A9+___%2C+em+___%2C+e+tem+___+TV(s)." target="_blank" rel="noopener" class="btn btn-primary">Quero ver funcionando</a>
@@ -209,8 +225,8 @@
 <section class="section" id="o-que-e" style="padding-bottom:0">
   <div class="wrap">
     <h2>O que é o PubShow</h2>
-    <p class="sub">O PubShow é uma jukebox digital para bar e pub. A TV que o bar já tem vira a jukebox: o cliente lê um QR Code, pede música de graça pelo navegador do celular e o clipe entra na fila da TV. Não precisa de máquina, ficha nem aplicativo. O bar paga {{ PLANO.preco_fmt }} por mês, em plano único, e fica com a parte dele de cada momento pago no PIX.</p>
-    <p class="sub" style="margin-top:12px"><strong>A diferença:</strong> em vários sistemas o cliente paga por música. Aqui, pedir é grátis. O cliente só paga por parabéns, recado ou a vez dele na TV, se o bar ligar isso.</p>
+    <p class="sub">O PubShow é uma jukebox digital para bar e pub. A TV que o bar já tem vira a jukebox: {% if P3 %}o cliente lê um QR Code, pede música pelo navegador do celular e o clipe entra na fila da TV. Não precisa de máquina, ficha nem aplicativo. São 3 planos. O bar paga {{ PLANO.preco_fmt }} por mês no Básico, {{ VIP.mensal_txt|replace('/mês', '') }} no VIP ou nada de mensalidade no Zero, e fica com a parte dele de cada momento pago no PIX.</p>{% else %}o cliente lê um QR Code, pede música de graça pelo navegador do celular e o clipe entra na fila da TV. Não precisa de máquina, ficha nem aplicativo. O bar paga {{ PLANO.preco_fmt }} por mês, em plano único, e fica com a parte dele de cada momento pago no PIX.</p>{% endif %}
+    <p class="sub" style="margin-top:12px"><strong>A diferença:</strong> em vários sistemas o cliente paga por música. {% if P3 %}Aqui, no Básico e no VIP, pedir é grátis (no Zero, que não tem mensalidade, a música custa {{ MZ }}). O cliente só paga{% else %}Aqui, pedir é grátis. O cliente só paga{% endif %} por parabéns, recado ou a vez dele na TV, se o bar ligar isso.</p>
   </div>
 </section>
 
@@ -231,7 +247,7 @@
       <div class="passo">
         <div class="passo-num">2</div>
         <h3>O cliente pede</h3>
-        <p>Música é grátis. Os momentos na TV são pagos no PIX, com o preço final na tela.</p>
+{% if P3 %}        <p>Música grátis no Básico e no VIP ({{ MZ }} no Zero). Os momentos na TV são pagos no PIX, com o preço final na tela.</p>{% else %}        <p>Música é grátis. Os momentos na TV são pagos no PIX, com o preço final na tela.</p>{% endif %}
         <img class="print print-cel" src="{{ url_for('static', filename='pubshow/prints/celular_momentos_26out.webp') }}" width="750" height="1624"
              loading="lazy" alt="Celular do cliente com os momentos e os preços no PIX">
       </div>
@@ -280,7 +296,7 @@
 <section class="section" id="momentos">
   <div class="wrap">
     <div class="tag">Os momentos</div>
-    <h2>Pedir música é grátis. <span class="grad">O cliente paga pelo momento.</span></h2>
+{% if P3 %}    <h2>Pedir música é grátis no Básico e no VIP. <span class="grad">O cliente paga pelo momento.</span></h2>{% else %}    <h2>Pedir música é grátis. <span class="grad">O cliente paga pelo momento.</span></h2>{% endif %}
     <div class="momentos">
       {% for m in momentos %}
       <div class="mom" data-tipo="{{ m.tipo }}">
@@ -294,7 +310,7 @@
     </div>
     {#- Lote D B (16/10/26): nunca "taxa de serviço" (no bar isso é o 10% do garçom). 27/10/26: a regra dos 20% #}
     <p class="nota">🙏 Donate para o bar: R$ {{ donate_txt }}, o valor é do bar.<br>
-      Preços padrão no PIX{% if taxa_txt %}: o cliente vê o total antes de pagar e o app fica com {{ taxa_txt }} do total{% endif %}. Você liga ou desliga cada momento no painel; o preço é tabela fixa.</p>
+      {% if P3 %}Preços padrão no PIX{% if taxa_txt %}: o cliente vê o total antes de pagar e o app fica com uma parte do total, conforme o plano: {{ taxa_txt }}{% endif %}.{% else %}Preços padrão no PIX{% if taxa_txt %}: o cliente vê o total antes de pagar e o app fica com {{ taxa_txt }} do total{% endif %}.{% endif %} Você liga ou desliga cada momento no painel; o preço é tabela fixa.</p>
   </div>
 </section>
 
@@ -317,7 +333,7 @@
       </ul>
       {% else %}
       <ul class="lista">
-        <li>O cliente paga o momento no PIX e vê o total antes de pagar.{% if taxa_txt %} Do total, o app fica com {{ taxa_txt }}; o resto é do bar.{% endif %} O pagamento confirma sozinho.</li>
+{% if P3 %}        <li>O cliente paga o momento no PIX e vê o total antes de pagar.{% if taxa_txt %} Do total, o app fica com {{ taxa_txt }}; o resto é do bar. Karaokê e 🙋 garçom: metade pro bar, metade pro app.{% endif %} O pagamento confirma sozinho.</li>{% else %}        <li>O cliente paga o momento no PIX e vê o total antes de pagar.{% if taxa_txt %} Do total, o app fica com {{ taxa_txt }}; o resto é do bar.{% endif %} O pagamento confirma sozinho.</li>{% endif %}
         <li>No painel você acompanha, a qualquer hora, quanto os momentos e os donates renderam pro bar.</li>
         <li>O valor do Donate é do bar, como o de um momento.</li>
         {# 16/10/26 (C1-09/C4): texto + link num <span> só — com o li em flex virava 3 colunas #}
@@ -338,9 +354,36 @@
 <section class="section" id="preco">
   <div class="wrap" style="text-align:center">
     <div class="tag">Preço</div>
-    <h2>Um plano só. Tudo incluso.</h2>
+    <h2>{% if P3 %}3 planos. Tudo incluso nos 3.{% else %}Um plano só. Tudo incluso.{% endif %}</h2>
+    {%- if P3 %}
+    {#- 💎 23/11/26 (planos): Zero · Básico · VIP, com os números do código (pubshow.planos_site). Sem promessa de faturamento #}
+    <div class="planos3" id="planos3">
+      {%- for p in planos_site %}
+      <div class="plano3" id="plano-{{ p.chave }}">
+        <div class="p3-nome">{{ p.emoji }} {{ p.nome }}</div>
+        <div class="p3-preco">{% if p.mensal_cent > 0 %}{{ p.mensal_txt }}{% else %}Sem mensalidade{% endif %}</div>
+        <ul class="p3-lista">
+          {%- if p.chave == 'zero' %}
+          <li>Música: {{ MZ }} pro cliente, no PIX</li>
+          {%- else %}
+          <li>Música grátis pro cliente</li>
+          {%- endif %}
+          <li>Dos momentos: {{ p.bar_pct }}% pro bar e {{ p.app_pct }}% pro app</li>
+          {%- if p.chave == 'zero' %}
+          <li>A gente liga com você, pelo WhatsApp</li>
+          {%- else %}
+          <li>7 dias grátis, sem cartão</li>
+          {%- endif %}
+        </ul>
+      </div>
+      {%- endfor %}
+    </div>
+    <p class="nota planos3-nota">Nos 3 planos: karaokê e 🙋 chamar o garçom são metade pro bar e metade pro app; nos outros momentos o app fica com no mínimo R$ 1. O cliente vê o total antes de pagar.</p>
+    {%- endif %}
     <div class="preco-box" style="text-align:left">
+      {%- if not P3 %}
       <div class="preco-valor">{{ PLANO.preco_fmt }}<span> /mês{% if modelo_novo %}, pago com o próprio jukebox{% endif %}</span></div>
+      {%- endif %}
       {%- if modelo_novo %}
       <p class="nota" style="margin-top:6px">Sai de {{ mensal_pct }}% de cada momento, até fechar. Você nunca tira do bolso.</p>
       {#- Lote D B (16/10/26, aprovado): oferta de fundador contada no banco; some quando acabam as vagas #}
@@ -349,7 +392,7 @@
       {%- endif %}
       {%- endif %}
       <ul class="feats">
-        {% for f in PLANO.features %}<li>{{ f }}</li>{% endfor %}
+        {% for f in PLANO.features %}<li>{% if P3 and 'grátis' in f and 'música' in f|lower %}Pedir música pelo QR, sem app (grátis no Básico e no VIP; {{ MZ }} no Zero){% else %}{{ f }}{% endif %}</li>{% endfor %}
       </ul>
       {% if plano_em_dia %}
       <a href="/pubshow/painel" class="btn btn-primary">Seu plano está ativo → Painel</a>
@@ -357,7 +400,7 @@
       {% elif efi_logado %}
       <a href="/pubshow/painel" class="btn btn-primary">Abrir o painel →</a>
       {% elif session.get('pub_business_id') %}
-      <a href="/pubshow/assinar/bar" class="btn btn-primary">Assinar {{ PLANO.preco_fmt }}/mês</a>
+      <a href="/pubshow/assinar/bar" class="btn btn-primary">Assinar {{ PLANO.preco_fmt }}/mês</a>{% if P3 %}<div class="nota" style="margin-top:8px">O botão assina o Básico. Zero ou VIP: chama a gente no WhatsApp {{ SUPORTE_WA_FMT }}.</div>{% endif %}
       {% else %}
       <a href="https://wa.me/{{ SUPORTE_WA }}?text=Quero+ver+o+PubShow+funcionando.+Meu+bar+%C3%A9+___%2C+em+___%2C+e+tem+___+TV(s)." target="_blank" rel="noopener" class="btn btn-primary">Quero ver funcionando</a>
       <a href="/pubshow/cadastro" class="btn btn-outline" style="margin-left:10px">{% if modelo_novo %}Começar sem pagar nada{% else %}Testar 7 dias grátis{% endif %}</a>
@@ -370,7 +413,7 @@
         <h3>Faça a conta: {% if modelo_novo %}o jukebox paga a mensalidade?{% else %}os momentos cobrem a mensalidade?{% endif %}</h3>
         <div class="calc-campos">
           <div><label for="c-mom">Momentos pagos por noite</label><input id="c-mom" type="number" min="0" max="200" value="4" inputmode="numeric"></div>
-          <div><label for="c-val">Valor médio que fica pro bar (R$)</label><input id="c-val" type="number" min="0" max="100" value="7" inputmode="numeric"></div>
+          <div><label for="c-val">Valor médio que fica pro bar (R$)</label><input id="c-val" type="number" min="0" max="100" value="{{ calc_val if (P3 and calc_val) else 7 }}" inputmode="numeric"></div>
           <div><label for="c-noi">Noites abertas no mês</label><input id="c-noi" type="number" min="0" max="31" value="12" inputmode="numeric"></div>
         </div>
         <div class="calc-res" id="c-res" aria-live="polite"></div>

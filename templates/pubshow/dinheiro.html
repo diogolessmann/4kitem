@@ -109,7 +109,19 @@ nav strong{font-size:15px}
   {# ── Mensalidade ── #}
   <div class="card" id="din-mensalidade">
     <h2>Mensalidade</h2>
-    {% if mens_no_asaas %}
+    {% if mens_no_asaas and mens_nivel %}
+    {#- 💎 23/11/26 (planos): com plano, a mensalidade nunca sai dos momentos. O Zero não tem; Básico/VIP só na assinatura #}
+    {%- if mens_nivel.chave == 'zero' %}
+    <div class="selo ok" id="din-plano-zero">✅ Plano Zero: sem mensalidade. Os momentos não pagam mensalidade.</div>
+    {%- else %}
+    <div class="linha"><span>Plano {{ mens_nivel.nome }}</span><span class="val">{{ brl_cent(f.plano_cent) }}</span></div>
+    {%- if mens_tem_ass %}
+    <div class="sub ok">Paga pela assinatura do Asaas: os momentos não tiram mensalidade.</div>
+    {%- else %}
+    <div class="sub aviso" id="din-assinar">A mensalidade é paga pela assinatura, nunca pelos momentos. <a href="/pubshow/assinar/bar" style="color:inherit;font-weight:800">Assinar →</a></div>
+    {%- endif %}
+    {%- endif %}
+    {% elif mens_no_asaas %}
     <div class="linha"><span>Plano</span><span class="val">{{ brl_cent(f.plano_cent) }}</span></div>
     <div class="sub ok">Paga pela assinatura do Asaas: os momentos não tiram mensalidade.</div>
     {% elif f.plano_cent <= 0 %}

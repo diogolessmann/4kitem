@@ -683,8 +683,24 @@ def _bar_com_excecoes(conn, bar):
 
 def plano_do_bar(conn, bar):
     """Mensalidade do bar em centavos, com a exceção de pubshow_pay_planos (0 = isento). CC2 (16/10/26): o painel
-    usa no texto do passo 4 ("os primeiros R$ X de momentos do mês pagam a mensalidade")."""
-    return plano_cent(_bar_com_excecoes(conn, bar))
+    usa no texto do passo 4 ("os primeiros R$ X de momentos do mês pagam a mensalidade").
+    💎 23/11/26 (planos): o Plano Zero não tem mensalidade = 0 (o split não tira nada e a pausa de 60 dias não pega)."""
+    d = _bar_com_excecoes(conn, bar)
+    if _nivel_zero(conn, d):
+        return 0
+    return plano_cent(d)
+
+
+def _nivel_zero(conn, d):
+    """O bar é do Plano Zero? (pubshow_businesses.nivel). Sem a coluna ou erro = não."""
+    try:
+        v = d['nivel'] if 'nivel' in d else None
+        if 'nivel' not in d:
+            r = conn.execute('SELECT nivel FROM pubshow_businesses WHERE id=?', (int(d['id']),)).fetchone()
+            v = r[0] if r else None
+        return str(v or '').strip().lower() == 'zero'
+    except Exception:
+        return False
 
 
 def estado_bar(conn, business_id, mes, agora=None):

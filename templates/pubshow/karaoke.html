@@ -628,6 +628,7 @@ function _kPos(k) {   // {pos, min}: em que lugar entra quem pagar agora
   return {pos: 0, min: 0};
 }
 function _kEspera(st) {
+  if (st.karaoke_sair && typeof KTXT === 'object') Object.assign(KTXT, st.karaoke_sair);   // 🎤 23/11/26: o valor da linha
   $('btn-nao-vou').hidden = !(st.karaoke_pago && st.status === 'pendente');
   $('t3-regra').hidden = !st.karaoke_pago;
   _txt('t3-faltou', st.karaoke_faltou || ''); $('t3-faltou').hidden = !st.karaoke_faltou;
@@ -715,6 +716,7 @@ async function _kTickPix() {
   if (r.status === 404) { cantarDeNovo(); return; }
   const st = r.ok ? await r.json() : null;
   if (!st) return;
+  if (st.karaoke_sair && typeof KTXT === 'object') Object.assign(KTXT, st.karaoke_sair);   // 🎤 23/11/26: o valor da linha
   if (st.k) _ultBloco = st.k;
   if (st.status === 'aguardando_pix' && !_kEstOk(st.k)) await _kFilaInfo();   // 09/11/26 (V2b): a posição na fila misturada (2ª rodada: só se o bloco não trouxe)
   if (st.k || _kFI) {

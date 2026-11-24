@@ -786,14 +786,27 @@ def mensalidade(b, ass, rota, agora, pagamentos=None, desconhecida=None):
     te = _parse(b.get('trial_ends'))
     if te and te > agora:
         return _m('🟡', 'amar', f'em teste até {te.strftime("%d/%m")}', 'teste')
-    if rota == 'split':
+    _nv = str(b.get('nivel') or '').strip().lower()   # 💎 23/11/26 (planos)
+    if _nv == 'zero':   # o Zero não tem mensalidade
+        return _m('⚪', 'cinza', 'Plano Zero · sem mensalidade', 'zero')
+    # 💎 conserto da revisão: Básico/VIP no split NÃO têm a mensalidade tirada dos momentos (o _sem_mens do jukebox): ela é
+    # só no Asaas. Sem assinatura (os casos de cima), cai no 🟠 "aberto sem cobrança", o alarme, nunca no 'split'
+    _nv_split = rota == 'split' and _nv in ('basico', 'vip')
+    if rota == 'split' and not _nv_split:
         return _m('💸', 'cinza', 'sai dos momentos (divisão automática)', 'split')
     if b.get('plano_ativo'):
         base = te or _parse(b.get('created_at')) or agora
         dias = max(0, (agora - base).days)
+        try:   # o valor que o /assinar cobra deste bar (o plano_cent dele; sem ele, o de hoje)
+            _pc = int(_ps._plano_do_bar(b)['preco_cent']) if _nv_split else 0
+        except Exception:
+            _pc = 0
         return _m('🟠', 'amar', f'aberto sem cobrança há {dias} {_plural(dias, "dia", "dias")}'
                   + (f' (teste acabou {te.strftime("%d/%m")})' if te else ''), 'aberto', dias=dias,
-                  teste_fim=(te.strftime('%d/%m') if te else ''))
+                  teste_fim=(te.strftime('%d/%m') if te else ''),
+                  nivel_split=(f"Plano {'Básico' if _nv == 'basico' else 'VIP'} no split: a mensalidade"
+                               + (f' ({brl(_pc / 100)})' if _pc > 0 else '') + ' não sai dos momentos, só da '
+                               'assinatura no Asaas (o bar assina no painel, em 🧾 Plano e senha). ') if _nv_split else '')
     return _m('⚪', 'cinza', 'fechado', 'fechado')
 
 
@@ -1035,7 +1048,7 @@ def montar(conn, agora, leitura=None):
             s = por[bid]
             vende = s['c_n'] + s['x_n']
             # o plano (T4): a conta que vende SEM assinatura PAGA (assinatura criada e não paga também avisa)
-            if not vende or mens[bid]['estado'] in ('paga', 'split'):
+            if not vende or mens[bid]['estado'] in ('paga', 'split', 'zero'):   # 💎 23/11/26: o Zero não paga mensalidade
                 continue
             pagantes = [o for o in ids if o != bid and _tem_assinatura(o)]
             if not pagantes:
@@ -1059,6 +1072,7 @@ def montar(conn, agora, leitura=None):
         if m['estado'] == 'aberto' and b['id'] not in cobertos:
             det = (f"O teste acabou em {m['teste_fim']} e não há assinatura." if m.get('teste_fim')
                    else 'Liberado à mão, sem assinatura.')
+            det = (m.get('nivel_split') or '') + det   # 💎 23/11/26: Básico/VIP no split pagam só no Asaas
             avisos.append(_aviso('a', f"{nome[b['id']]} está aberto sem cobrança há {m['dias']} "
                                       f"{_plural(m['dias'], 'dia', 'dias')}", det, 'Gerenciar',
                                  f"/pubshow/admin/bar/{b['id']}", ordem=65))

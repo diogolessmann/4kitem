@@ -47,6 +47,21 @@
   .msg.erro{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35);color:#f87171}
   .tag{font-size:10px;font-weight:800;padding:2px 7px;border-radius:100px;background:rgba(34,197,94,.15);color:#4ade80}
   .tag.g{background:rgba(245,158,11,.15);color:#fbbf24}
+  /* 💎 23/11/26 (planos): o plano, o PIX a fazer, a tabela por tipo e o aviso da soma */
+  .plano-tag{display:inline-block;font-size:11px;font-weight:800;padding:3px 9px;border-radius:100px;background:rgba(167,139,250,.15);color:#c4b5fd;margin:-4px 0 8px}
+  .pix-bar{margin-top:10px;padding:12px 14px;border-radius:12px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.4);font-size:15px;color:#4ade80}
+  .pix-bar b{font-size:20px}
+  .tb-wrap{overflow-x:auto;margin-top:8px}
+  table.por-tipo{width:100%;border-collapse:collapse;font-size:12px}
+  table.por-tipo th{font-size:10px;color:#8888aa;text-transform:uppercase;font-weight:700;text-align:right;padding:4px 4px;white-space:nowrap}
+  table.por-tipo th:first-child,table.por-tipo td:first-child{text-align:left}
+  table.por-tipo td{padding:5px 4px;border-top:1px solid rgba(255,255,255,.05)}
+  table.por-tipo td.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+  table.por-tipo tr.tot td{font-weight:900;border-top:1px solid rgba(255,255,255,.2)}
+  table.por-tipo tr.gorj td{color:#fbbf24}
+  .soma-erro{margin-top:8px;padding:10px 12px;border-radius:10px;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.5);color:#f87171;font-size:13px;font-weight:800}
+  details.sem-tipos{margin-top:10px;font-size:12px}
+  details.sem-tipos summary{cursor:pointer;color:#a78bfa;font-weight:700}
   @media(max-width:420px){.grid2,.semanas{grid-template-columns:1fr}.big{font-size:24px}}
 </style>
 </head>
@@ -59,6 +74,19 @@
   </div>
 </nav>
 
+{#- 💎 23/11/26 (planos): a tabela por tipo de pedido (centavos do servidor, o valor gravado em cada pedido) #}
+{% macro tabela_tipos(tb, id_) -%}
+<table class="por-tipo"{% if id_ %} id="{{ id_ }}"{% endif %}>
+  <tr><th>Tipo</th><th>Qtd.</th><th>Cliente pagou</th><th>App</th><th>Bar</th></tr>
+  {%- for l in tb.linhas %}
+  <tr><td>{{ l.nome }}</td><td class="num">{{ l.n }}</td><td class="num">{{ brl(l.cobrado_cent / 100) }}</td><td class="num">{{ brl(l.app_cent / 100) }}</td><td class="num">{{ brl(l.bar_cent / 100) }}</td></tr>
+  {%- endfor %}
+  <tr class="tot"><td>Total</td><td class="num">{{ tb.n }}</td><td class="num">{{ brl(tb.cobrado_cent / 100) }}</td><td class="num">{{ brl(tb.app_cent / 100) }}</td><td class="num">{{ brl(tb.bar_cent / 100) }}</td></tr>
+  {%- if tb.gorj_n %}
+  <tr class="gorj"><td>🙏 Gorjeta da equipe (à parte)</td><td class="num">{{ tb.gorj_n }}</td><td></td><td></td><td class="num">{{ brl(tb.gorj_cent / 100) }}</td></tr>
+  {%- endif %}
+</table>
+{%- endmacro %}
 <div class="page">
   <h1>Quanto devo a cada bar</h1>
   <div class="sub">Calculado agora, {{ d.agora_brt }} (Brasília) · <a href="/pubshow/admin/repasses">🔄 Atualizar</a></div>
@@ -109,6 +137,7 @@
   {% for b in d.bares %}
   <div class="card" id="bar-{{ b.id }}">
     <h2>{{ b.nome }}</h2>
+    {% if b.plano_txt %}<div class="plano-tag" id="plano-{{ b.id }}">{{ b.plano_txt }}</div>{% endif %}
     <div class="lbl" style="margin-bottom:4px">
       Devido {% if b.ultimo %}desde o último repasse ({{ b.ultimo.ate_brt }}){% else %}desde o 1º pedido (nunca repassado){% endif %}
     </div>
@@ -116,6 +145,13 @@
     {% if b.devido.dev_n %}<div class="linha soma-garcom"><span class="cinza">🙋 Devolvidos no balcão (100% do bar) <span class="n">· {{ b.devido.dev_n }} PIX</span></span><span class="v cinza">{{ brl(b.devido.dev) }}</span></div>{% endif %}
     <div class="linha"><span>🙏 Gorjeta da equipe <span class="n">· {{ b.devido.gorj_n }} PIX</span></span><span class="v amarelo">{{ brl(b.devido.gorj) }}</span></div>
     <div class="linha"><span><b>Total a repassar</b></span><span class="v verde" style="font-size:17px">{{ brl(b.devido_total) }}</span></div>
+    {%- if b.pix_bar_cent is defined %}
+    {#- 24/11/26 (acabamento): o destaque e o botão "Repassei" mostram o MESMO número (o devido_total, que o botão grava);
+        a gorjeta da equipe vai no mesmo PIX e fica escrita à parte nos 2 #}
+    <div class="pix-bar" id="pix-bar-{{ b.id }}">💸 PIX a fazer pro bar: <b>{{ brl(b.devido_total) }}</b>{% if b.devido.gorj_n %}<span class="n"> = {{ brl(b.pix_bar_cent / 100) }} do bar + {{ brl(b.devido.gorj) }} de 🙏 gorjeta da equipe (à parte)</span>{% endif %}</div>
+    {%- if b.tabela %}<div class="tb-wrap">{{ tabela_tipos(b.tabela, 'tipos-' ~ b.id) }}</div>{% endif %}
+    {%- if not b.soma_ok %}<div class="soma-erro" id="soma-erro-{{ b.id }}">⚠️ A soma por tipo ({{ brl((b.tabela.bar_cent if b.tabela else 0) / 100) }}) não bate com o total do bar ({{ brl(b.devido.bar) }}). Não repasse antes de conferir.</div>{% endif %}
+    {%- endif %}
     {% if b.devido.efi > 0 %}<div class="linha"><span class="cinza">💳 de onde sai</span><span class="v cinza">Asaas {{ brl(b.devido.asaas) }} · Efí {{ brl(b.devido.efi) }}</span></div>{% endif %}
     {% if b.moderacao.bar_n or b.moderacao.gorj_n %}
     <div class="linha"><span class="cinza">🛡️ Em moderação (não somado) <span class="n">· {{ b.moderacao.bar_n + b.moderacao.gorj_n }} PIX</span></span><span class="v cinza">{{ brl(b.moderacao.bar + b.moderacao.gorj) }}</span></div>
@@ -129,6 +165,12 @@
         Bar {{ brl(b.passada.bar) }} <span class="n">({{ b.passada.bar_n }})</span><br>
         Gorjeta {{ brl(b.passada.gorj) }} <span class="n">({{ b.passada.gorj_n }})</span></div>
     </div>
+    {%- if b.tabela_esta or b.tabela_passada %}
+    <details class="sem-tipos"><summary>Por tipo de pedido, semana a semana</summary>
+      {% if b.tabela_esta %}<div class="lbl" style="margin-top:8px">Esta semana</div><div class="tb-wrap">{{ tabela_tipos(b.tabela_esta, '') }}</div>{% endif %}
+      {% if b.tabela_passada %}<div class="lbl" style="margin-top:8px">Semana passada</div><div class="tb-wrap">{{ tabela_tipos(b.tabela_passada, '') }}</div>{% endif %}
+    </details>
+    {%- endif %}
 
     <form class="rep" method="POST" action="/pubshow/admin/repasses/{{ b.id }}/repassei"
           data-msg="Confirmar que você JÁ fez o PIX de {{ brl(b.devido_total) }} pro {{ b.nome }}? (bar {{ brl(b.devido.bar) }} + gorjeta {{ brl(b.devido.gorj) }})"
@@ -141,7 +183,7 @@
       {% if b.pendente_conf_n %}
       <button type="button" class="btn" disabled>⏳ Conferindo {{ b.pendente_conf_n }} PIX antigo(s) no gateway — atualize em 1 min</button>
       {% else %}
-      <button type="submit" class="btn" {% if b.devido_total <= 0 %}disabled{% endif %}>✅ Repassei {{ brl(b.devido_total) }}</button>
+      <button type="submit" class="btn" {% if b.devido_total <= 0 %}disabled{% endif %}>✅ Repassei {{ brl(b.devido_total) }}{% if b.devido.gorj_n %} ({{ brl(b.devido.bar) }} do bar + {{ brl(b.devido.gorj) }} de 🙏 gorjeta){% endif %}</button>
       {% endif %}
     </form>
   </div>

@@ -17,7 +17,7 @@ O que mora aqui:
 Regras que não mudam (ESTADO_MODO_KARAOKE.md): no celular nunca o nome da plataforma de vídeo nem gíria pro WhatsApp; na TV nada por cima do vídeo;
 a cobrança NÃO existe no V1 (o karaokê é grátis).
 
-03/11/26 (V2a): a cobrança passou a existir (R$ 3 desde 04/11/26), atrás de 3 chaves: bar em PUBSHOW_KARAOKE_BARES com o modo ligado,
+03/11/26 (V2a): a cobrança passou a existir (R$ 3 de 04/11/26; R$ 3,90 desde 23/11/26), atrás de 3 chaves: bar em PUBSHOW_KARAOKE_BARES com o modo ligado,
 bar em PUBSHOW_KARAOKE_PIX e uma rota Efí (ponte ou split). Falta uma = grátis, como no V1. Asaas nunca entra aqui.
 """
 import os
@@ -39,9 +39,11 @@ CONVIDADO = 'Convidado'     # nome escondido pelo dono ("🙈 Esconder nome")
 
 # 03/11/26 (V2a): preço fixo, em centavos. Nunca vem do preço do bar, de divisao_app nem de _total_cliente
 # 04/11/26 (Diogo): R$ 3, metade do bar e metade do app
-PIX_TOTAL_CENT = 300        # o que o cliente paga por vez no palco
-PIX_BAR_CENT = 150          # o que fica pro bar (quando canta)
-PIX_APP_CENT = 150          # o que fica pro app
+# 💲 23/11/26 (Diogo: "Sim, testa 2 semanas"): R$ 3,90, metade/metade como antes. A linha paga guarda o que cobrou
+# (valor_cobrado): a parte do bar e a promessa de devolução saem DELA (pubshow._karaoke_cent), não destas constantes
+PIX_TOTAL_CENT = 390        # o que o cliente paga por vez no palco
+PIX_BAR_CENT = 195          # o que fica pro bar (quando canta)
+PIX_APP_CENT = 195          # o que fica pro app
 TETO_CELULAR_PADRAO = 5     # pagas por celular por noite (env PUBSHOW_KARAOKE_TETO_CELULAR); devolvido não conta
 PAGO_MAX_H = 4              # pago na fila há mais que isso: o bar fechou, vira "a devolver"
 # 10/11/26 (crítica da D2, achado 2): com a fila D2 (👑 → ⚡ → cantor pago → grátis) todo ⚡ novo passa na frente do
@@ -84,8 +86,8 @@ MSG_TETO_FIM = 'Agora é a vez da galera. Amanhã tem mais!'   # 04/11/26 (M3): 
 MSG_PAUSADO = '🎤 O karaokê está pausado agora. Pede tua música no cardápio, ou tenta mais tarde.'
 
 # 04/11/26 (B1 e B2): os textos da promessa, num lugar só
-PRECO_TXT = 'R$ 3'
-BAR_TXT = 'R$ 1,50'
+PRECO_TXT = 'R$ 3,90'   # 💲 23/11/26 (era R$ 3)
+BAR_TXT = 'R$ 1,95'     # 💲 23/11/26 (era R$ 1,50)
 PRAZO_TXT = 'em até 1 dia útil'
 CONTATO_TXT = 'WhatsApp (47) 99776-6831'
 # Quem recebe o PIX: o titular da conta Efí é outro, não o bar. Trocar pelo nome real quando o Diogo confirmar. Nunca inventar

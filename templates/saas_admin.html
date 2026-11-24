@@ -742,7 +742,7 @@
             <div>{{ b.email or '—' }}</div>
             {% if b.telefone %}<div style="font-size:11px;color:var(--text2)">{{ b.telefone }}</div>{% endif %}
           </td>
-          <td>{{ pubshow_plano.nome }}{% if b.plano and b.plano != 'bar' %} <span style="font-size:10px;color:var(--text2)">(era {{ b.plano }})</span>{% endif %}</td>
+          <td>{{ pubshow_plano.nome }}{% if b._nivel_txt %} <span class="ps-nivel" style="font-size:11px;font-weight:700">{{ b._nivel_txt }}</span>{% endif %}{% if b.plano and b.plano != 'bar' %} <span style="font-size:10px;color:var(--text2)">(era {{ b.plano }})</span>{% endif %}</td>
           <td>
             {% if b._status == 'ativo' %}
               <span class="badge badge-active">✅ Ativo{% if b._ativo_ate %} até {{ b._ativo_ate }} (cancelou){% endif %}</span>

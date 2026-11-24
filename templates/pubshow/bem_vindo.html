@@ -59,14 +59,20 @@
 <div class="hero">
   <div class="hero-emoji">🎉</div>
   <h1>Bem-vindo, <span>{{ b.nome }}!</span></h1>
-  <p>Seu Jukebox já está ativo. Siga os {{ 4 if efi_modo else 3 }} passos abaixo e hoje mesmo seus clientes já pedem música pelo celular. Pedir música é grátis pro cliente; ele paga no PIX só os momentos (furar a fila, parabéns, recado na TV).</p>
+  <p>Seu Jukebox já está ativo. Siga os {{ 4 if efi_modo else 3 }} passos abaixo e hoje mesmo seus clientes já pedem música pelo celular. {% if nivel == 'zero' and musica_paga %}No Plano Zero o cliente paga {{ musica_preco_txt }} por música no PIX, e os momentos (furar a fila, parabéns, recado na TV) também.{% else %}Pedir música é grátis pro cliente; ele paga no PIX só os momentos (furar a fila, parabéns, recado na TV).{% endif %}</p>
 </div>
 
 <div class="steps">
 
   {#- Lote D B (16/10/26, aprovado): modo Efí não tem teste grátis — a frase "Sem mensalidade do bolso…" e o passo 4
       (conta Efí). Asaas = o texto de hoje. #}
-  {% if efi_modo %}
+  {% if nivel == 'zero' %}
+  {#- 💎 23/11/26 (planos): as boas-vindas do Plano Zero (sem mensalidade; a música é paga) #}
+  <div class="trial-card" id="bv-zero">
+    <h3>⚪ Plano Zero: sem mensalidade</h3>
+    <p>Você não paga mensalidade. {% if musica_paga %}O cliente paga {{ musica_preco_txt }} por música no PIX.{% else %}A música está grátis enquanto a Efí estiver desligada.{% endif %} {{ plano_frase }}</p>
+  </div>
+  {% elif efi_modo %}
   <div class="trial-card" id="bv-sem-bolso">
     <h3>💚 Sem mensalidade do bolso</h3>
     <p>{{ sem_bolso_txt }}</p>

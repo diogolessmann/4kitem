@@ -415,7 +415,7 @@ _SLIDES_DIR = os.path.join(
 
 GORJETA_VALORES = (5.0, 10.0, 20.0, 50.0)   # opções de gorjeta no celular do cliente
 TIPOS_SEMPRE_GRATIS = ('musica', 'musica_especifica', 'musica_externa')   # nunca cobrados, mesmo com precos_custom (YouTube incluído — 12/09/26, Garage tinha 0,50)
-TIPOS_OCULTOS = ('vip', 'gorjeta', 'pular_espera', 'casamento', 'chegada')   # existem no banco/TV, mas o cliente não vê ("Tocar agora" saiu, YouTube entrou — 11/09/26)
+TIPOS_OCULTOS = ('gorjeta', 'pular_espera', 'casamento', 'chegada')   # existem no banco/TV, mas o cliente não vê (11/09/26). 🚀 23/11/26: o 'vip' saiu daqui (virou o Super fura fila)
 # 15/11/26 (Diogo): o Pedido de namoro ('casamento') saiu do celular e do painel; o 🙋 Ei, garçom! entrou no lugar. O
 # pedido antigo já pago continua passando na TV (a TV e o /api/status ainda conhecem o tipo)
 # 09/11/26 (Diogo: "remove o pular espera"): o ⏩ sai do celular, do painel e do site. O pedido ⏩ que já existe continua
@@ -440,7 +440,7 @@ TIPOS_PEDIDO = {
     # ponte = PRECO_PULAR_EFI + R$ 1 do app; split = R$ 2 + a taxa do split (PUBSHOW_CONV_CENT=0 → R$ 2).
     # Não conta como a grátis: a próxima grátis segue contando da última GRÁTIS (quem pagou não perde a vez dela).
     'pular_espera':     {'nome': 'Pular a espera',         'emoji': '⏩', 'preco': 2.00,  'cor': '#14b8a6'},
-    'vip':              {'nome': 'Tocar AGORA',            'emoji': '👑', 'preco': 10.00, 'cor': '#8b5cf6'},   # OCULTO do cliente (TIPOS_OCULTOS, 11/09/26); fica p/ histórico e TV
+    'vip':              {'nome': 'Super fura fila',        'emoji': '🚀', 'preco': 10.00, 'cor': '#8b5cf6'},   # 🚀 23/11/26: era o "Tocar AGORA" oculto; toca logo depois da música atual, na frente de todo ⚡ (nunca 👑: é o do Rei da noite). Cobra o total fixo (PRECO_TOTAL_FIXO, R$ 8,90): este preço é só o catálogo
     'parabens':         {'nome': 'Parabéns! 🎂',           'emoji': '🎂', 'preco': 15.00, 'cor': '#ec4899'},
     'dedicatoria':      {'nome': 'Dedicatória ❤️',        'emoji': '💌', 'preco': 10.00, 'cor': '#ef4444'},
     'brinde':           {'nome': 'Brinde Geral! 🍻',       'emoji': '🍻', 'preco': 5.00,  'cor': '#22c55e'},
@@ -547,7 +547,7 @@ def _donate_faixa_txt(k='donate_bar'):
     return f'R$ {v[0]:g} a {v[-1]:g}'
 
 
-def _regra_app():
+def _regra_app_env():
     """(pct, min) como Decimal. PUBSHOW_APP_PCT 0–100 (padrão 20) e PUBSHOW_APP_MIN 0–1 (padrão 1.00; conserto
     27/10/26: a chave só BAIXA o mínimo, com 2 ou 5 o pular de R$ 2 virava "R$ 0 pro bar"); env quebrada ou fora da
     faixa = o padrão (nunca derruba cobrança)."""
@@ -560,58 +560,242 @@ def _regra_app():
     return _env('PUBSHOW_APP_PCT', '20', 100), _env('PUBSHOW_APP_MIN', '1.00', 1)
 
 
-def divisao_app(total):
+# 💎 23/11/26 (planos, Diogo: "precisamos das 3 versões do pubshow funcionando essa semana"): o NÍVEL do bar
+# (pubshow_businesses.nivel; a coluna 'plano' o boot zera pra 'bar') decide quanto de cada total fica com o app e a
+# mensalidade. NULL = a regra de antes, igualzinha (_regra_app_env). A chave de emergência (PUBSHOW_APP_PCT=0 e
+# PUBSHOW_APP_MIN=0) fica ACIMA do plano, em todo bar. Marcar o nível nunca mexe no plano_cent nem na assinatura.
+# mensal_cent None = o plano_cent do bar (R$ 79,90 hoje); o VIP de bar NOVO é R$ 149 (o Garage é VIP pagando R$ 79,90).
+NIVEIS = {
+    'zero':   {'nome': 'Zero',   'emoji': '⚪', 'app_pct': 80, 'mensal_cent': 0},
+    'basico': {'nome': 'Básico', 'emoji': '🍺', 'app_pct': 35, 'mensal_cent': None},
+    'vip':    {'nome': 'VIP',    'emoji': '⭐', 'app_pct': 20, 'mensal_cent': 14900},
+}
+NIVEIS_ORDEM = ('zero', 'basico', 'vip')
+# Divisão FIXA, igual nos 3 planos e na regra de antes: o 🙋 (GARCOM_BAR_CENT) e o ⏩ (metade/metade: é a música do Zero).
+# O karaokê (1,95 + 1,95) sai das constantes do _K na cobrança. Gorjeta e Donate para o bar: a regra de antes (a env)
+TIPOS_METADE = ('pular_espera',)
+TIPOS_FORA_DO_PLANO = TIPOS_EQUIPE + ('donate_bar',)
+MSG_MUSICA_PAGA = '🎵 Aqui cada música é {preco} no PIX. Escolhe a música e toca em "🎵 Escolher a música".'
+
+
+def _nivel_do_bar(b):
+    """'zero' | 'basico' | 'vip' | None (a regra de antes). Aceita dict ou sqlite3.Row; sem a coluna = None."""
+    if b is None:
+        return None
+    try:
+        v = b['nivel']
+    except (KeyError, IndexError, TypeError):
+        return None
+    v = str(v or '').strip().lower()
+    return v if v in NIVEIS else None
+
+
+def _nivel_info(b):
+    n = _nivel_do_bar(b)
+    return dict(NIVEIS[n], chave=n) if n else None
+
+
+def _nivel_por_id(conn, business_id):
+    """O nível gravado no banco (os caminhos da assinatura só têm o id). Erro/sem coluna = None (a regra de antes)."""
+    try:
+        r = conn.execute('SELECT nivel FROM pubshow_businesses WHERE id=?', (int(business_id),)).fetchone()
+        return _nivel_do_bar({'nivel': r[0]}) if r else None
+    except Exception:
+        return None
+
+
+def _emergencia_app():
+    """PUBSHOW_APP_PCT=0 e PUBSHOW_APP_MIN=0: o app não fica com nada, em todo bar e em todo plano."""
+    pct, minimo = _regra_app_env()
+    return pct == 0 and minimo == 0
+
+
+def _regra_app(b=None):
+    """(pct, min) DESTE bar: com nível, o % do plano e o mínimo da env; sem nível (ou sem bar), a env de sempre.
+    Emergência = (0, 0) em todo plano."""
+    pct, minimo = _regra_app_env()
+    if pct == 0 and minimo == 0:
+        return pct, minimo
+    n = _nivel_do_bar(b)
+    if n:
+        return Decimal(NIVEIS[n]['app_pct']), minimo
+    return pct, minimo
+
+
+def nivel_txt(b):
+    """O rótulo do plano no repasse e no admin: 'Plano Zero · app 80%' ou, sem nível, 'regra antiga · app 20% (no mínimo
+    R$ 1)'."""
+    n = _nivel_do_bar(b)
+    if _emergencia_app():
+        return (f"Plano {NIVEIS[n]['nome']} · " if n else 'regra antiga · ') + 'app 0% (chave de emergência)'
+    if n:   # 24/11/26 (acabamento): o % do MESMO lugar que cobra (_regra_app), nunca da tabela
+        _p = f'{float(_regra_app(b)[0]):g}'.replace('.', ',')
+        return f"Plano {NIVEIS[n]['nome']} · app {_p}%"
+    return 'regra antiga · app ' + app_regra_txt()
+
+
+def nivel_curto(b):
+    """'⚪ Zero' | '🍺 Básico' | '⭐ VIP' | 'regra antiga' (a lista do saas-admin)."""
+    n = _nivel_do_bar(b)
+    return f"{NIVEIS[n]['emoji']} {NIVEIS[n]['nome']}" if n else 'regra antiga'
+
+
+def planos_regra_txt():
+    """O site: '80% no Zero, 35% no Básico e 20% no VIP (no mínimo R$ 1)'; '' na emergência (o app não fica com nada)."""
+    if _emergencia_app():
+        return ''
+    _pct, minimo = _regra_app_env()
+    p = (', '.join(f"{NIVEIS[k]['app_pct']}% no {NIVEIS[k]['nome']}" for k in NIVEIS_ORDEM[:-1])
+         + f" e {NIVEIS[NIVEIS_ORDEM[-1]]['app_pct']}% no {NIVEIS[NIVEIS_ORDEM[-1]]['nome']}")
+    return p + (f' (no mínimo {_reais_curto(float(minimo))})' if minimo > 0 else '')
+
+
+def planos_site():
+    """Os 3 planos da landing, do llms.txt e da home, com os números do código (o Básico = o preço de hoje)."""
+    out = []
+    for k in NIVEIS_ORDEM:
+        n = NIVEIS[k]
+        c = PLANO['preco_cent'] if n['mensal_cent'] is None else int(n['mensal_cent'])
+        out.append({'chave': k, 'nome': n['nome'], 'emoji': n['emoji'], 'app_pct': n['app_pct'],
+                    'bar_pct': 100 - n['app_pct'], 'mensal_cent': c,
+                    'mensal_txt': 'sem mensalidade' if c <= 0 else _reais_curto(c / 100) + '/mês'})
+    return out
+
+
+@pubshow_bp.app_template_global('pubshow_planos_regra')
+def _pubshow_planos_regra_global():
+    """O llms.txt (rota do app.py) lê a MESMA regra dos 3 planos da landing."""
+    return planos_regra_txt()
+
+
+@pubshow_bp.app_template_global('pubshow_planos_site')
+def _pubshow_planos_site_global():
+    return planos_site()
+
+
+def musica_zero_txt():
+    """'R$ 2': o que a música custa pro cliente no Zero de um bar NOVO, pro site (landing, FAQ, llms.txt e home). Ponte =
+    PRECO_PULAR_EFI + a taxa do PIX; o split da produção = R$ 2 + PUBSHOW_CONV_CENT=0. O celular e a TV leem o DO BAR."""
+    return _reais_curto(PRECO_PULAR_EFI + PIX_TAXA_CONVENIENCIA)
+
+
+@pubshow_bp.app_template_global('pubshow_musica_zero')
+def _pubshow_musica_zero_global():
+    return musica_zero_txt()
+
+
+def planos_no_site():
+    """O site (landing, FAQ, llms.txt e home) mostra os 3 planos só com o PIX automático ligado e o app ficando com parte.
+    Sem gateway ou com a chave de emergência não existe "% do app": fica o plano único de antes (a regra de 27/10). O site
+    do modelo novo (PUBSHOW_SITE_MODELO_NOVO=1) segue com o plano único dele, igual à landing."""
+    return bool(not _site_modelo_novo() and site_precos()['gw'] and planos_regra_txt())
+
+
+@pubshow_bp.app_template_global('pubshow_planos_no_site')
+def _pubshow_planos_no_site_global():
+    return planos_no_site()
+
+
+def _nivel_cadastro():
+    """💎 23/11/26 (conserto da revisão): o bar que se cadastra pelo site nasce no plano que o site vendeu. Com os 3 planos
+    no site (planos_no_site) = o Básico (app 35%, mensalidade = o plano_cent do dia, 7 dias grátis). Sem eles (sem PIX
+    automático, chave de emergência, site do modelo novo) ou com todo bar novo nascendo na Efí (PUBSHOW_EFI_BARES='*': a
+    mensalidade sai dos momentos) = NULL, a regra única que o site mostrou. Os bares de antes continuam NULL. Erro = NULL
+    (nunca trava o cadastro)."""
+    try:
+        return 'basico' if (planos_no_site() and not _efi_cadastro_novo()) else None
+    except Exception as ex:
+        log.warning('[PUBSHOW] 💎 plano do cadastro: %s', ex)
+        return None
+
+
+def calc_val_basico(momentos):
+    """💎 23/11/26 (conserto da revisão): o valor padrão da calculadora "Faça a conta" quando o site mostra os 3 planos = a
+    média do que FICA pro bar no Básico (o plano do botão Assinar e da mensalidade da conta) nos momentos que o site
+    mostra (sem o 🙋, que tem divisão fixa), em reais inteiros, arredondado pra baixo: um número que o Básico entrega de
+    verdade (hoje 4: os momentos deixam de R$ 3,25 a R$ 5,78 pro bar). None = sem momentos (fica o 7 de antes)."""
+    try:
+        vs = [divisao_do_tipo(m['tipo'], m['valor'], {'nivel': 'basico'})[0] for m in momentos if m['tipo'] != 'garcom']
+        return max(1, int(sum(vs) / len(vs))) if vs else None
+    except Exception as ex:
+        log.warning('[PUBSHOW] 💎 calculadora do site: %s', ex)
+        return None
+
+
+def _planos_custa_txt(preco):
+    """O FAQ 'Quanto custa pro bar?' (tela e JSON-LD): começa pelo Básico (o preço de sempre, o do botão Assinar). O %
+    do app só fora da chave de emergência (com ela o app não fica com nada)."""
+    p = {x['chave']: x for x in planos_site()}
+    pct = (lambda k: '' if _emergencia_app() else f", o app fica com {p[k]['app_pct']}% de cada momento")
+    return (f"{preco} por mês no Básico{pct('basico')}. VIP: {_reais_curto(p['vip']['mensal_cent'] / 100)} por mês"
+            f"{pct('vip')}. Zero: sem mensalidade{pct('zero')}, e a música custa {musica_zero_txt()} pro cliente. "
+            'Tudo incluso nos 3. No Básico e no VIP, 7 dias grátis, sem cartão.')
+
+
+def divisao_app(total, b=None):
     """total (reais) → (bar, app) em reais. App = pct% do total, meio centavo pra cima, no mínimo APP_MIN e no
     máximo o total − R$ 1; o bar fica com o resto EXATO (bar + app == total, em centavos). Conserto 27/10/26: o
     bar nunca fica com menos de R$ 1 (split com PUBSHOW_CONV_CENT=0 e momento de R$ 1: item_cent 0 derrubava a
     cobrança e o cliente via "Pagamento indisponível"); só total abaixo de R$ 2 sente isso."""
-    pct, minimo = _regra_app()
+    pct, minimo = _regra_app(b)   # 💎 23/11/26: o % do plano do bar (sem bar/sem nível = a env)
     t = max(0, int(round(float(total or 0) * 100)))
     app = int((Decimal(t) * pct / 100).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
     app = min(max(app, int(minimo * 100)), max(0, t - 100))
     return (t - app) / 100, app / 100
 
 
-def app_regra_txt():
-    """'20% (no mínimo R$ 1)' — a regra em palavras, a MESMA do divisao_app."""
-    pct, minimo = _regra_app()
+def app_regra_txt(b=None):
+    """'20% (no mínimo R$ 1)' — a regra em palavras, a MESMA do divisao_app. 💎 23/11/26: com o bar, a do plano dele."""
+    pct, minimo = _regra_app(b)
     if pct == 0 and minimo > 0:
         return _reais_curto(float(minimo))   # conserto 27/10/26: PCT=0 + MIN=1 = "R$ 1", não "0% (no mínimo R$ 1)"
     p = f'{float(pct):g}'.replace('.', ',') + '%'
     return f'{p} (no mínimo {_reais_curto(float(minimo))})' if minimo > 0 else p
 
 
-def divisao_do_tipo(tipo, total):
+def divisao_do_tipo(tipo, total, b=None):
     """(bar, app) em reais do TOTAL de um tipo. 🙋 16/11/26 (Diogo: "Dividir 0,70 cada"): o Ei, garçom! tem divisão
     FIXA, GARCOM_BAR_CENT pro bar e o resto pro app (a regra geral daria R$ 1 pro bar e R$ 0,40 pro app). A chave de
     emergência (PUBSHOW_APP_PCT=0 e PUBSHOW_APP_MIN=0: o app não fica com nada) vale pra ele também. Todo o resto:
     divisao_app. bar + app == total, em centavos."""
+    # 💎 23/11/26 (planos): b = o bar (o % do plano dele). A emergência vale pra todo tipo e todo plano; o 🙋 e o ⏩ são
+    # fixos (iguais nos 3 planos); gorjeta e Donate para o bar ficam na regra de antes (a env, sem o plano)
+    t = max(0, int(round(float(total or 0) * 100)))
+    if _emergencia_app():
+        return t / 100, 0.0
     if tipo == 'garcom':
-        t = max(0, int(round(float(total or 0) * 100)))
-        pct, minimo = _regra_app()
-        if pct == 0 and minimo == 0:
-            return t / 100, 0.0
         bar = min(GARCOM_BAR_CENT, t)
         return bar / 100, (t - bar) / 100
-    return divisao_app(total)
+    if tipo in TIPOS_METADE and _nivel_do_bar(b):
+        # ⏩ R$ 2 = R$ 1 + R$ 1 (centavo ímpar fica com o bar). Só em bar COM plano: o bar sem plano (NULL, o Garage) segue
+        # a regra de antes, igualzinha (divisao_app: app no mínimo R$ 1, bar no mínimo R$ 1), com qualquer env
+        app = t // 2
+        return (t - app) / 100, app / 100
+    if tipo in TIPOS_FORA_DO_PLANO:
+        return divisao_app(total)
+    return divisao_app(total, b)
 
 
-def garcom_app_txt():
+def garcom_app_txt(b=None):
     """'R$ 0,70': a parte do app no 🙋, pra frase da regra no painel ("no 🙋, R$ 0,70"); '' quando o app não leva nada."""
-    app = divisao_do_tipo('garcom', TIPOS_PEDIDO['garcom']['preco'])[1]
+    app = divisao_do_tipo('garcom', TIPOS_PEDIDO['garcom']['preco'], b)[1]
     return _reais_curto(app) if app > 0 else ''
 
 
-def divisao_txt(total, tipo=None):
+def divisao_txt(total, tipo=None, b=None):
     """A linha pequena embaixo do preço (D4): 'R$ 4,80 pro bar · 20% do app'; quando vale o mínimo,
     'R$ 4 pro bar · R$ 1 do app'; sem parte do app, '100% pro bar'. 🙋: 'R$ 0,70 pro bar · R$ 0,70 do app'."""
-    bar, app = divisao_do_tipo(tipo, total)
+    bar, app = divisao_do_tipo(tipo, total, b)   # 💎 23/11/26: o plano do bar
     if app <= 0:
         return '100% pro bar'
-    if tipo == 'garcom':
+    if tipo == 'garcom' or (tipo in TIPOS_METADE and _nivel_do_bar(b)):
         return f'{_reais_curto(bar)} pro bar · {_reais_curto(app)} do app'
-    pct, minimo = _regra_app()
-    app_txt = (_reais_curto(app) if int(round(app * 100)) <= int(minimo * 100)
+    pct, minimo = _regra_app(None if tipo in TIPOS_FORA_DO_PLANO else b)
+    # 💎 23/11/26 (conserto da revisão): o % só quando ele é o que se cobra. Quando vale o mínimo do app OU o teto (o bar
+    # fica com no mínimo R$ 1) cortou a parte do app (Zero, R$ 4: o app fica com R$ 3 = 75%, não 80%), diz em reais
+    _a, _t = int(round(app * 100)), max(0, int(round(float(total or 0) * 100)))
+    _a_pct = int((Decimal(_t) * pct / 100).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
+    app_txt = (_reais_curto(app) if (_a <= int(minimo * 100) or _a != _a_pct)
                else f'{float(pct):g}'.replace('.', ',') + '%')
     return f'{_reais_curto(bar)} pro bar · {app_txt} do app'
 
@@ -622,13 +806,23 @@ def _total_cliente(b, tipo, preco):
     return round(float(preco), 2) if tipo in TIPOS_DONATE else round(float(preco) + _taxa_pix_bar(b, tipo), 2)
 
 
+def _div_ao_cliente(b):
+    """💎 24/11/26 (revisão final; Diogo, 24/11: "Esconde também"): o celular NÃO mostra ao cliente quanto fica pro bar
+    e quanto pro app (a linha D4 de 27/10/26, "R$ X pro bar · R$ Y do app") em plano nenhum: Zero, Básico, VIP e o bar sem
+    plano (o Garage). O cliente vê só o TOTAL (nota do formulário, nota dos donates e da gorjeta, tela do PIX). O dono
+    segue vendo a divisão no painel (divisao_txt) e no repasse, e o admin também: nada disso passa por aqui. Chave única:
+    voltar a mostrar em algum plano = mudar este retorno."""
+    return False
+
+
 def _div_do_tipo(b, tipo, preco):
-    """Texto da divisão de um card/valor; '' sem gateway (PIX manual: 100% do bar, não fala de app)."""
-    if not _gateway_ativo(b) or float(preco or 0) <= 0:
+    """Texto da divisão de um card/valor; '' sem gateway (PIX manual: 100% do bar, não fala de app) e quando o cliente
+    não vê a divisão (_div_ao_cliente; 24/11/26: em todo plano)."""
+    if not _gateway_ativo(b) or float(preco or 0) <= 0 or not _div_ao_cliente(b):
         return ''
     if tipo == 'donate_sistema':
         return '100% pro sistema'
-    return divisao_txt(_total_cliente(b, tipo, preco), tipo)
+    return divisao_txt(_total_cliente(b, tipo, preco), tipo, b)   # 💎 23/11/26: a regra do plano DESTE bar
 
 
 def _donate_sistema_para(b):
@@ -661,6 +855,82 @@ def _preco_garcom(b):
     return p
 
 
+# 💲 23/11/26 (Diogo: "Sim, testa 2 semanas"): o TOTAL que o cliente paga no PIX destes momentos é fixo, como o 🙋
+# (_preco_garcom) e o preço de lançamento (PROMO_FDS_TOTAL): o item = o total menos a taxa do PIX do bar
+# (_preco_total_fixo). Vale na ponte Efí (o Garage), no split, no Asaas e no PIX manual, com qualquer env de taxa, e passa
+# por cima do preço salvo do bar (precos_custom). O TIPOS_PEDIDO fica como catálogo (os preços de antes). ⚡ furar comum
+# (R$ 5), namoro, 🙋, gorjeta e donates não mudam. O 👑 vip (oculto; vira o 🚀 Super fura fila) já nasce a R$ 8,90
+PRECO_TOTAL_FIXO = {'parabens': 8.90, 'dedicatoria': 7.90, 'brinde': 5.90, 'cantada': 5.90, 'salve': 5.90, 'vip': 8.90}
+
+
+def _preco_total_fixo(b, k):
+    """💲 23/11/26: o preço do ITEM k neste bar = o total fixo (PRECO_TOTAL_FIXO) menos o que o cliente paga a mais no PIX
+    do bar (_taxa_pix_bar: ponte e Asaas = PIX_TAXA_CONVENIENCIA; split = a do pubshow_pay; PIX manual = 0). Item + taxa
+    = o total em toda rota. None = k sem total fixo, ou a taxa não cabe no total (env absurda): vale a tabela, como antes.
+    A taxa de k é a mesma do ⚡ que o celular, a TV e o painel somam (só a gorjeta tem taxa própria no split)."""
+    if k not in PRECO_TOTAL_FIXO:
+        return None
+    try:
+        p = round(float(PRECO_TOTAL_FIXO[k]) - float(_taxa_pix_bar(b, k)), 2)
+    except Exception:
+        return None
+    return p if p >= 0.01 else None
+
+
+def _preco_fixo_do_painel(b):
+    """💲 23/11/26: {tipo: item} dos momentos de total fixo deste bar, pra tela do painel (selo rosa = item + a taxa = o
+    total do PIX). O painel monta o preço por um caminho próprio (precos_parsed): sem isto o salvo venceria na tela."""
+    try:
+        return {k: v['preco'] for k, v in _precos_do_bar(b)[0].items() if v.get('total_fixo')}
+    except Exception as ex:
+        log.warning('[PUBSHOW] total fixo no painel: %s', ex)
+        return {}
+
+
+def _karaoke_cent(row):
+    """🎤 23/11/26 (preço novo): o que ESTA linha paga do karaokê cobrou, em centavos (valor_cobrado). Quem pagou R$ 3 antes
+    do preço novo recebe de volta R$ 3 (e o bar fica com a metade dele). Sem o valor na linha: o preço de agora."""
+    try:
+        c = int(round(float(row['valor_cobrado'] or 0) * 100))
+    except Exception:
+        c = 0
+    return c if c > 0 else _K.PIX_TOTAL_CENT
+
+
+def _karaoke_txt_cent(cent):
+    """390 → 'R$ 3,90'; 300 → 'R$ 3' (o jeito do _K.PRECO_TXT)."""
+    cent = int(cent)
+    return f'R$ {cent // 100}' if cent % 100 == 0 else f'R$ {cent // 100},{cent % 100:02d}'
+
+
+def _karaoke_com_valor(txt, cent):
+    """🎤 23/11/26: a promessa da devolução com o valor da LINHA (os textos do _K trazem o preço de agora)."""
+    return (txt or '').replace(_K.PRECO_TXT, _karaoke_txt_cent(cent))
+
+
+def _karaoke_bar_txt(cent):
+    """🎤 23/11/26: a parte do bar de uma vez paga de `cent` centavos, na proporção de hoje (metade): 390 → 'R$ 1,95'."""
+    return _karaoke_txt_cent(int(round(int(cent) * _K.PIX_BAR_CENT / _K.PIX_TOTAL_CENT)))
+
+
+def _karaoke_cent_tela(pix_pendente):
+    """🎤 23/11/26: a tela do PIX reaberto do karaokê mostra o que ESTE QR cobra (o valor da linha), não o preço de agora."""
+    try:
+        if pix_pendente and 'kara_vid' in pix_pendente and float(pix_pendente.get('valor') or 0) > 0:
+            return int(round(float(pix_pendente['valor']) * 100))
+    except Exception:
+        pass
+    return _K.PIX_TOTAL_CENT
+
+
+def _karaoke_txt_tela(cent):
+    """Os textos da tela do karaokê (_K.TXT_TELA) com o "sair da fila" no valor da linha (o resto é do pedido novo)."""
+    if cent == _K.PIX_TOTAL_CENT:
+        return _K.TXT_TELA
+    return dict(_K.TXT_TELA, sair_talvez=_karaoke_com_valor(_K.MSG_SAIR_TALVEZ, cent),
+                sair_pago=_karaoke_com_valor(_K.MSG_SAIR_PAGO, cent))
+
+
 def _garcom_para(b):
     """🙋 Ei, garçom! (15/11/26) existe neste bar? Só se ele cobra pela Efí (ponte ou split): no Asaas o mínimo do PIX
     é R$ 5 e o garçom custa R$ 1,40. 16/11/26: e só se o preço fecha (_preco_garcom)."""
@@ -674,9 +944,53 @@ def _pular_espera_para(b):
     """⏩ Pular a espera (20/10/26) existe neste bar? Só se ele cobra pela Efí (ponte ou split) e a regra da grátis
     (1 a cada GRATIS_INTERVALO_MIN) está ligada. No Asaas não: o mínimo de R$ 5 empataria com o furar a fila."""
     try:
-        return GRATIS_INTERVALO_MIN > 0 and bool(_ponte_efi_para(b) or _efi_para(b))
+        # 💎 23/11/26 (planos): no Zero o ⏩ é a música (R$ 2), com ou sem a regra da grátis
+        return (GRATIS_INTERVALO_MIN > 0 or _nivel_do_bar(b) == 'zero') and bool(_ponte_efi_para(b) or _efi_para(b))
     except Exception:
         return False
+
+
+def _musica_paga(b):
+    """💎 23/11/26 (planos): no Zero pedir música é R$ 2 no PIX (o ⏩ pular_espera, metade/metade). Só com a Efí (ponte ou
+    split): sem ela (PUBSHOW_GATEWAY=asaas, o botão de emergência) o Zero volta pra música grátis, pra nunca travar o bar."""
+    try:
+        return _nivel_do_bar(b) == 'zero' and _pular_espera_para(b)
+    except Exception:
+        return False
+
+
+def _musica_preco_txt(b):
+    """'R$ 2': o total da música paga deste bar (o MESMO número do botão do celular: item + o somador do PIX)."""
+    try:
+        v = _precos_do_bar(b)[0]['pular_espera']['preco'] + _taxa_pix_bar(b, 'flash')
+    except Exception:
+        v = TIPOS_PEDIDO['pular_espera']['preco']
+    return _reais_curto(v)
+
+
+def _tv_musica_txt(b):
+    """O que a TV escreve no lugar do 'GRÁTIS' da música: 'R$ 2' no Zero; 'GRÁTIS' nos outros (o HTML de sempre)."""
+    return _musica_preco_txt(b) if _musica_paga(b) else 'GRÁTIS'
+
+
+def plano_frase_txt(b):
+    """💎 23/11/26 (conserto da revisão): a frase do plano no painel (#plano-zero, #plano-regra) e nas boas-vindas do Zero,
+    lida da MESMA regra que cobra (_regra_app / divisao_do_tipo), nunca do % fixo da tabela. Na chave de emergência o app
+    não fica com nada: '100% pro bar' (o karaokê segue as constantes dele, metade/metade). O teto do divisao_app (o bar
+    fica com no mínimo R$ 1) dito com todas as letras. '' sem plano (o bar NULL não tem esta frase)."""
+    n = _nivel_do_bar(b)
+    if not n:
+        return ''
+    mus = _musica_paga(b)
+    if _emergencia_app():
+        itens = 'os momentos, a música e o 🙋 garçom' if mus else 'os momentos e o 🙋 garçom'
+        return f'Hoje o app não fica com nada: {itens} são 100% pro bar (o karaokê segue metade pro bar, metade pro app).'
+    pct, minimo = _regra_app(b)
+    p, q = (f'{float(x):g}'.replace('.', ',') for x in (pct, 100 - pct))
+    mins = ([f'{_reais_curto(float(minimo))} pro app'] if minimo > 0 else []) + ['R$ 1 pro bar']
+    fixos = 'A música, o karaokê e o 🙋 garçom' if mus else 'O karaokê e o 🙋 garçom'
+    return (f'De cada momento, o app fica com {p}% e o bar com {q}% (no mínimo ' + ' e '.join(mins) + f'). '
+            f'{fixos}: metade pro bar, metade pro app.')
 
 # Tetos anti-flood (15/10/26). SEM trava por IP (decisão 11/09/26: no Wi-Fi do bar todo mundo tem o
 # mesmo IP) — por bar e por client_id do celular. "Aberto" = aguardando_pix recente.
@@ -927,6 +1241,9 @@ def _pubshow_on_pago(conn, cob):
     n = conn.execute("UPDATE pubshow_pedidos SET status=?, pago_em=COALESCE(pago_em, datetime('now')) "
                      "WHERE id=? AND business_id=? AND status='aguardando_pix' AND estornado_em IS NULL",
                      (novo, cob['pedido_id'], cob['business_id'])).rowcount
+    if n == 1:
+        # 🔢 23/11/26: o ⚡/👑 entra na fila na hora do PIX na Efí (pix_horario), mesmo confirmado tarde (robô parado)
+        _vez_pelo_pix(conn, cob['pedido_id'], cobranca_id=cob.get('id'))
     if n == 1 and int(cob.get('mens_cent') or 0) > 0:
         # 17/10/26 (decisão 8): a 1ª mensalidade de verdade (30% de um momento pago) dá a vaga de fundador, se sobrar
         try:
@@ -1993,8 +2310,14 @@ def _tipos_disponiveis(b):
     if 'pular_espera' in tipos and not (('musica_externa' in tipos or 'musica_especifica' in tipos)
                                         and _pular_espera_para(b)):
         del tipos['pular_espera']
+    # 💎 23/11/26 (planos): no Zero a música é R$ 2 no PIX pelo ⏩ (oculto e fora do painel nos outros planos); a grátis
+    # segue no dicionário (as telas da busca leem dela) e o POST recusa (MSG_MUSICA_PAGA)
+    if _musica_paga(b) and ('musica_externa' in tipos or 'musica_especifica' in tipos):
+        tipos['pular_espera'] = TIPOS_PEDIDO['pular_espera']
     if 'garcom' in tipos and not _garcom_para(b):
         del tipos['garcom']   # 🙋 15/11/26: só na Efí (R$ 1,40; no Asaas o mínimo é R$ 5) e com preço que fecha
+    if 'vip' in tipos and not _super_para(b):
+        del tipos['vip']   # 🚀 23/11/26: o Super fura fila só com PIX automático (a vez dele é a hora do PIX)
     if 'donate_sistema' in tipos and not _donate_sistema_para(b):
         del tipos['donate_sistema']
     return tipos
@@ -2446,12 +2769,64 @@ def _status_apos_pix(conn, pedido_id):
     return 'aguardando_ok' if (b and _precisa_ok(b, row['tipo'])) else 'pendente'
 
 
+def _hora_pix_utc(h):
+    """🔢 23/11/26: o 'horario' do PIX na Efí (RFC 3339 do BCB: '2026-11-23T00:04:05.123Z' ou '...-03:00') em UTC
+    'AAAA-MM-DD HH:MM:SS', o formato do created_at. Sem fuso = UTC (como o pubshow_pay._parse). None se não der."""
+    m = re.match(r'\s*(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})(?:\.\d+)?\s*(Z|[+-]\d{2}:?\d{2})?\s*$',
+                 str(h or ''), re.I)
+    if not m:
+        return None
+    try:
+        dt = datetime.strptime(m.group(1) + ' ' + m.group(2), '%Y-%m-%d %H:%M:%S')
+    except ValueError:
+        return None
+    o = (m.group(3) or 'Z').upper().replace(':', '')
+    if o != 'Z':
+        dt -= (1 if o[0] == '+' else -1) * timedelta(hours=int(o[1:3]), minutes=int(o[3:5]))
+    return dt.strftime('%Y-%m-%d %H:%M:%S')
+
+
+def _vez_pelo_pix(conn, pid, hora_pix=None, cobranca_id=None):
+    """🔢 23/11/26 (Diogo: "quem pagou primeiro vai 1"; pedidos22/ordem/trocas_ordem_srv.py): o ⚡ furar e o 👑 vip
+    entram na fila na hora do PIX, não na hora em que o QR foi aberto. created_at = a hora do PIX no banco quando o
+    caminho a tem (Efí: hora_pix da consulta na ponte; o pix_horario da cobrança cobranca_id no split), presa entre a
+    hora do QR e a da confirmação; senão a confirmação (pago_em: webhook do Asaas, painel do dono); sem pago_em (o "já
+    paguei" sem gateway): agora. O "PIX caiu" do admin NÃO chama: lá a confirmação é atrasada por definição e fica a
+    hora do QR. Chamar logo depois do UPDATE de status da confirmação, na transação de quem chama (sem commit), só
+    quando a linha acabou de sair do aguardando_pix. Só mexe em ⚡/👑 pendente/aguardando_ok: PIX tardio (recusada)
+    fica como está. O cantor pago tem o _karaoke_pos_pix. Volta 1 se mexeu; erro = 0 e a hora do QR (a confirmação
+    nunca cai)."""
+    try:
+        if not hora_pix and cobranca_id:
+            try:
+                r = conn.execute('SELECT pix_horario FROM pubshow_pay_cobrancas WHERE id=?', (cobranca_id,)).fetchone()
+                hora_pix = r[0] if r else None
+            except sqlite3.Error as ex:
+                log.warning('[PUBSHOW] ordem pelo PIX: pedido #%s sem a hora do PIX da Efí (vai a confirmação): %s',
+                            pid, ex)
+        h = _hora_pix_utc(hora_pix)
+        conf = "COALESCE(NULLIF(TRIM(pago_em),''), datetime('now'))"
+        vez = f"MAX(COALESCE(created_at,''), MIN(?, {conf}))" if h else conf
+        n = conn.execute(f"UPDATE pubshow_pedidos SET created_at={vez} "
+                         "WHERE id=? AND tipo IN ('flash','vip') AND status IN ('pendente','aguardando_ok')",
+                         (h, pid) if h else (pid,)).rowcount
+        if n:
+            r = conn.execute('SELECT business_id FROM pubshow_pedidos WHERE id=?', (pid,)).fetchone()
+            if r:
+                _karaoke_cache_limpar(r[0])   # a ordem do karaokê (3 a 5 s, só memória) muda junto
+        return n
+    except Exception as ex:
+        log.warning('[PUBSHOW] ordem pelo PIX: pedido #%s fica na hora do QR: %s', pid, ex)
+        return 0
+
+
 def _tipos_config(b=None):
     """Tipos que o gerente vê nas configurações (sem os ocultos do cliente). ⏩ Pular a espera (20/10/26): só no
     painel do bar que cobra pela Efí (sem o bar, fica de fora). 27/10/26 (D6): o Donate para o sistema nunca."""
     return {k: v for k, v in TIPOS_PEDIDO.items()
             if k not in TIPOS_OCULTOS and (k != 'pular_espera' or (b is not None and _pular_espera_para(b)))
             and (k != 'garcom' or (b is not None and _garcom_para(b)))   # 🙋 15/11/26: idem, só na Efí
+            and (k != 'vip' or (b is not None and _super_para(b)))   # 🚀 23/11/26: idem, só com PIX automático
             and k != 'donate_sistema'}
 
 
@@ -2514,6 +2889,8 @@ def _precos_do_bar(b):
             # preço fixo (20/10/26): R$ 2 no total, sem preço do bar, teto ou happy hour ("só mantém os preços")
             if _ponte:
                 t['preco'] = PRECO_PULAR_EFI
+            if _nivel_do_bar(b) == 'zero':
+                t.update(nome='Escolher a música', emoji='🎵')   # 💎 23/11/26: no Zero o ⏩ é a música de R$ 2
             tipos[k] = t
             continue
         if k == 'garcom':
@@ -2526,6 +2903,15 @@ def _precos_do_bar(b):
                     t['preco'] = _pg
             tipos[k] = t
             continue
+        if k in PRECO_TOTAL_FIXO:
+            # 💲 23/11/26: TOTAL fixo no PIX (PRECO_TOTAL_FIXO) em toda rota: o item é o total menos a taxa deste bar, sem
+            # preço salvo, teto, piso ou happy hour (como o 🙋). Taxa que não cabe no total = a tabela, como antes
+            _pf = _preco_total_fixo(b, k)
+            if _pf is not None:
+                t['preco'] = _pf
+                t['total_fixo'] = True
+                tipos[k] = t
+                continue
         if _ponte and k == 'flash':
             t['preco'] = PRECO_FLASH_EFI
         if k in custom:
@@ -2671,6 +3057,68 @@ def _musica_na_fila(b, youtube_id, ip_cliente=None, tipo=None, nome=None):
     finally:
         conn.close()
 
+
+
+# 🚀 23/11/26 (Diogo: "Sim, assim"; pedidos22/super/trocas_super_srv.py): o Super fura fila é o tipo 'vip' de sempre
+# (grupo 1 da fila: toca logo depois da música que está tocando, na frente de todo ⚡; entre dois, quem pagou primeiro,
+# _vez_pelo_pix). Teto ANTES do PIX: SUPER_MAX_CEL esperando por celular e SUPER_MAX_BAR esperando no bar. Esperando =
+# pago e ainda não começou a tocar (pendente/aguardando_ok da noite) + o PIX aberto do super há menos de 15 min com QR
+# (sem ele, 4 pessoas abrem o QR juntas e a 4ª paga por cima do teto). PIX que cai depois disso entra assim mesmo (pago
+# nunca é recusado). O ⚡ não tem teto: quem protege a grátis é a trava, e o super conta nela como pago.
+SUPER_MAX_BAR = 3
+SUPER_MAX_CEL = 1
+
+
+def _super_para(b):
+    """🚀 O super só existe com PIX automático (Asaas, ponte ou split): a vez dele é a hora do PIX, que confirma sozinho.
+    Sem gateway (PIX manual do bar ou bar grátis) ele some do celular e do painel, e o POST recusa."""
+    try:
+        return bool(_gateway_ativo(b))
+    except Exception:
+        return False
+
+
+def _super_conta(conn, bid, cid=''):
+    """🚀 (supers esperando no bar, os deste celular). Sem cid (sem JS) o celular conta 0: só vale o teto do bar."""
+    rows = conn.execute(
+        f"""SELECT ip_cliente FROM pubshow_pedidos WHERE business_id=? AND tipo='vip'
+              AND ((status IN ('pendente','aguardando_ok') AND created_at >= {_JANELA_FILA})
+                   OR (status='aguardando_pix' AND COALESCE(pix_payload,'')<>''
+                       AND created_at >= datetime('now','-15 minutes')))""", (bid,)).fetchall()
+    cel = sum(1 for r in rows if (r[0] or '').endswith('#' + cid)) if cid else 0
+    return len(rows), cel
+
+
+def _super_teto(b, cid='', conn=None, curto=False):
+    """🚀 '' = pode pedir o super; senão a mensagem pro cliente (curto=True: a linha pequena do botão no celular, pelo
+    /api/fila-info). Oferece o ⚡ com o preço do bar quando o ⚡ está à venda. Erro no banco = '' (o teto nunca derruba o
+    pedido; o log avisa)."""
+    cx = conn or get_pubshow_db()
+    try:
+        bar, cel = _super_conta(cx, b['id'], cid)
+    except Exception as ex:
+        log.warning('[PUBSHOW] 🚀 teto do super no bar %s não lido (libera): %s', b['id'], ex)
+        return ''
+    finally:
+        if conn is None:
+            cx.close()
+    if cel >= SUPER_MAX_CEL:
+        if curto:
+            return 'o teu ainda não tocou: 1 por vez'
+        txt = '🚀 Teu super fura fila ainda não tocou. Espera ele tocar pra pedir outro'
+    elif bar >= SUPER_MAX_BAR:
+        if curto:
+            return f'já tem {SUPER_MAX_BAR} esperando: tenta daqui a pouco'
+        txt = f'🚀 Já tem {SUPER_MAX_BAR} super fura fila esperando a vez. Tenta daqui a pouco'
+    else:
+        return ''
+    try:
+        fl = _precos_do_bar(b)[0].get('flash') if 'flash' in _tipos_disponiveis(b) else None
+    except Exception:
+        fl = None
+    if fl and fl.get('preco', 0) > 0:
+        return txt + f', ou fura a fila ⚡ por {_reais_curto(fl["preco"] + _taxa_pix_bar(b, "flash"))}.'
+    return txt + '.'
 
 
 def _teto_pedidos(b, tipo, usar_pix, cid):
@@ -2986,6 +3434,8 @@ def _efi_consultar_e_confirmar(pedido_id, txid):
                 "WHERE id=? AND status='aguardando_pix' AND efi_txid=?",
                 (_novo, pedido_id, txid)
             ).rowcount
+            if n:
+                _vez_pelo_pix(conn, pedido_id, r.get('horario'))   # 🔢 23/11/26: o ⚡/👑 entra na fila na hora do PIX
             if n and _K.pix_bares():
                 _karaoke_pos_pix(conn, pedido_id, _novo)   # 🎤 03/11/26 (V2a): só mexe em linha paga
             conn.commit()
@@ -3333,7 +3783,9 @@ def site_precos() -> dict:
             continue
         t = precos[k]
         # 🙋 16/11/26: o garçom é R$ 1,40 no TOTAL em qualquer rota (na tabela o preço dele já é o total)
-        total = round(float(TIPOS_PEDIDO['garcom']['preco']), 2) if k == 'garcom' else round(float(t['preco']) + taxa, 2)
+        # 💲 23/11/26: os momentos de total fixo dizem o total da tabela (o modelo novo e a reserva liam o TIPOS_PEDIDO)
+        total = (round(float(TIPOS_PEDIDO['garcom']['preco']), 2) if k == 'garcom' else
+                 round(float(PRECO_TOTAL_FIXO[k]), 2) if k in PRECO_TOTAL_FIXO else round(float(t['preco']) + taxa, 2))
         momentos.append({'tipo': k, 'emoji': t['emoji'], 'valor': total, 'preco': _reais_curto(total),
                          'nome': re.sub(r'\s*[^\w\s!?.,-]+$', '', t['nome']).strip(), 'ok': bool(t.get('ok')),
                          'obs': 'sem esperar a vez da grátis' if k == 'pular_espera' else ''})
@@ -3392,8 +3844,14 @@ def _site_faq(taxa_txt: str, modelo_novo: bool, fundador: str = '') -> list:
     faq = [
         ('O que é o PubShow?', 'Uma jukebox digital para bar e pub. A TV que o bar já tem vira a jukebox: o cliente pede música '
                                'pelo QR Code, sem baixar app, e o clipe entra na fila da TV.'),
-        ('Pedir música é pago?', musica),
-        ('Quanto custa pro bar?', f'{preco} por mês, plano único, tudo incluso. 7 dias grátis, sem cartão.'),
+        # 💎 23/11/26 (planos): os 3 planos, com os números do código. Nunca "grátis" enganoso: no Zero a música é paga
+        # (só com o PIX automático ligado e o app com parte: taxa_txt; senão, as respostas de antes)
+        ('Pedir música é pago?', ('No Básico e no VIP, não: música é grátis, escolhida na lista do bar ou buscada entre '
+                                  'todas as músicas do estilo (se o bar liberar). No Zero, que não tem mensalidade, cada '
+                                  f'música custa {musica_zero_txt()} pro cliente no PIX. Os momentos na TV são pagos nos 3.')
+                                 if taxa_txt else musica),
+        ('Quanto custa pro bar?', _planos_custa_txt(preco) if taxa_txt else
+                                  f'{preco} por mês, plano único, tudo incluso. 7 dias grátis, sem cartão.'),
         ('Preciso comprar máquina de jukebox?', 'Não. Você usa a TV que já tem, com um notebook ligado nela.'),
         ('Posso controlar o que toca?', 'Sim. Você escolhe os estilos da casa, lista os artistas que não quer, pula e tira música da fila '
                                         'pelo celular. A cantada sempre espera o seu OK.'),
@@ -3404,12 +3862,14 @@ def _site_faq(taxa_txt: str, modelo_novo: bool, fundador: str = '') -> list:
         # 27/10/26 (D5): a gorjeta virou o Donate para o bar (dinheiro da casa)
         ('E o Donate para o bar?', 'O cliente escolhe R$ ' + ', '.join(f'{v:g}' for v in DONATE_VALORES['donate_bar'][:-1])
                                    + f' ou {DONATE_VALORES["donate_bar"][-1]:g} e o valor é do bar, como um '
-                                   'momento.' + (f' Do total, o app fica com {taxa_txt}.' if taxa_txt else '')),
+                                   'momento.' + (f' Do total, o app fica com {app_regra_txt()}.' if taxa_txt else '')),   # 💎 23/11/26: o donate fica na regra de antes
     ]
     if taxa_txt:
         # Lote D B (16/10/26): nunca "taxa de serviço" (no bar isso é o 10% do garçom). 27/10/26 (D2): os 20% do app
-        faq.append(('Quanto fica com o app?', f'Do total que o cliente paga no PIX, o app fica com {taxa_txt} e o '
-                                              'resto é do bar. O cliente vê o total antes de pagar.'))
+        # 💎 23/11/26 (planos): depende do plano; karaokê e 🙋 garçom são metade/metade nos 3
+        faq.append(('Quanto fica com o app?', f'Depende do plano. Do total que o cliente paga no PIX, o app fica com '
+                                              f'{taxa_txt}; o resto é do bar. Karaokê e chamar o garçom: metade '
+                                              'pro bar, metade pro app. O cliente vê o total antes de pagar.'))
     faq += [
         ('O que preciso ter no bar?', instalar),
         ('Funciona em qualquer cidade?', 'Sim. Funciona pela internet em todo o Brasil, e o suporte é pelo WhatsApp.'),
@@ -3448,7 +3908,8 @@ def index():
     # Lote D B (16/10/26): oferta de fundador só no site do modelo novo, com as vagas contadas no banco (some no 0)
     vagas = fundador_vagas() if modelo_novo else 0
     fundador = _texto_fundador(vagas)
-    taxa_txt = app_regra_txt() if sp['gw'] else ''   # 27/10/26: "20% (no mínimo R$ 1)"; conserto: pelo gateway
+    # 💎 23/11/26 (planos): o site fala a regra dos 3 planos (o Donate para o bar segue a regra de antes, no FAQ)
+    taxa_txt = (planos_regra_txt() if not modelo_novo else app_regra_txt()) if sp['gw'] else ''
     momentos = sp['momentos']
     faq = _site_faq(taxa_txt, modelo_novo, fundador)
     # V6-05: bar logado que já paga vê "Seu plano está ativo → Painel", não "Assinar" de novo
@@ -3465,8 +3926,12 @@ def index():
          'name': 'PubShow',
          'applicationCategory': 'BusinessApplication', 'operatingSystem': 'Navegador (web)',
          'url': 'https://www.4kitem.com.br/pubshow/',
-         'description': 'Jukebox digital para bar: a TV do bar vira jukebox, o cliente pede música de graça pelo QR Code, '
-                        'sem baixar app, e paga no PIX só pelos momentos na TV, como parabéns e chamar o garçom.',
+         'description': ('Jukebox digital para bar: a TV do bar vira jukebox, o cliente pede música de graça pelo QR Code, '
+                         'sem baixar app, e paga no PIX só pelos momentos na TV, como parabéns e chamar o garçom.')
+                        if (modelo_novo or not taxa_txt) else   # 💎 23/11/26 (planos): no Zero a música é paga
+                        ('Jukebox digital para bar: a TV do bar vira jukebox, o cliente pede música pelo QR Code, '
+                         'sem baixar app (grátis nos planos Básico e VIP), e paga no PIX pelos momentos na TV, como '
+                         'parabéns e chamar o garçom. 3 planos: Zero, Básico e VIP.'),
          'offers': {'@type': 'Offer', 'price': preco_str, 'priceCurrency': 'BRL',
                     'url': 'https://www.4kitem.com.br/pubshow/#preco',
                     'priceSpecification': {'@type': 'UnitPriceSpecification', 'price': preco_str,
@@ -3490,6 +3955,8 @@ def index():
                            mensal_pct=(rg['pct'] if modelo_novo else 0),
                            fundador_vagas=vagas, fundador_txt=fundador,
                            faq=faq, ld_json=ld, plano_em_dia=plano_em_dia, efi_logado=efi_logado,
+                           planos_site=planos_site(),   # 💎 23/11/26: os 3 planos do #preco
+                           calc_val=calc_val_basico(momentos),   # 💎 a calculadora: a média do Básico
                            empresa_cnpj=os.environ.get('EMPRESA_CNPJ', '').strip())
 
 
@@ -3743,6 +4210,8 @@ def bem_vindo():
     # 17/10/26 (caminho único): o bar recém-cadastrado ainda não tem conta (vende pela ponte): conta a lista
     _efi = _efi_lista(b)
     return render_template('pubshow/bem_vindo.html', b=dict(b), planos=PLANOS, canais=CANAIS,
+                           nivel=_nivel_do_bar(b), musica_preco_txt=_musica_preco_txt(b),   # 💎 23/11/26: o Zero
+                           musica_paga=_musica_paga(b), plano_frase=plano_frase_txt(b),   # (a regra que cobra)
                            efi_modo=_efi, sem_bolso_txt=(_texto_sem_bolso(b) if _efi else ''),
                            dica_2_bares=_dica_2_bares(_efi))
 
@@ -3838,11 +4307,11 @@ def cadastro():
                     cur = conn.execute(
                         '''INSERT INTO pubshow_businesses
                            (nome, tipo, email, telefone, cpf_cnpj, password_hash, code,
-                            plano, plano_ativo, canal_atual, trial_ends, jukebox_token, signup_ip, plano_cent)
-                           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+                            plano, plano_ativo, canal_atual, trial_ends, jukebox_token, signup_ip, plano_cent, nivel)
+                           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
                         (nome, tipo, email, telefone, cpf_cnpj,
                          generate_password_hash(senha), code, plano_sel, 0 if _sem_teste else 1, 'rock', trial,
-                         jtoken, ip_cliente, _plano_cent())
+                         jtoken, ip_cliente, _plano_cent(), _nivel_cadastro())   # 💎 23/11/26: o plano que o site vendeu
                     )
                     conn.commit()
                     b = conn.execute('SELECT * FROM pubshow_businesses WHERE email=?', (email,)).fetchone()
@@ -3955,6 +4424,7 @@ def tv(code):
     return render_template('pubshow/tv.html', b=dict(b), canal=canal,
                            canal_key=canal_key, videos=videos, canais=canais_tv,
                            anuncios=anuncios, qr_preco_txt=_qr_preco_tv(b),
+                           tv_musica_txt=_tv_musica_txt(b),   # 💎 23/11/26: 'R$ 2' no Zero, 'GRÁTIS' nos outros
                            tv_qr_b64=tv_qr_b64, jukebox_url=_jk_url,
                            precos_canto=_precos_canto_tv(b),   # 24/10/26 (momentos no telão, visual): o canto das cenas
                            canais_estilo=canais_estilo,   # 29/10/26: a troca automática não sai do estilo do bar
@@ -3984,10 +4454,11 @@ def _qr_preco_tv(b):
     Bar que desligou o furar a fila: só "GRÁTIS". V-S5-06: o /api/status manda este texto também, então o
     happy hour que começa/acaba com a TV aberta muda o preço da TV junto com o do celular."""
     fura = _furar_preco_tv(b)
+    _mus = ('música ' + _musica_preco_txt(b)) if _musica_paga(b) else 'GRÁTIS'   # 💎 23/11/26: no Zero a música é paga
     if fura is None:
-        return 'GRÁTIS'
+        return _mus
     pix = bool(_gateway_ativo(b) or (b['requer_pix'] and b['pix_key']))
-    return f'GRÁTIS · furar a fila {fura}' + (' no PIX' if pix else '')
+    return f'{_mus} · furar a fila {fura}' + (' no PIX' if pix else '')
 
 
 def _furar_preco_tv(b):
@@ -4001,7 +4472,7 @@ def _furar_preco_tv(b):
 
 
 _TIPOS_CANTO_TV = ('flash', 'parabens', 'dedicatoria', 'brinde', 'chegada', 'casamento', 'donate_bar', 'cantada',
-                   'salve')   # 27/10/26: 'gorjeta' → 'donate_bar'
+                   'salve', 'vip')   # 27/10/26: 'gorjeta' → 'donate_bar'. 🚀 23/11/26: + o super (na vinheta dele)
 
 
 def _precos_canto_tv(b):
@@ -4285,6 +4756,9 @@ def jukebox(token, pix_id=None):
             elif (tipo not in tipos_bar and not _kara) or tipo not in precos_bar:
                 # 🎤 09/11/26 (V2b): o pedido do cartão 🎤 vale mesmo com o "Pedir qualquer música" fechado no bar
                 erro = 'Tipo de pedido inválido.'
+            elif not _kara and tipo in TIPOS_SEMPRE_GRATIS and _musica_paga(b):
+                # 💎 23/11/26 (planos): no Zero não existe música grátis (o 🎤 karaokê segue igual nos 3 planos)
+                erro, erro_tipo = MSG_MUSICA_PAGA.format(preco=_musica_preco_txt(b)), 'musica_paga'
             elif not nome_cliente:
                 erro = ('Informe o nome do aniversariante.' if tipo == 'parabens'
                         else 'Informe o número da tua mesa. 🙋' if tipo == 'garcom' else 'Informe seu nome.')
@@ -4300,7 +4774,7 @@ def jukebox(token, pix_id=None):
             elif tipo == 'donate_sistema' and _tem_link_ou_fone(_FONE.sub(' ', mensagem)):
                 # 27/10/26 (D6): o recado pro sistema aceita telefone (é assim que um dono de bar pede o PubShow), link não
                 erro = 'Sem link no recado, beleza? 🙏'
-            elif tipo == 'flash' and _nome_furar_ruim(nome_cliente):
+            elif tipo in ('flash', 'vip') and _nome_furar_ruim(nome_cliente):   # 🚀 23/11/26: o super também
                 # 25/10/26 (leva 1 da fama): o nome do ⚡ é só o nome da pessoa, antes de qualquer pedido ou PIX
                 # (Asaas, split ou ponte Efí: todos nascem lá embaixo, depois desta lista)
                 erro, erro_tipo = MSG_NOME_FURAR, 'nome_furar'
@@ -4318,7 +4792,8 @@ def jukebox(token, pix_id=None):
             elif tipo in TIPOS_MOMENTO_TV and (_gt := _garcom_tv_fora(b)):
                 # 16/11/26 (L2): o momento do intervalo também (o cartão só sai com a TV ligada e com som). Antes do PIX
                 erro, erro_tipo = (MSG_MOMENTO_TV_OFF if _gt == MSG_GARCOM_TV_OFF else MSG_MOMENTO_TV_MUDA), 'momento_tv'
-            elif tipo in ('musica_especifica', 'musica_externa', 'flash', 'pular_espera') and not youtube_id:
+            elif tipo in ('musica_especifica', 'musica_externa', 'flash', 'pular_espera', 'vip') and not youtube_id:
+                # 🚀 23/11/26: o 'vip' (super) entrou na lista: antes passava sem música e cobrava por música nenhuma
                 erro = 'Selecione uma música antes de confirmar.'
             elif tipo == 'cantada' and not mensagem:
                 erro = 'Escreve a cantada antes de mandar. 😏'
@@ -4385,8 +4860,9 @@ def jukebox(token, pix_id=None):
                 if preco <= 0:
                     usar_pix = False   # pedido GRÁTIS: entra direto na fila, sem cobrança
                 if _kara_pix:
-                    # 🎤 03/11/26 (V2a): preço fixo, sempre na Efí. O bar pode estar no Asaas pro resto (o Garage): daqui
-                    # pra baixo este pedido é da rota do karaokê, e o _ponte/_efi desta requisição nunca chama o Asaas
+                    # 🎤 03/11/26 (V2a): preço fixo, sempre na Efí. O bar pode estar no Asaas pro resto (era o Garage até
+                    # 15/11; desde então ele está na ponte Efí): daqui pra baixo este pedido é da rota do karaokê, e o
+                    # _ponte/_efi desta requisição nunca chama o Asaas
                     preco, usar_pix, _gateway = _K.PIX_TOTAL_CENT / 100, True, True
                     _efi, _ponte = _kara_rota == 'split', _kara_rota == 'ponte'
                 tipo_nome  = precos_bar[tipo]['nome']
@@ -4423,6 +4899,11 @@ def jukebox(token, pix_id=None):
 
                 # Tetos anti-flood (15/10/26): PIX abertos por bar/celular, fila, 1 grátis por celular
                 erro = '' if pix_pendente else _teto_pedidos(b, tipo, usar_pix, _cid)
+                if not erro and not pix_pendente and tipo == 'vip':
+                    # 🚀 23/11/26: o teto do super (1 por celular, 3 no bar), antes do PIX; o MESMO PIX aberto reabre acima
+                    erro = _super_teto(b, _cid)
+                    if erro:
+                        erro_tipo = 'super_teto'
                 if _kara and erro.startswith('Tua música já está na fila'):
                     erro, erro_tipo = _K.MSG_JA_NA_FILA, 'karaoke_na_fila'   # 🎤 1 por vez: cantou, pede outra
                     try:   # o "Ver minha vez" do celular que perdeu o número do pedido (aba nova, outro navegador)
@@ -4476,7 +4957,8 @@ def jukebox(token, pix_id=None):
                     elif tipo == 'donate_sistema':
                         _bar_parte, _app_parte = 0.0, _valor_cobranca
                     else:
-                        _bar_parte, _app_parte = divisao_do_tipo(tipo, _valor_cobranca)   # 🙋: R$ 0,70 + R$ 0,70
+                        # 💎 23/11/26 (planos): o % do plano DESTE bar (🙋 e ⏩ fixos; gorjeta e donate na regra de antes)
+                        _bar_parte, _app_parte = divisao_do_tipo(tipo, _valor_cobranca, b)   # 🙋: R$ 0,70 + R$ 0,70
                     _valor_linha = _bar_parte   # o que o pedido grava em valor quando a cobrança abre
                     if _kara_pix:
                         # 🎤 03/11/26 (V2a): a parte do bar e a do app, de constante (nem APP_PCT nem PUBSHOW_CONV_CENT). A linha
@@ -4534,6 +5016,8 @@ def jukebox(token, pix_id=None):
                                 # assinatura ativa no Asaas (migração) ou plano_ativo=0 (mês pago, ativo_ate) → 0
                                 # 🎤 03/11/26 (V2a): o karaokê nunca paga mensalidade (a parte do bar é do bar, sempre)
                                 _sem_mens = _kara_pix or (not b['plano_ativo']) or _tem_assinatura_ativa(b['id'])
+                                # 💎 23/11/26 (planos): bar com nível nunca tem os 30% de mensalidade tirados da parte dele
+                                _sem_mens = _sem_mens or bool(_nivel_do_bar(b))
                                 # 27/10/26 (D9): item = a parte do bar, conv = a parte do app (os 20%)
                                 pay = pubshow_pay.criar_cobranca_momento(_cp, b, pedido_id, int(round(_bar_parte * 100)),
                                                                          int(round(_app_parte * 100)),
@@ -4814,6 +5298,8 @@ def jukebox(token, pix_id=None):
                                         'div': {str(int(x)): _div_do_tipo(b, k, x) for x in DONATE_VALORES[k]}}
                                     for k in TIPOS_DONATE if k in tipos_bar},
                            tipos_disponiveis=tipos_bar,
+                           musica_paga=_musica_paga(b),   # 💎 23/11/26: no Zero a música é R$ 2 no PIX (o ⏩)
+                           div_oculta=not _div_ao_cliente(b),   # 💎 24/11/26: a tela do PIX mostra só o total (todo plano)
                            hh_desconto=hh_desconto,
                            fila=[dict(f) for f in fila],
                            sucesso=sucesso, erro=erro,
@@ -4861,7 +5347,9 @@ def jukebox(token, pix_id=None):
                            karaoke_pix=(_tela_k and (_K.ligado(b) or bool((pix_pendente or {}).get('kara_vid')))
                                         and _K.pix_permitido(b)),
                            karaoke_cobra=bool(_kara_bar_rota),
-                           karaoke_preco=_K.reais(_K.PIX_TOTAL_CENT), karaoke_txt=_K.TXT_TELA,
+                           # 🎤 23/11/26 (preço novo): o PIX reaberto mostra o que ESTE QR cobra e o "sair" dele
+                           karaoke_preco=_K.reais(_karaoke_cent_tela(pix_pendente)),
+                           karaoke_txt=_karaoke_txt_tela(_karaoke_cent_tela(pix_pendente)),
                            # 🎤 09/11/26 (V2b): o cartão "🎤 Cante sua música" do jukebox.html ('on' | 'off' | None)
                            karaoke_card=_kcard, karaoke_preco_txt=_K.PRECO_TXT), status_http
 
@@ -4929,6 +5417,7 @@ def jukebox_ja_paguei(token, pedido_id):
         (_status_apos_pix(conn, pedido_id), pedido_id, b['id'])
     ).rowcount
     if updated:
+        _vez_pelo_pix(conn, pedido_id)   # 🔢 23/11/26: o ⚡/👑 entra na fila na hora do aviso
         conn.commit(); conn.close()
         return jsonify({'ok': True, 'modo': 'direto'})
     # Não estava mais 'aguardando_pix' — pode já ter sido confirmado (duplo
@@ -5419,6 +5908,13 @@ def _noite_marcas(rows, pid):
         ant = max((r for r in v if r['exibido_at'] and r['id'] != pid), key=lambda r: (r['exibido_at'][:19], r['id']),
                   default=None)
         ch['disp'] = int(bool(cid and ant and ant['tipo'] == 'flash' and _noite_cid(ant) not in ('', cid)))
+    elif eu['tipo'] == 'vip':
+        # 🚀 23/11/26: sn = o nº deste super na noite do bar e ns = o nº desta pessoa, pela hora do PIX (a vez real)
+        def pgs(r):
+            return (r['pago_em'] or r['created_at'], r['id'])
+        sp = [r for r in v if r['tipo'] == 'vip']
+        ch['sn'] = sum(1 for r in sp if pgs(r) <= pgs(eu))
+        ch['ns'] = sum(1 for r in sp if _noite_quem(r) == quem and pgs(r) <= pgs(eu)) if quem else 0
     return ch
 
 
@@ -5431,7 +5927,8 @@ def _ultimas_tocadas(conn, bid):
     🎤 09/11/26 (V2b): o cantor pago que tocou volta como 'pago' (conta na trava junto do ⚡); o ⚡ segue 'flash'."""
     try:
         ph = ','.join('?' * len(TIPOS_MUSICA_PEDIDO))
-        return [('pago' if r[1] and r[0] != 'flash' else r[0]) for r in conn.execute(
+        # 🚀 23/11/26: o super ('vip') tocado volta como 'pago' (conta na trava; antes o 'vip' no histórico a apagava)
+        return [('pago' if (r[1] and r[0] != 'flash') or r[0] == 'vip' else r[0]) for r in conn.execute(
             f"""SELECT tipo, COALESCE(karaoke_pago,0) FROM pubshow_pedidos
                  WHERE business_id=? AND status IN ('exibido','recusado') AND exibido_at IS NOT NULL
                    AND created_at >= {_JANELA_FILA} AND tipo IN ({ph})
@@ -5459,7 +5956,9 @@ def _ordem_fila_musica(pendentes, ultimas=()):
         trava = len(hist) == FURAR_SEGUIDOS_MAX and all(t in ('flash', 'pago') for t in hist)
         r = (vips or (outros if trava and outros else None) or furar or cantores or outros).popleft()
         out.append(r)
-        hist = ([('pago' if _kpago(r) and r['tipo'] != 'flash' else r['tipo'])] + hist)[:FURAR_SEGUIDOS_MAX]
+        # 🚀 23/11/26: o super não espera a grátis (sai antes da trava), mas conta nela como pago
+        hist = ([('pago' if (_kpago(r) and r['tipo'] != 'flash') or r['tipo'] == 'vip' else r['tipo'])]
+                + hist)[:FURAR_SEGUIDOS_MAX]
     return out
 
 
@@ -5486,7 +5985,7 @@ def _na_frente_de_um_novo(pendentes, ultimas, tipo):
     return next(i for i, r in enumerate(_ordem_fila_musica(list(pendentes) + [novo], ultimas)) if r is novo)
 
 
-def _fila_real_e_frente(conn, bid, pendentes, karaoke=False):
+def _fila_real_e_frente(conn, bid, pendentes, karaoke=False, vip=False):   # 🚀 23/11/26: vip=True soma a chave 'vip'
     """(as músicas pendentes na ORDEM REAL da TV, {'gratis': N, 'flash': N} = quantas tocam antes de um pedido novo de
     cada tipo). Erro → a ordem e a conta de sempre (a página nunca cai por causa da trava).
     🎤 09/11/26 (V2b): karaoke=True soma a chave 'karaoke' (um cantor pago novo). Sem ele o dicionário é o de sempre."""
@@ -5496,6 +5995,8 @@ def _fila_real_e_frente(conn, bid, pendentes, karaoke=False):
                   'flash': _na_frente_de_um_novo(pendentes, ult, 'flash')}
         if karaoke:
             frente['karaoke'] = _na_frente_de_um_novo(pendentes, ult, 'karaoke')
+        if vip:   # 🚀 23/11/26: um super novo (depois dos supers que já esperam, antes de todo ⚡)
+            frente['vip'] = _na_frente_de_um_novo(pendentes, ult, 'vip')
         return _ordem_fila_musica(pendentes, ult), frente
     except Exception as ex:
         log.warning('[PUBSHOW] trava do furar: fila do bar %s na ordem de sempre: %s', bid, ex)
@@ -5504,6 +6005,8 @@ def _fila_real_e_frente(conn, bid, pendentes, karaoke=False):
         frente = {'gratis': len(pendentes), 'flash': sum(1 for r in pendentes if r['tipo'] in ('vip', 'flash'))}
         if karaoke:
             frente['karaoke'] = sum(1 for r in pendentes if _grupo_fila(r) in (1, 2, 3))
+        if vip:
+            frente['vip'] = sum(1 for r in pendentes if _grupo_fila(r) == 1)
         return list(pendentes), frente
 
 
@@ -6112,8 +6615,11 @@ def api_pedido_exibido(pedido_id):
         _KARAOKE_TV[b['id']] = (_time.time(), pedido_id)
         # 🎤 03/11/26 (V2a): a TV começou a vez paga: agora a parte dele é do bar (grátis: nenhuma linha muda). A marca manda:
         # roda em qualquer estado das envs, senão quem pagou cantaria e o bar não receberia
-        conn.execute('UPDATE pubshow_pedidos SET valor=? WHERE id=? AND karaoke_pago=1',
-                     (_K.PIX_BAR_CENT / 100, pedido_id))
+        # 🎤 23/11/26 (preço novo): a parte do bar sai do que ESTA linha cobrou (R$ 3 de antes = R$ 1,50; R$ 3,90 = R$ 1,95),
+        # na proporção de hoje; sem valor_cobrado, a constante
+        conn.execute('UPDATE pubshow_pedidos SET valor=CASE WHEN COALESCE(valor_cobrado,0) > 0 '
+                     'THEN ROUND(ROUND(valor_cobrado * 100) * ? / ?) / 100.0 ELSE ? END WHERE id=? AND karaoke_pago=1',
+                     (_K.PIX_BAR_CENT, _K.PIX_TOTAL_CENT, _K.PIX_BAR_CENT / 100, pedido_id))
     # Acervo que cresce com o uso (11/09/26): música do YouTube que TOCOU na TV entra no acervo,
     # na categoria do canal que estava no ar. O cardápio vira o que o público daquele bar pede.
     _yid = (pedido['youtube_id'] or '').strip()
@@ -8043,7 +8549,7 @@ def _karaoke_painel_extra(conn, b, pk):
     noite = _karaoke_noite(conn, b['id'])
     grupos = {}
     for r in conn.execute(
-            f"""SELECT id, ip_cliente, nome_cliente, exibido_at, karaoke_nome_oculto, karaoke_pago, repasse_manual_id
+            f"""SELECT id, ip_cliente, nome_cliente, exibido_at, karaoke_nome_oculto, karaoke_pago, repasse_manual_id, valor_cobrado
                   FROM pubshow_pedidos
                  WHERE business_id=? AND karaoke=1 AND status='exibido' AND COALESCE(karaoke_pulado,0)=0
                    AND created_at >= {_JANELA_FILA} ORDER BY exibido_at, id""", (b['id'],)).fetchall():
@@ -8052,15 +8558,18 @@ def _karaoke_painel_extra(conn, b, pk):
         g = grupos.setdefault((_K.cid(r['ip_cliente']), nome.lower(), r['id'] if pago else 0),
                               {'nome': nome, 'pid': r['id'], 'oculto': False,
                                'devolver': pago and r['repasse_manual_id'] is None})
+        if pago:   # 🎤 23/11/26: o "Não cantou" diz o valor DESTA linha (quem pagou R$ 3 antes do preço novo)
+            g.update(valor_txt=_karaoke_txt_cent(_karaoke_cent(r)), bar_txt=_karaoke_bar_txt(_karaoke_cent(r)))
         g['pid'] = r['id']
         g['oculto'] = g['oculto'] or bool(r['karaoke_nome_oculto'])
     palco = {}
-    _pl = conn.execute('SELECT karaoke_pago, karaoke_faltas FROM pubshow_pedidos WHERE id=?', (pk['id'],)).fetchone() if pk else None
+    _pl = conn.execute('SELECT karaoke_pago, karaoke_faltas, valor_cobrado FROM pubshow_pedidos WHERE id=?', (pk['id'],)).fetchone() if pk else None
     if _pl and _pl['karaoke_pago']:
         faltas = int(_pl['karaoke_faltas'] or 0)
         fila_vazia = not conn.execute(f"SELECT 1 FROM pubshow_pedidos WHERE business_id=? AND status='pendente' AND karaoke=1 "
                                       f"AND created_at >= {_JANELA_FILA} LIMIT 1", (b['id'],)).fetchone()
-        palco = {'pago': True, 'faltas': faltas, 'so_devolve': faltas >= 1 or fila_vazia}
+        palco = {'pago': True, 'faltas': faltas, 'so_devolve': faltas >= 1 or fila_vazia,
+                 'valor_txt': _karaoke_txt_cent(_karaoke_cent(_pl))}   # 🎤 23/11/26: o valor da linha
     return {'modo_pago': bool(cobrando or noite['pagas']), 'cobrando': bool(cobrando),
             'cobra_txt': _karaoke_texto_cobranca(b, rota), 'falha': bool(cobrando and _karaoke_falha_recente(b)),
             'placar': {k: noite[k] for k in ('cantadas', 'bar', 'fila', 'voltou')},
@@ -8074,26 +8583,31 @@ def _karaoke_painel_flags(bd):
     """O que o painel() passa pro cartão. karaoke_pix = env preenchida e cartão visível (a frase do motivo aparece até pro bar
     fora da lista); karaoke_cobrar_ok = o interruptor "💰 Cobrar" aparece (bar na lista, com rota Efí)."""
     if not (_K.pix_bares() and _K.permitido(bd) and 'modo_karaoke' in bd):
-        return {'karaoke_pix': False}
+        # 🎤 23/11/26: os textos fixos do cartão leem o preço do _K (nunca número escrito no painel.html)
+        return {'karaoke_pix': False, 'k_preco_txt': _K.PRECO_TXT, 'k_bar_txt': _K.BAR_TXT}
     rota = _karaoke_rota_pix(bd)
     cobrando = _K.cobra(bd, rota)
     return {'karaoke_pix': True, 'karaoke_cobrando': cobrando, 'karaoke_cobrar_on': _K.cobrar_aceso(bd),
             'karaoke_cobrar_ok': _K.pix_permitido(bd) and rota in ('ponte', 'split'),
             'karaoke_na_lista': _K.pix_permitido(bd), 'karaoke_cobra_txt': _karaoke_texto_cobranca(bd, rota),
-            'karaoke_falha': bool(cobrando and _karaoke_falha_recente(bd))}
+            'karaoke_falha': bool(cobrando and _karaoke_falha_recente(bd)),
+            'k_preco_txt': _K.PRECO_TXT, 'k_bar_txt': _K.BAR_TXT}   # 🎤 23/11/26
 
 
 def _karaoke_resp_pago(conn, row, pedido_id, status, out, b):
     """O /api/pedido-status de uma linha PAGA: nunca ranking, e os textos da tabela 2.3 do desenho. Vale em qualquer estado
     do modo (o dono desligou, o bar fechou): quem pagou sempre fica sabendo o que houve com o PIX dele."""
     _pul, tem_pix = int(row['karaoke_pulado'] or 0), bool(str(row['pago_em'] or '').strip())
-    out.update(karaoke_pago=True, cobrado=_K.reais(_K.PIX_TOTAL_CENT), cobrando=bool(_karaoke_cobranca(b)))
+    _kc = _karaoke_cent(row)   # 🎤 23/11/26: o que ESTA linha cobrou (quem pagou R$ 3 antes recebe de volta R$ 3)
+    out.update(karaoke_pago=True, cobrado=_K.reais(_kc), cobrando=bool(_karaoke_cobranca(b)),
+               karaoke_sair={'sair_pago': _karaoke_com_valor(_K.MSG_SAIR_PAGO, _kc),
+                             'sair_talvez': _karaoke_com_valor(_K.MSG_SAIR_TALVEZ, _kc)})
     if out['cobrando'] and status in ('exibido', 'recusado'):
         # 🎤 04/11/26 (M3): com o teto batido a tela não oferece a próxima (a mesma conta da trava antes do QR)
         out['teto_batido'] = _karaoke_pagas_celular(conn, row['business_id'], row['ip_cliente']) >= _K.teto_celular()
     if status == 'recusado':
-        out['karaoke_volta'] = _K.texto_volta(_pul, tem_pix) or (
-            _K.VOLTA_TXT[_K.PULADO_TIRADO] if tem_pix else _K.MSG_SAIU_SEM_PIX)
+        out['karaoke_volta'] = _karaoke_com_valor(_K.texto_volta(_pul, tem_pix) or (
+            _K.VOLTA_TXT[_K.PULADO_TIRADO] if tem_pix else _K.MSG_SAIU_SEM_PIX), _kc)
         out['karaoke_devolve'] = tem_pix
         if tem_pix:
             out['karaoke_prazo'] = _K.MSG_PRAZO   # 🎤 04/11/26 (B1): prazo e canal em toda tela de devolução
@@ -8176,12 +8690,13 @@ def jukebox_karaoke_desistir(token, pedido_id):
             _karaoke_cache_limpar(b['id'])
             return jsonify({'ok': True, 'status': 'recusado', 'devolve': False,
                             'prazo': '' if conferiu else _K.MSG_PRAZO,
-                            'msg': _K.MSG_SAIU_SEM_PIX if conferiu else _K.MSG_SAIU_TALVEZ})
+                            'msg': _K.MSG_SAIU_SEM_PIX if conferiu else
+                            _karaoke_com_valor(_K.MSG_SAIU_TALVEZ, _karaoke_cent(r))})   # 🎤 23/11/26: o valor da linha
         # O PIX caiu no meio (ou já estava na fila): sai da fila e a devolução fica pra uma pessoa
         if _karaoke_devolver(conn, b['id'], pedido_id, cod, de=('pendente', 'aguardando_ok')):
             conn.commit()
             return jsonify({'ok': True, 'status': 'recusado', 'devolve': True, 'prazo': _K.MSG_PRAZO,
-                            'msg': _K.MSG_SAIU_COM_PIX})
+                            'msg': _karaoke_com_valor(_K.MSG_SAIU_COM_PIX, _karaoke_cent(r))})   # 🎤 23/11/26
         atual = conn.execute('SELECT status, pago_em, karaoke_pulado FROM pubshow_pedidos WHERE id=?', (pedido_id,)).fetchone()
         if atual and atual['status'] == 'exibido':
             return jsonify({'ok': False, 'erro': 'no_palco'}), 409
@@ -8189,7 +8704,8 @@ def jukebox_karaoke_desistir(token, pedido_id):
         _dev = bool(atual and atual['pago_em'])
         return jsonify({'ok': True, 'status': atual['status'] if atual else 'recusado', 'devolve': _dev,
                         'prazo': _K.MSG_PRAZO if _dev else '',
-                        'msg': _K.texto_volta(atual['karaoke_pulado'], bool(atual['pago_em'])) if atual else ''})
+                        'msg': _karaoke_com_valor(_K.texto_volta(atual['karaoke_pulado'], bool(atual['pago_em'])),
+                                                  _karaoke_cent(r)) if atual else ''})   # 🎤 23/11/26: o valor da linha
     finally:
         conn.close()
 
@@ -8935,7 +9451,10 @@ def api_fila_info(token):
         # 🎤 09/11/26 (V2b): com o modo ligado, também onde entra um cantor pago novo (chave 'karaoke'; D2: depois dos ⚡
         # e dos cantores que esperam, antes das grátis)
         _kara_on = _K.ligado(b)
-        _frente = _fila_real_e_frente(conn, b['id'], _musicas_pendentes(conn, b['id']), karaoke=_kara_on)[1]
+        # 🚀 23/11/26: com o super à venda, onde entra um super novo e se o teto dele já encheu (o bar ou este celular)
+        _sup = 'vip' in _tipos_disponiveis(b)
+        _frente = _fila_real_e_frente(conn, b['id'], _musicas_pendentes(conn, b['id']), karaoke=_kara_on, vip=_sup)[1]
+        _sup_cheio = (_super_teto(b, _cid if '#' in ip_cliente else '', conn, curto=True) if _sup else '')
     finally:
         conn.close()
 
@@ -8950,6 +9469,8 @@ def api_fila_info(token):
            'momentos_frente': _momentos_na_frente(b)}
     if _kara_on:
         out['karaoke'] = _estimativa(_frente['karaoke'])   # 🎤 09/11/26 (V2b): o "Entra em Nº" da tela de cantar
+    if _sup:
+        out['vip'] = dict(_estimativa(_frente['vip']), cheio=_sup_cheio)   # 🚀 23/11/26: o "entra em Nº" e o teto
     yid = (request.args.get('yid') or '').strip()
     if _YID_RE.fullmatch(yid):
         s = _yt_selos(b['id'], [{'id': yid}], ip_cliente)[0]
@@ -9050,11 +9571,12 @@ def painel():
     # grava R$ 50 por cima do R$ 120 (nem R$ 5 por cima dos R$ 4 do Garage). A cobrança corta do mesmo jeito.
     # precos_cortados = [{'k', 'nome', 'antes', 'depois', 'motivo': 'teto'|'piso'}]: o aviso diz QUAL momento mudou.
     precos_salvos = dict(precos_parsed) if isinstance(precos_parsed, dict) else {}
+    _fixo_painel = _preco_fixo_do_painel(bd)   # 💲 23/11/26: total fixo: o salvo não vale (nem dá aviso de corte)
     precos_cortados = []
     _teto_painel = _preco_teto(bd)
     if isinstance(precos_parsed, dict):
         for _k, _v in list(precos_parsed.items()):
-            if _k not in TIPOS_PEDIDO or _k in TIPOS_SEMPRE_GRATIS:
+            if _k not in TIPOS_PEDIDO or _k in TIPOS_SEMPRE_GRATIS or _k in _fixo_painel:
                 continue
             try:
                 _f = float(_v)
@@ -9097,7 +9619,8 @@ def painel():
         try:
             _cm = _pp_conn()
             try:
-                if not (_tem_assinatura_ativa(bd['id']) or not bd.get('plano_ativo', 1)):
+                # 💎 23/11/26 (planos): bar com nível não tem mensalidade saindo dos momentos (o mesmo _sem_mens)
+                if not (_tem_assinatura_ativa(bd['id']) or not bd.get('plano_ativo', 1) or _nivel_do_bar(bd)):
                     efi_mens_cent = pubshow_pay.plano_do_bar(_cm, bd)
                 _ids_ok = [int(p['id']) for p in aguardando_ok] if _efi_bar else []
                 if _ids_ok:
@@ -9214,6 +9737,7 @@ def painel():
                            piso_preco=_piso_do_bar(bd),   # 17/10/26 (CD3): o "o cliente paga" segue o piso da cobrança
                            # 06/11/26 (preço de lançamento): só a tela; o campo escondido segue com precos_salvos
                            promo_fds=_promo_fds_do_painel(bd),
+                           preco_fixo=_fixo_painel,   # 💲 23/11/26: o item dos momentos de total fixo (selo = o PIX)
                            temas_habilitados=temas_habilitados,
                            anuncios_parsed=anuncios_parsed,
                            happy_hour=None,               # 17/10/26 (decisão 2): sem happy hour, o card some
@@ -9224,6 +9748,18 @@ def painel():
                            tutorial=tutorial,
                            tv_sinal=_tv_sinal(bd),
                            tipos_gratis=TIPOS_SEMPRE_GRATIS,
+                           # 💎 23/11/26 (planos): a regra do plano DESTE bar (passa por cima do context_processor, que não
+                           # sabe o bar): o selo de cada momento, a frase da regra e o 🙋
+                           divisao_txt=lambda total, tipo=None: divisao_txt(total, tipo, bd),
+                           APP_REGRA_TXT=app_regra_txt(bd), GARCOM_APP_TXT=garcom_app_txt(bd),
+                           DONATE_APP_TXT=app_regra_txt() if _nivel_do_bar(bd) else '',   # o donate: a regra de antes
+                           nivel=_nivel_do_bar(bd), nivel_info=_nivel_info(bd), nivel_rotulo=nivel_txt(bd),
+                           musica_paga=_musica_paga(bd), musica_preco_txt=_musica_preco_txt(bd),
+                           # conserto da revisão: a frase do plano lida da regra que cobra; Básico/VIP no split sem
+                           # assinatura ativa veem o "Assinar" (a mensalidade deles é só no Asaas)
+                           plano_frase=plano_frase_txt(bd),
+                           nivel_assinar=bool(_nivel_do_bar(bd) in ('basico', 'vip') and _efi_bar
+                                              and not _tem_assinatura_ativa(bd['id'])),
                            receita_semana=receita_semana,
                            receita_mes=receita_mes,
                            receita_total=receita_total,
@@ -9312,12 +9848,21 @@ def _painel_pedido_repasse(bd, efi_bar):
             a = _utc_txt(_utc_agora())
             d = _repasse_somar(conn, 'AND repasse_manual_id IS NULL AND datetime(created_at) <= datetime(?)', [a])
             d = d.get(bd['id']) or {}
+            # 💎 23/11/26 (planos): o MESMO helper da tela 💸 Repasses (por tipo, em centavos)
+            try:
+                _pt = _repasse_por_tipo(conn, 'AND business_id=? AND repasse_manual_id IS NULL '
+                                              'AND datetime(created_at) <= datetime(?)', [bd['id'], a]).get(bd['id'])
+            except Exception as _ex_pt:
+                log.warning('[PUBSHOW] 💎 repasse por tipo do bar %s: %s', bd.get('id'), _ex_pt)
+                _pt = None
             w, wp = _repasse_where_pago()
             ini = conn.execute(f'SELECT MIN(created_at) FROM pubshow_pedidos WHERE business_id=? AND repasse_manual_id IS NULL '
                                f'AND datetime(created_at) <= datetime(?) AND {w}', [bd['id'], a] + wp).fetchone()[0]
         finally:
             conn.close()
         bar, gorj = round(float(d.get('bar') or 0), 2), round(float(d.get('gorj') or 0), 2)
+        if _pt:
+            bar, gorj = _pt['pix_bar_cent'] / 100, _pt['gorj_cent'] / 100
         total = round(bar + gorj, 2)
         reais = lambda v: f'R$ {v:.2f}'.replace('.', ',')
         de, ate = (_repasse_brt(ini, '%d/%m') if ini else ''), _repasse_brt(a, '%d/%m')
@@ -9326,10 +9871,14 @@ def _painel_pedido_repasse(bd, efi_bar):
         linhas = ['💸 Pedido de repasse PubShow',
                   f'Bar: {bd.get("nome") or ""} (código {bd.get("code") or ""})',
                   f'Período: {de} a {ate}' if de else f'Até {ate}',
+                  f'Plano: {nivel_txt(bd)}',   # 💎 23/11/26
                   f'Momentos (caixa da casa): {reais(bar)}',
+                  *[f"  · {l['nome']}: {l['n']} · {reais(l['bar_cent'] / 100)}" for l in ((_pt or {}).get('linhas') or [])],
                   *([f'Gorjetas da equipe: {reais(gorj)}'] if gorj > 0 else []),   # 27/10/26: só o histórico
-                  # 🙋 16/11/26 (L1): o PIX que o bar devolveu em dinheiro no balcão (já no total, 100% do bar)
-                  *([f"🙋 Devolvidos no balcão: {d['dev_n']} · {reais(d['dev'])} (100% do bar)"] if d.get('dev_n') else []),
+                  # 🙋 16/11/26 (L1): o PIX que o bar devolveu em dinheiro no balcão (já no total, 100% do bar). 24/11/26
+                  # (acabamento): com a lista por tipo (_pt) ele já sai lá ('_balcao'); a linha antiga só sem ela
+                  *([f"🙋 Devolvidos no balcão: {d['dev_n']} · {reais(d['dev'])} (100% do bar)"]
+                    if d.get('dev_n') and not _pt else []),
                   f'Total: {reais(total)}',
                   f'Chave PIX: {chave}' if chave else 'Chave PIX: ainda não cadastrada no painel']
         if titular:
@@ -9456,6 +10005,7 @@ def _meu_dinheiro(b, mes=None):
         d['n'] += 1 if (e['valor_cent'] > 0 and e['emoji'] != '✍️') else 0
 
     _mens_asaas = _tem_assinatura_ativa(b['id'])
+    _mens_nivel = _nivel_info(b)   # 💎 23/11/26 (planos): com plano, a mensalidade nunca sai dos momentos
     # Seletor de mês: do mês do cadastro (no máximo 12 pra trás) até o mês atual
     ini = _utc_para_brt(b.get('created_at') or '')
     primeiro = max(ini.strftime('%Y-%m') if ini else atual, _mes_mais(atual, -12))
@@ -9467,7 +10017,8 @@ def _meu_dinheiro(b, mes=None):
             'mes_ant': _mes_mais(mes, -1) if mes > primeiro else '',
             'mes_prox': _mes_mais(mes, 1) if mes < atual else '',
             # VCa-02: bar que ainda paga a assinatura no Asaas não tem mensalidade tirada no split (jukebox())
-            'mens_no_asaas': _mens_asaas,
+            'mens_no_asaas': _mens_asaas or bool(_mens_nivel),
+            'mens_nivel': _mens_nivel, 'mens_tem_ass': _mens_asaas,   # 💎 23/11/26: o plano e se já assinou
             # VCb-02 (16/10/26): o MESMO critério do jukebox() (sem_mensalidade): quem cancelou (plano_ativo=0) e segue
             # aberto até o fim do mês pago (ativo_ate) não tem mensalidade tirada dos momentos. Só no mês atual.
             'mens_mes_pago': bool(mes == atual and not _mens_asaas and not b.get('plano_ativo', 1))}
@@ -9750,7 +10301,9 @@ def _precos_acima_do_teto(b):
         return []
     out = []
     for k, t in TIPOS_PEDIDO.items():
-        if k in TIPOS_SEMPRE_GRATIS or k not in custom:
+        # 💲 23/11/26: momento de total fixo (PRECO_TOTAL_FIXO) não usa o preço salvo: nada foi cortado nele (a mesma
+        # condição do _precos_do_bar e do aviso do painel); sem isto o WhatsApp dizia "R$ 50" e o cliente paga a tabela
+        if k in TIPOS_SEMPRE_GRATIS or k not in custom or _preco_total_fixo(b, k) is not None:
             continue
         try:
             v = float(custom[k])
@@ -11064,16 +11617,18 @@ def _pago_tocando(conn, bid):
     except ValueError:
         return None
     seg = _duracoes_conhecidas([r['youtube_id']], conn).get(r['youtube_id'])
-    folga = _PULAR_FOLGA_SEG if r['tipo'] == 'flash' else _PULAR_FOLGA_OUTROS_SEG
+    folga = _PULAR_FOLGA_SEG if r['tipo'] in ('flash', 'vip') else _PULAR_FOLGA_OUTROS_SEG   # 🚀 o super tem a vinheta do ⚡
     janela = min(seg, YT_DUR_MAX_SEG) + folga if seg else _PULAR_SEM_DUR_SEG
     janela += _pausa_seg_desde(conn, bid, ini)   # 27/10/26: a música pausada pelo ⏸️ ainda não acabou
     idade = (datetime.utcnow() - timedelta(hours=3) - ini).total_seconds()
     if idade > janela:
         return None
     _pg = {'id': r['id'], 'valor': _brl(r['valor_cobrado'] or r['valor'] or 0), 'titulo': (r['titulo_pedido'] or '')[:80],
-           'na_vinheta': r['tipo'] == 'flash' and idade < _PULAR_VINHETA_SEG}
+           'na_vinheta': r['tipo'] in ('flash', 'vip') and idade < _PULAR_VINHETA_SEG}
     if 'karaoke_pago' in r.keys() and r['karaoke_pago']:
         _pg['karaoke'] = True   # 🎤 o painel troca o texto da pergunta
+        _pg['k_valor'] = _karaoke_txt_cent(_karaoke_cent(r))   # 🎤 23/11/26: o valor DESTA linha e a parte do bar
+        _pg['k_bar'] = _karaoke_bar_txt(_karaoke_cent(r))
     return _pg
 
 
@@ -11125,7 +11680,8 @@ def painel_pular_musica():
         conn.close()
         if _ajax:
             return jsonify({'ok': False, 'confirmar': True, 'pedido_id': pago['id'], 'valor': pago['valor'],
-                            'titulo': pago['titulo'], **({'karaoke': True} if pago.get('karaoke') else {})})
+                            'titulo': pago['titulo'], **({'karaoke': True, 'k_valor': pago.get('k_valor', ''),
+                                                          'k_bar': pago.get('k_bar', '')} if pago.get('karaoke') else {})})
         return redirect('/pubshow/painel')
     if _K.permitido(b):
         # 🎤 29/10/26: no karaokê o Pular também tira a vez do ranking (pago ou grátis): "pulada não conta". Só quem a
@@ -11322,13 +11878,14 @@ def painel_confirmar_pix(pid):
     Só PIX MANUAL (chave do bar): pedido de gateway só confirma pelo gateway (15/10/26)."""
     b = _get_business()
     conn = get_pubshow_db()
-    conn.execute(
+    if conn.execute(
         """UPDATE pubshow_pedidos SET status=?, pago_em=datetime('now')
            WHERE id=? AND business_id=? AND status='aguardando_pix'
            AND asaas_payment_id IS NULL AND COALESCE(via_gateway,0)=0
            AND efi_txid IS NULL""",   # crítico dinheiro B2: QR da ponte (até os de antes do deploy) só pela consulta
         (_status_apos_pix(conn, pid), pid, b['id'])
-    )
+    ).rowcount:
+        _vez_pelo_pix(conn, pid)   # 🔢 23/11/26: o ⚡/👑 entra na fila na hora em que o dono confirma o PIX
     conn.commit(); conn.close()
     return redirect('/pubshow/painel?aba=fila')
 
@@ -11599,6 +12156,14 @@ def painel_config():
         except Exception:
             _bl_ant = []
         bloqueados = [t for t in bloqueados if t != 'garcom'] + (['garcom'] if 'garcom' in _bl_ant else [])
+    if not _super_para(b) or 'cfg_super' not in f:
+        # 🚀 23/11/26: o super só aparece no painel do bar com PIX automático, e o painel aberto desde antes da subida
+        # (sem o campo cfg_super) não tem a chave dele: nos 2 casos, salvar não liga nem desliga o super
+        try:
+            _bl_ant = json.loads(b['tipos_bloqueados'] or '[]')
+        except Exception:
+            _bl_ant = []
+        bloqueados = [t for t in bloqueados if t != 'vip'] + (['vip'] if 'vip' in _bl_ant else [])
 
     # Preços custom — só dos itens pagos (música é sempre grátis; o campo nem aparece mais)
     # Lote D A4 (16/10/26): no modo Efí o preço máximo é R$ 50 (o que passar disso grava R$ 50)
@@ -12053,6 +12618,33 @@ def admin_dashboard():
                            now=datetime.now().isoformat())
 
 
+_NIVEL_MSGS = {
+    'ok':            ('ok', '✅ Plano salvo. A mensalidade e a assinatura não mudaram.'),
+    'sem_efi':       ('erro', '⚠️ O Zero só vale em bar que vende pela Efí: põe o código em PUBSHOW_EFI_BARES (e no karaokê, '
+                              'se tiver) antes.'),
+    'invalido':      ('erro', 'Plano inválido. Nada mudou.'),
+    'mens_ok':       ('ok', '✅ Mensalidade salva. Agora atualize o valor da assinatura no Asaas (nunca cancele a assinatura).'),
+    'mens_invalida': ('erro', 'Valor inválido (de R$ 1 a R$ 1.000). Nada mudou.'),
+}
+
+
+def _admin_nivel_ctx(b):
+    """💎 23/11/26 (planos): o card "Plano do bar" do admin. Erro aqui nunca derruba a tela."""
+    try:
+        n = _nivel_do_bar(b)
+        _ass = _tem_assinatura_ativa(b['id'])
+        return {'niveis': NIVEIS, 'niveis_ordem': NIVEIS_ORDEM, 'nivel': n, 'nivel_rotulo': nivel_txt(b),
+                'rota_efi': _rota_efi(b), 'tem_ass_ativa': _ass,
+                'mensal_fmt': _plano_do_bar(b)['preco_fmt'],
+                # o Zero com assinatura ativa no Asaas: cancelar LÁ (o Zero não tem mensalidade; o webhook não fecha ele)
+                'zero_com_ass': bool(n == 'zero' and _ass),
+                'nivel_msg': _NIVEL_MSGS.get(request.args.get('nivel_msg', ''))}
+    except Exception as ex:
+        log.warning('[PUBSHOW] 💎 plano do bar %s no admin: %s', b.get('id'), ex)
+        return {'niveis': NIVEIS, 'niveis_ordem': NIVEIS_ORDEM, 'nivel': None, 'nivel_rotulo': '', 'rota_efi': None,
+                'tem_ass_ativa': False, 'mensal_fmt': '', 'zero_com_ass': False, 'nivel_msg': None}
+
+
 @pubshow_bp.route('/admin/bar/<int:bid>')
 @_admin_required
 def admin_bar(bid):
@@ -12080,7 +12672,8 @@ def admin_bar(bid):
                            ass=dict(ass) if ass else None,
                            canais=CANAIS, planos=PLANOS, tipos=TIPOS_PEDIDO,
                            asaas_ativo=bool(os.environ.get('ASAAS_API_KEY')),
-                           anuncios_list=anuncios_list)
+                           anuncios_list=anuncios_list,
+                           **_admin_nivel_ctx(dict(b)))   # 💎 23/11/26: o plano do bar e a mensalidade
 
 
 # ── 💸 REPASSES MANUAIS (16/10/26; junção 17/10/26: + PIX da ponte Efí) ─────────────────────────────────────
@@ -12215,6 +12808,83 @@ def _karaoke_vezes(n):
     return f"{n} {'vez' if n == 1 else 'vezes'} no palco"
 
 
+_ROT_REPASSE = {'_balcao': '🙋 Devolvidos no balcão (100% do bar)', '_karaoke': '🎤 Karaokê',
+                'pular_espera': '🎵 Música no PIX (⏩)'}
+
+
+def _repasse_por_tipo(conn, extra_sql, extra_params):
+    """💎 23/11/26 (planos): o repasse POR TIPO de pedido, em CENTAVOS inteiros, com o MESMO filtro do _repasse_somar (pago
+    com prova + o extra). Cada linha soma o que FICOU gravado no pedido (valor = a parte do bar, valor_cobrado = o total):
+    pedido antigo não muda com o plano novo. Grupos: 🙏 gorjeta (à parte: é da equipe), 🙋 devolvido no balcão (100% do
+    bar), 🎤 karaokê (karaoke_pago; o que não cantou tem valor 0 e nem entra) e cada tipo.
+    {business_id: {'linhas': [{tipo, nome, n, cobrado_cent, app_cent, bar_cent}], 'n', 'cobrado_cent', 'app_cent',
+    'bar_cent', 'gorj_cent', 'gorj_n', 'pix_bar_cent'}}. pix_bar_cent = o PIX a fazer pro bar (sem a gorjeta)."""
+    w, wp = _repasse_where_pago()
+    cols = {r[1] for r in conn.execute('PRAGMA table_info(pubshow_pedidos)')}
+    _kp = 'COALESCE(karaoke_pago,0)=1' if 'karaoke_pago' in cols else '0'
+    _cob = 'COALESCE(valor_cobrado, valor)' if 'valor_cobrado' in cols else 'valor'
+    eq = ','.join('?' * len(TIPOS_EQUIPE))
+    grupo = (f"CASE WHEN tipo IN ({eq}) THEN '_gorjeta' WHEN {_SQL_DEV_DINHEIRO} THEN '_balcao' "
+             f"WHEN {_kp} THEN '_karaoke' ELSE tipo END")
+    rows = conn.execute(
+        f'''SELECT business_id, {grupo} AS g, COUNT(*) AS n,
+               COALESCE(SUM(CAST(ROUND({_cob} * 100) AS INTEGER)),0) AS cob,
+               COALESCE(SUM(CAST(ROUND({_SQL_VALOR_REPASSE} * 100) AS INTEGER)),0) AS bar
+            FROM pubshow_pedidos WHERE {w} {extra_sql} GROUP BY business_id, g''',
+        list(TIPOS_EQUIPE) + wp + list(extra_params)).fetchall()
+    ordem = {k: i for i, k in enumerate(TIPOS_PEDIDO)}
+    out = {}
+    for r in rows:
+        d = out.setdefault(r['business_id'], {'linhas': [], 'n': 0, 'cobrado_cent': 0, 'app_cent': 0, 'bar_cent': 0,
+                                               'gorj_cent': 0, 'gorj_n': 0, 'pix_bar_cent': 0})
+        g, n, cob, bar = r['g'], int(r['n'] or 0), int(r['cob'] or 0), int(r['bar'] or 0)
+        if g == '_gorjeta':
+            d['gorj_cent'] += bar
+            d['gorj_n'] += n
+            continue
+        t = TIPOS_PEDIDO.get(g) or {}
+        nome = _ROT_REPASSE.get(g) or (t.get('emoji', '') + ' '
+                                       + re.sub(r'\s*[^\w\s!?.,-]+$', '', t.get('nome') or g).strip()).strip()
+        d['linhas'].append({'tipo': g, 'nome': nome, 'n': n, 'cobrado_cent': cob, 'bar_cent': bar, 'app_cent': cob - bar})
+        d['n'] += n
+        d['cobrado_cent'] += cob
+        d['bar_cent'] += bar
+        d['app_cent'] += cob - bar
+    for d in out.values():
+        d['pix_bar_cent'] = d['bar_cent']
+        d['linhas'].sort(key=lambda x: (x['tipo'] == '_balcao', x['tipo'] == '_karaoke', ordem.get(x['tipo'], 99), x['tipo']))
+    return out
+
+
+def _planos_no_repasse(conn, bares, a, ini_p, ini_e):
+    """💎 23/11/26 (planos): põe em cada bar da tela 💸 Repasses o rótulo do plano, a tabela por tipo (o devido e as 2
+    semanas), o PIX a fazer pro bar (centavos) e se a soma por tipo bate com a soma de sempre. Erro = a tela de antes."""
+    try:
+        dev = _repasse_por_tipo(conn, 'AND repasse_manual_id IS NULL AND datetime(created_at) <= datetime(?)', [a])
+        est = _repasse_por_tipo(conn, 'AND datetime(created_at) >= datetime(?) AND datetime(created_at) <= datetime(?)',
+                                [_utc_txt(ini_e), a])
+        pas = _repasse_por_tipo(conn, 'AND datetime(created_at) >= datetime(?) AND datetime(created_at) < datetime(?)',
+                                [_utc_txt(ini_p), _utc_txt(ini_e)])
+        linhas_b = {r['id']: dict(r) for r in conn.execute('SELECT * FROM pubshow_businesses').fetchall()}
+    except Exception as ex:
+        log.warning('[PUBSHOW] 💎 repasse por tipo não leu: %s', ex)
+        dev, est, pas, linhas_b = {}, {}, {}, None
+    for x in bares:
+        _leg_bar = int(round(float(x['devido']['bar']) * 100))
+        _leg_gorj = int(round(float(x['devido']['gorj']) * 100))
+        if linhas_b is None:
+            x.update(plano_txt='', tabela=None, tabela_esta=None, tabela_passada=None, pix_bar_cent=_leg_bar,
+                     soma_ok=True)
+            continue
+        tb = dev.get(x['id'])
+        x['plano_txt'] = nivel_txt(linhas_b.get(x['id']) or {})
+        x['tabela'] = tb
+        x['tabela_esta'], x['tabela_passada'] = est.get(x['id']), pas.get(x['id'])
+        x['pix_bar_cent'] = tb['pix_bar_cent'] if tb else 0
+        # o aviso vermelho: a soma por tipo (centavo por centavo) tem que dar a soma de sempre do bar e da gorjeta
+        x['soma_ok'] = ((tb['bar_cent'] if tb else 0) == _leg_bar and (tb['gorj_cent'] if tb else 0) == _leg_gorj)
+
+
 def _repasses_calcular(conn, agora_utc=None):
     """Tudo que a tela /admin/repasses mostra (sem os saldos)."""
     agora = agora_utc or _utc_agora()
@@ -12248,6 +12918,7 @@ def _repasses_calcular(conn, agora_utc=None):
             'moderacao': moder.get(bid, zero),
             'ultimo': u,
         })
+    _planos_no_repasse(conn, bares, a, ini_p, ini_e)   # 💎 23/11/26: plano, tabela por tipo e o PIX a fazer
     bares.sort(key=lambda x: (-x['devido_total'], (x['nome'] or '').lower()))
     total_bar  = round(sum(x['devido']['bar'] for x in bares), 2)
     total_gorj = round(sum(x['devido']['gorj'] for x in bares), 2)
@@ -12445,9 +13116,11 @@ def _repasse_registrar(bid, obs='', agora_utc=None, ate_id=None, total_cent=None
         ).fetchall()
         if not rows:
             conn.rollback(); return {'codigo': 'zero'}
-        vb = round(sum(float(r['valor'] or 0) for r in rows if r['tipo'] not in TIPOS_EQUIPE), 2)
-        vg = round(sum(float(r['valor'] or 0) for r in rows if r['tipo'] in TIPOS_EQUIPE), 2)
-        if total_cent is not None and int(round((vb + vg) * 100)) != int(total_cent):
+        # 💎 23/11/26 (planos): a soma em CENTAVOS inteiros, linha por linha (a mesma conta da tabela por tipo)
+        _vb = sum(int(round(float(r['valor'] or 0) * 100)) for r in rows if r['tipo'] not in TIPOS_EQUIPE)
+        _vg = sum(int(round(float(r['valor'] or 0) * 100)) for r in rows if r['tipo'] in TIPOS_EQUIPE)
+        vb, vg = _vb / 100, _vg / 100
+        if total_cent is not None and _vb + _vg != int(total_cent):
             conn.rollback(); return {'codigo': 'mudou'}
         rid = conn.execute(
             '''INSERT INTO pubshow_repasses_manuais
@@ -12563,6 +13236,35 @@ def admin_bar_acao(bid):
         plano = request.form.get('plano', 'bar')
         plano = plano if plano in PLANOS else 'bar'   # plano único: nunca grava chave inválida (15/10/26)
         conn.execute('UPDATE pubshow_businesses SET plano=?, plano_ativo=1 WHERE id=?', (plano, bid))
+    elif acao == 'definir_nivel':
+        # 💎 23/11/26 (planos): o nível do bar. NUNCA mexe no plano_cent nem na assinatura (o Garage é VIP pagando R$ 79,90,
+        # fundador). Zero só em bar que vende pela Efí (ponte ou split): sem ela a música de R$ 2 não existe. O Zero liga o
+        # plano_ativo (não tem mensalidade); sair do Zero não desliga nada
+        _nv = (request.form.get('nivel') or '').strip().lower()
+        _bn = conn.execute('SELECT * FROM pubshow_businesses WHERE id=?', (bid,)).fetchone()
+        if _bn is None or (_nv and _nv not in NIVEIS):
+            _nivel_msg = 'invalido'
+        elif _nv == 'zero' and _rota_efi(dict(_bn)) not in ('ponte', 'split'):
+            _nivel_msg = 'sem_efi'
+        else:
+            conn.execute('UPDATE pubshow_businesses SET nivel=? WHERE id=?', (_nv or None, bid))
+            if _nv == 'zero':
+                conn.execute('UPDATE pubshow_businesses SET plano_ativo=1 WHERE id=?', (bid,))
+            _nivel_msg = 'ok'
+            log.info('[PUBSHOW] 💎 nível do bar %s: %s', bid, _nv or 'regra antiga')
+    elif acao == 'definir_mensalidade':
+        # 💎 23/11/26 (planos): só o plano_cent (o que o painel mostra e o /assinar cobra de quem assina depois). A assinatura
+        # que já existe no Asaas NÃO muda daqui: atualizar o valor lá, nunca cancelar a assinatura
+        try:
+            _mc = int(round(float((request.form.get('mensal') or '').replace('R$', '').replace(',', '.').strip()) * 100))
+        except ValueError:
+            _mc = -1
+        if 100 <= _mc <= 100000:
+            conn.execute('UPDATE pubshow_businesses SET plano_cent=? WHERE id=?', (_mc, bid))
+            _nivel_msg = 'mens_ok'
+            log.info('[PUBSHOW] 💎 mensalidade do bar %s: %s centavos', bid, _mc)
+        else:
+            _nivel_msg = 'mens_invalida'
     elif acao == 'desativar_plano':
         conn.execute('UPDATE pubshow_businesses SET plano_ativo=0, ativo_ate=NULL WHERE id=?', (bid,))
     elif acao == 'suspender':
@@ -12616,6 +13318,8 @@ def admin_bar_acao(bid):
             _da_efi = bool(conn.execute('SELECT 1 FROM pubshow_pay_cobrancas WHERE pedido_id=?', (int(_pid),)).fetchone())
         if _pid.isdigit() and not _da_efi:
             # "PIX caiu" do admin é confirmação de pagamento → grava pago_em (15/10/26)
+            # 🔢 23/11/26: aqui NÃO chama o _vez_pelo_pix: a confirmação é atrasada (o webhook não chegou) e a hora do
+            # PIX é desconhecida; a vez do ⚡/👑 fica na hora do QR, a mais perto do PIX (trocas_ordem_srv.py)
             # crítico dinheiro M2 (17/10/26): com cobrança no gateway, marca 'ADMIN' — os Repasses conferem no
             # gateway antes de mandar repassar (o painel conta na hora, como antes)
             conn.execute("UPDATE pubshow_pedidos SET status=?, pago_em=datetime('now'), "
@@ -12630,6 +13334,10 @@ def admin_bar_acao(bid):
         _cx.close()
         for _p in (_recusados_efi if _bar else []):
             _efi_estornar(_bar, _p, 'fila limpa pelo admin')
+    if acao in ('definir_nivel', 'definir_mensalidade'):
+        if acao == 'definir_nivel' and _nivel_msg == 'ok':
+            _bump_tv_bar(bid)   # 💎 a TV do bar recarrega com o texto do plano novo ('R$ 2' ou 'GRÁTIS')
+        return redirect(f'/pubshow/admin/bar/{bid}?nivel_msg={_nivel_msg}#plano-bar')
     return redirect(f'/pubshow/admin/bar/{bid}')
 
 
@@ -13474,9 +14182,13 @@ def assinar(plano):
         # plano único (15/10/26): link velho /assinar/pro|starter|rede cai no plano único
         return redirect('/pubshow/assinar/bar' if plano in PLANOS_LEGADOS else '/pubshow/planos')
     b = _get_business()
+    # 💎 23/11/26 (planos): o Zero não tem mensalidade (nem Assinar nem Cancelar): volta pro painel
+    if b and _nivel_do_bar(b) == 'zero':
+        return redirect('/pubshow/painel')
     # VCa-02 (16/10/26): bar na Efí paga a mensalidade pelo split (sai dos momentos). Assinar no Asaas seria
     # cobrar 2x → nunca chama o Asaas; vai pro "Meu dinheiro", que mostra a mensalidade do mês
-    if b and _efi_para(b):
+    # 💎 23/11/26 (planos): só o bar SEM plano; Básico e VIP no split pagam a mensalidade só no Asaas (_sem_mens)
+    if b and _efi_para(b) and not _nivel_do_bar(b):
         return redirect('/pubshow/painel/dinheiro')
     # V6-05 (16/10/26): já paga → não cria a 2ª assinatura no Asaas (a antiga continuaria cobrando)
     if b and _tem_assinatura_ativa(b['id']):
@@ -13581,6 +14293,8 @@ def painel_cancelar():
     """Cancelamento de assinatura pelo próprio bar."""
     b = _get_business()
     bd = dict(b)
+    if _nivel_do_bar(bd) == 'zero':   # 💎 23/11/26 (planos): o Zero não tem assinatura pra cancelar
+        return redirect('/pubshow/painel')
     conn = get_pubshow_db()
     ass = conn.execute(
         'SELECT * FROM pubshow_assinaturas WHERE business_id=?', (b['id'],)
@@ -13683,7 +14397,8 @@ def _assinatura_inadimplente(business_id: int, ass_id: int):
         try:
             desde = datetime.fromisoformat(ass['inadimplente_desde'][:19])
             if (agora - desde).days >= _GRACE_PERIOD_DAYS:
-                conn.execute('UPDATE pubshow_businesses SET plano_ativo=0 WHERE id=?', (business_id,))
+                if _nivel_por_id(conn, business_id) != 'zero':   # 💎 23/11/26: o Zero nunca fecha por mensalidade
+                    conn.execute('UPDATE pubshow_businesses SET plano_ativo=0 WHERE id=?', (business_id,))
                 conn.execute(
                     "UPDATE pubshow_assinaturas SET status='suspenso' WHERE id=?", (ass_id,)
                 )
@@ -13699,7 +14414,9 @@ def _assinatura_inadimplente(business_id: int, ass_id: int):
 def _assinatura_cancelar(business_id: int):
     """Cancela e desativa assinatura."""
     conn = get_pubshow_db()
-    conn.execute('UPDATE pubshow_businesses SET plano_ativo=0 WHERE id=?', (business_id,))
+    # 💎 23/11/26 (planos): webhook e sync de assinatura cancelada não fecham o Zero (ele não tem mensalidade)
+    if _nivel_por_id(conn, business_id) != 'zero':
+        conn.execute('UPDATE pubshow_businesses SET plano_ativo=0 WHERE id=?', (business_id,))
     conn.execute(
         "UPDATE pubshow_assinaturas SET status='cancelado', asaas_sub_status='CANCELLED' WHERE business_id=?",
         (business_id,)
@@ -13877,6 +14594,8 @@ def _confirmar_jukebox_por_ext_ref(ext_ref, pay_id='', valor=None):
             "WHERE id=? AND status='aguardando_pix' AND estornado_em IS NULL",
             (_novo, pedido_id)
         ).rowcount
+        if n:
+            _vez_pelo_pix(conn, pedido_id)   # 🔢 23/11/26: o ⚡/👑 entra na fila na hora do PIX
         if not n:
             # PIX caiu num pedido que já saiu do aguardando_pix (ex.: recusado): registra o dinheiro
             # (pago_em) sem mexer no status — fica visível pra estorno; as somas não contam recusado.

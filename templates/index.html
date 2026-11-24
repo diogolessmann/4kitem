@@ -794,6 +794,7 @@
 {% endif %}
 
   <!-- PUBSHOW: o app ativo vem primeiro (05/11/26) -->
+  {#- 💎 23/11/26 (planos): os 3 planos (fora do modelo novo do site) #}{%- set PS3 = (pubshow_planos_site() if (pubshow_planos_site is defined and pubshow_preco_fmt and not pubshow_modelo_novo and pubshow_planos_no_site is defined and pubshow_planos_no_site()) else []) %}{%- set PS_VIP = (PS3|selectattr("chave", "equalto", "vip")|first) if PS3 else none %}{%- set PS_MZ = pubshow_musica_zero() if PS3 else "" %}
   <section id="pubshow">
     <div style="max-width:1200px; margin:0 auto;">
       <div class="section-tag reveal">🎵 Para bar e pub</div>
@@ -808,18 +809,18 @@
                  onerror="this.style.display='none';this.parentElement.innerHTML='🎵';this.parentElement.style.fontSize='32px';this.parentElement.style.background='rgba(168,85,247,0.15)';this.parentElement.style.display='flex';this.parentElement.style.alignItems='center';this.parentElement.style.justifyContent='center';">
           </div>
           <h3><a href="/pubshow/" style="color:inherit;text-decoration:none">PubShow</a></h3>
-          <p>Jukebox digital para bares e pubs. O cliente pede música pelo QR de graça e paga no PIX só se quiser aparecer: parabéns, recado ou a vez dele na TV.</p>
+          <p>Jukebox digital para bares e pubs. {% if PS3 %}O cliente pede música pelo QR (grátis nos planos Básico e VIP) e paga no PIX só se quiser aparecer: parabéns, recado ou a vez dele na TV.</p>{% else %}O cliente pede música pelo QR de graça e paga no PIX só se quiser aparecer: parabéns, recado ou a vez dele na TV.</p>{% endif %}
           <ul class="solution-features">
-            <li>Pedir música é grátis — sem app</li>
+{% if PS3 %}            <li>Pedir música pelo QR — sem app</li>{% else %}            <li>Pedir música é grátis — sem app</li>{% endif %}
             <li>Momentos pagos no PIX — entra na fila sozinho</li>
             <li>TV exibe videoclipes e mensagens</li>
             <li>Painel completo para o estabelecimento</li>
           </ul>
           {% if pubshow_preco_fmt %}{# plano único: preço de PUBSHOW_PLANO_CENT, nunca à mão (15/10/26) #}
           <div class="solution-price">
-            <span class="price-from">plano único · tudo incluso</span>
+{% if PS3 %}            <span class="price-from">3 planos · Básico</span>{% else %}            <span class="price-from">plano único · tudo incluso</span>{% endif %}
             <span class="price-value" style="white-space:nowrap">{{ pubshow_preco_fmt }}<span style="font-size:14px;font-weight:500"> /mês</span></span>
-            {% if pubshow_modelo_novo %}<span class="price-from">o app se paga com o próprio jukebox</span>{% endif %}
+            {% if pubshow_modelo_novo %}<span class="price-from">o app se paga com o próprio jukebox</span>{% elif PS3 %}<span class="price-from">Zero sem mensalidade · VIP {{ PS_VIP.mensal_txt }}</span>{% endif %}
           </div>
           {% endif %}
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
@@ -1415,7 +1416,7 @@
       <h3 style="margin:22px 0 6px">O que é o 4KITEM?</h3>
       <p style="color:var(--text2)">É uma empresa de Santa Catarina que faz apps para pequenos negócios: o PubShow para bar, o AgendaJá para quem trabalha com hora marcada, o MandaJá para delivery, o Amigo Despachante para despachante de trânsito de SC e o DRZAP para tirar dúvidas sobre direitos.</p>
       <h3 style="margin:22px 0 6px">O que é o PubShow?</h3>
-      <p style="color:var(--text2)">É uma jukebox digital para bar. O cliente escaneia o QR Code, pede música de graça pelo celular e o clipe toca na TV que o bar já tem.{% if pubshow_preco_fmt %} O plano custa {{ pubshow_preco_fmt }} por mês, com 7 dias grátis.{% endif %}</p>
+      <p style="color:var(--text2)">É uma jukebox digital para bar. O cliente escaneia o QR Code, {% if PS3 %}pede música pelo celular e o clipe toca na TV que o bar já tem. São 3 planos. O plano custa {{ pubshow_preco_fmt }} por mês no Básico, com 7 dias grátis; o VIP custa {{ PS_VIP.mensal_txt|replace('/mês', '') }} por mês e o Zero não tem mensalidade (nele a música custa {{ PS_MZ }} pro cliente).</p>{% else %}pede música de graça pelo celular e o clipe toca na TV que o bar já tem.{% if pubshow_preco_fmt %} O plano custa {{ pubshow_preco_fmt }} por mês, com 7 dias grátis.{% endif %}</p>{% endif %}
       <h3 style="margin:22px 0 6px">Preciso instalar alguma coisa?</h3>
       <p style="color:var(--text2)">Não. Os apps abrem no navegador do celular ou do computador.</p>
     </div>

@@ -6499,10 +6499,16 @@ def saas_admin():
         except Exception as _e:   # contador quebrado não pode esconder a lista de bares
             log.error('[SAAS-ADMIN] PubShow contadores: %s', _e)
             _ps_por_bar, pubshow_cont_erro = {}, True
+        try:   # 💎 23/11/26 (planos): o nível de cada bar (Zero/Básico/VIP); banco sem a coluna = nada
+            from pubshow import nivel_curto as _ps_nivel_curto
+            _ps_niv = {r[0]: r[1] for r in psconn.execute('SELECT id, nivel FROM pubshow_businesses').fetchall()}
+        except Exception:
+            _ps_nivel_curto, _ps_niv = None, {}
         psconn.close()
         # Calcula status legível para cada bar
         for b in pubshow_bars:
             b['_cont'] = _ps_por_bar.get(b['id']) or _ps_cont_vazio()
+            b['_nivel_txt'] = _ps_nivel_curto({'nivel': _ps_niv.get(b['id'])}) if _ps_nivel_curto else ''
             _ps_somar(pubshow_tot, b['_cont'])
             if b['suspenso']:
                 b['_status'] = 'suspenso'

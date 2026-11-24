@@ -275,6 +275,9 @@ def init_pubshow_db():
         'ALTER TABLE pubshow_pedidos ADD COLUMN garcom_aviso_em TEXT DEFAULT NULL',
         # 🎤 18/11/26 (mesa do cantor): '7' ou 'BALCÃO'. Só no pedido de karaokê; NULL nos outros e nos de antes
         'ALTER TABLE pubshow_pedidos ADD COLUMN karaoke_mesa TEXT DEFAULT NULL',
+        # 💎 23/11/26 (planos): o NÍVEL do bar ('zero' | 'basico' | 'vip'); NULL = a regra de antes. A coluna 'plano' não
+        # serve: o boot zera ela pra 'bar' (plano único de 15/10/26)
+        'ALTER TABLE pubshow_businesses ADD COLUMN nivel TEXT DEFAULT NULL',
     ]:
         try:
             conn.execute(m); conn.commit()
@@ -434,6 +437,22 @@ def init_pubshow_db():
                 log.info('[PUBSHOW] 🔇 saiu do painel: desligado em %d bar(es)', n)
     except Exception as e:      # banco sem a coluna (antes do modo esporte): nada a desligar
         log.warning('[PUBSHOW] desligar o 🔇: %s', e)
+        try: conn.rollback()
+        except: pass
+
+    # 🚀 23/11/26 (Super fura fila): o 'vip' saiu do TIPOS_OCULTOS. Todo bar que salvou os Ajustes desde 11/09 tem 'vip'
+    # no tipos_bloqueados (o salvar bloqueava o que não tinha chave na tela). 1 vez só: tira o 'vip' de todo bar; daí pra
+    # frente, o interruptor do painel manda (quem desligar depois da subida fica desligado)
+    try:
+        conn.execute('CREATE TABLE IF NOT EXISTS pubshow_meta (chave TEXT PRIMARY KEY, valor TEXT)')
+        if not conn.execute("SELECT 1 FROM pubshow_meta WHERE chave='super_desbloqueia_23nov'").fetchone():
+            n = _super_desbloqueia(conn)
+            conn.execute("INSERT OR REPLACE INTO pubshow_meta (chave, valor) VALUES ('super_desbloqueia_23nov', datetime('now'))")
+            conn.commit()
+            if n:
+                log.info('[PUBSHOW] 🚀 super fura fila liberado em %d bar(es)', n)
+    except Exception as e:
+        log.warning('[PUBSHOW] 🚀 liberar o super fura fila: %s', e)
         try: conn.rollback()
         except: pass
 
@@ -666,6 +685,24 @@ def fundador_vagas(conn):
     """Quantas vagas de fundador ainda sobram (contado de verdade no banco). Pro site (fatia B): some quando der 0."""
     n = conn.execute('SELECT COUNT(*) FROM pubshow_businesses WHERE preco_trava_ate IS NOT NULL').fetchone()[0]
     return max(0, FUNDADOR_VAGAS - int(n or 0))
+
+
+def _super_desbloqueia(conn):
+    """🚀 23/11/26: tira 'vip' do tipos_bloqueados (lista JSON) de todo bar. Lista quebrada fica como está. Volta quantos
+    bares mudaram; sem commit (quem chama faz)."""
+    import json
+    n = 0
+    for r in conn.execute("SELECT id, tipos_bloqueados FROM pubshow_businesses "
+                          "WHERE tipos_bloqueados LIKE '%vip%'").fetchall():
+        try:
+            bl = json.loads(r[1] or '[]')
+        except Exception:
+            continue
+        if isinstance(bl, list) and 'vip' in bl:
+            conn.execute('UPDATE pubshow_businesses SET tipos_bloqueados=? WHERE id=?',
+                         (json.dumps([t for t in bl if t != 'vip']), r[0]))
+            n += 1
+    return n
 
 
 def _limpar_slides_antigos(conn):

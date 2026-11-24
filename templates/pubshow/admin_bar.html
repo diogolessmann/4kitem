@@ -132,6 +132,35 @@
       {% endif %}
     </div>
 
+    <!-- 💎 23/11/26 (planos): o plano do bar (Zero / Básico / VIP) e a mensalidade, em 2 botões separados -->
+    <div class="card" id="plano-bar">
+      <div class="card-title">💎 Plano do bar</div>
+      {% if nivel_msg %}<div id="nivel-msg" style="border-radius:10px;padding:10px 12px;font-size:13px;font-weight:700;margin-bottom:10px;{% if nivel_msg[0] == 'ok' %}background:rgba(34,197,94,.12);color:#4ade80{% else %}background:rgba(239,68,68,.12);color:#f87171{% endif %}">{{ nivel_msg[1] }}</div>{% endif %}
+      <div class="info-row"><span class="info-label">Hoje</span><span class="info-val" id="nivel-hoje">{{ nivel_rotulo }}</span></div>
+      <div class="info-row"><span class="info-label">Mensalidade</span><span class="info-val">{% if nivel == 'zero' %}sem mensalidade{% else %}{{ mensal_fmt }}/mês{% endif %}</span></div>
+      <div class="info-row"><span class="info-label">Vende pela</span><span class="info-val">{{ {'ponte': 'Efí (ponte)', 'split': 'Efí (split)'}.get(rota_efi, 'Asaas ou PIX manual') }}</span></div>
+      {% if zero_com_ass %}<div style="font-size:12px;color:#fbbf24;margin-top:8px">⚠️ Este bar tem assinatura ativa no Asaas. O Zero não tem mensalidade: cancele a assinatura lá no Asaas.</div>{% endif %}
+      <form method="POST" action="/pubshow/admin/bar/{{ b.id }}/acao">
+        <input type="hidden" name="acao" value="definir_nivel">
+        <div class="form-inline">
+          <select name="nivel">
+            <option value="" {% if not nivel %}selected{% endif %}>Regra antiga (sem plano)</option>
+            {% for k in niveis_ordem %}{% set n = niveis[k] %}<option value="{{ k }}" {% if k == nivel %}selected{% endif %}>{{ n.emoji }} {{ n.nome }} · app {{ n.app_pct }}%</option>{% endfor %}
+          </select>
+          <button type="submit">💾 Salvar plano</button>
+        </div>
+      </form>
+      <div style="font-size:11px;color:#8888aa;margin-top:6px">Mudar o plano não muda a mensalidade nem a assinatura. O Zero só vale em bar que vende pela Efí.</div>
+      <form method="POST" action="/pubshow/admin/bar/{{ b.id }}/acao" onsubmit="return confirm('Mudar a mensalidade deste bar? Depois, atualize o valor no Asaas (nunca cancele a assinatura).')">
+        <input type="hidden" name="acao" value="definir_mensalidade">
+        <div class="form-inline">
+          <input type="text" name="mensal" inputmode="decimal" placeholder="ex.: 149,00" maxlength="10">
+          <button type="submit">💲 Mudar a mensalidade</button>
+        </div>
+      </form>
+      <div style="font-size:11px;color:#fbbf24;margin-top:6px">⚠️ Mudou aqui? Atualizar o valor no Asaas, nunca cancelar a assinatura.</div>
+    </div>
+
     <!-- Ações -->
     <div class="card">
       <div class="card-title">⚡ Ações</div>
